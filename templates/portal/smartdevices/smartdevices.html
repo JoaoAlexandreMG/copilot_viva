@@ -1,0 +1,110 @@
+{% extends "portal/base.html" %}
+
+{% block title %}Gerenciar Smart Devices{% endblock %}
+{% block page_title %}Smart Devices{% endblock %}
+
+{% block breadcrumb %}
+    <i class="fas fa-home"></i>
+    <span>/</span>
+    <span>Smart Devices</span>
+{% endblock %}
+
+{% block header_actions %}
+    <button class="btn btn-primary" onclick="manager.showCreateForm()">
+        <i class="fas fa-plus"></i>
+        <span>Novo Dispositivo</span>
+    </button>
+{% endblock %}
+
+{% block content %}
+{% if page_type == 'list' %}
+
+<!-- Search -->
+<div class="card mb-lg">
+    <div class="card-body">
+        <div class="search-bar">
+            <i class="fas fa-search"></i>
+            <input type="text" id="searchBar" class="form-control" placeholder="Buscar por ID, Serial Number, MAC Address, Asset, Code, Outlet ou Cidade" onkeyup="filterSmartDevices(event)">
+        </div>
+    </div>
+</div>
+
+<!-- Table -->
+<div class="table-container">
+    <table class="table">
+        <thead>
+            <tr>
+                <th style="width: 160px;">Mac Address</th>
+                <th>Serial Number</th>
+                <th>Asset Code</th>
+                <th>Outlet</th>
+                <th>City</th>
+                <th>Last Ping</th>
+                <th style="width: 140px; text-align: center;">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for device in smartdevices.items %}
+            <tr>
+                <td><span class="badge badge-secondary">{{ device.mac_address }}</span></td>
+                <td style="font-weight: 500;">{{ device.serial_number or '-' }}</td>
+                <td>{{ device.linked_with_asset or '-' }}</td>
+                <td>{{ device.outlet or '-' }}</td>
+                <td>{{ device.city or '-' }}</td>
+                <td>{{ device.last_ping or '-' }}</td>
+                <td>
+                    <div style="display: flex; gap: 0.5rem; justify-content: center;">
+                        <button class="btn btn-info btn-icon-sm" data-mac="{{ (device.mac_address or '') | urlencode }}" onclick="manager.showViewDetails(decodeURIComponent(this.dataset.mac), viewFields)" title="Visualizar">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="btn btn-warning btn-icon-sm" data-mac="{{ (device.mac_address or '') | urlencode }}" onclick="manager.showEditForm(decodeURIComponent(this.dataset.mac))" title="Editar">
+                                <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-danger btn-icon-sm" data-mac="{{ (device.mac_address or '') | urlencode }}" onclick="manager.deleteEntity(decodeURIComponent(this.dataset.mac))" title="Deletar">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Pagination -->
+{% if smartdevices.pages > 1 %}
+<ul class="pagination">
+    {% if smartdevices.has_prev %}
+    <li class="pagination-item">
+        <a class="pagination-link" href="{{ url_for('portal_smartdevices.list_and_create_smartdevices', page=smartdevices.prev_num) }}">
+            <i class="fas fa-chevron-left"></i>
+        </a>
+    </li>
+    {% endif %}
+    {% for page_num in smartdevices.iter_pages() %}
+        {% if page_num %}
+            <li class="pagination-item {% if page_num == smartdevices.page %}active{% endif %}">
+                <a class="pagination-link" href="{{ url_for('portal_smartdevices.list_and_create_smartdevices', page=page_num) }}">{{ page_num }}</a>
+            </li>
+        {% endif %}
+    {% endfor %}
+    {% if smartdevices.has_next %}
+    <li class="pagination-item">
+        <a class="pagination-link" href="{{ url_for('portal_smartdevices.list_and_create_smartdevices', page=smartdevices.next_num) }}">
+            <i class="fas fa-chevron-right"></i>
+        </a>
+    </li>
+    {% endif %}
+</ul>
+{% endif %}
+
+<!-- Modals -->
+{% include 'portal/smartdevices/smartdevices_modals.html' %}
+
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/crud-manager.js') }}"></script>
+<script src="{{ url_for('static', filename='js/smartdevices.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Portal de Gerenciamento - Viva AI">
+    <title>{% block title %}Portal de Gerenciamento {% endblock %} | VivaAI</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <!-- Logo Section -->
+            <div class="sidebar-logo">
+                <img src="{{ url_for('static', filename='images/logo.png') }}" alt="VivaAI Logo">
+            </div>
+            
+            <!-- Header -->
+            <div class="sidebar-header">
+                <a href="{{ url_for('dashboard.render_dashboard') }}" class="sidebar-title">
+                    <span>Portal Viva<sup>AI</sup> | {{ user.get('client', 'Portal') }}</span>
+                </a>
+            </div>
+
+            <!-- Navigation -->
+            <nav class="sidebar-nav">
+                <div class="sidebar-nav-section">
+                    <div class="sidebar-nav-title">Principal</div>
+                    <a href="{{ url_for('dashboard.render_dashboard') }}" class="sidebar-nav-link {% if request.path.startswith('/portal_associacao') and ('/dashboard' in request.path or request.path.rstrip('/') == '/portal_associacao') %}active{% endif %}">
+                        <i class="fas fa-home"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </div>
+
+                <div class="sidebar-nav-section">
+                    <div class="sidebar-nav-title">Rastreamento</div>
+                    <a href="{{ url_for('portal_tracking.render_tracking') }}" class="sidebar-nav-link {% if request.path.startswith('/portal_associacao/tracking') %}active{% endif %}">
+                        <i class="fas fa-location-dot"></i>
+                        <span>Rastreio</span>
+                    </a>
+                </div>
+
+                <div class="sidebar-nav-section">
+                    <div class="sidebar-nav-title">Gerenciamento</div>
+                    <a href="{{ url_for('portal_users.render_users') }}" class="sidebar-nav-link {% if request.path.startswith('/portal_associacao/users') %}active{% endif %}">
+                        <i class="fas fa-users"></i>
+                        <span>Usuários</span>
+                    </a>
+                    <a href="{{ url_for('portal_outlets.get_outlets') }}" class="sidebar-nav-link {% if request.path.startswith('/portal_associacao/outlets') %}active{% endif %}">
+                        <i class="fas fa-store"></i>
+                        <span>Outlets</span>
+                    </a>
+                    <a href="{{ url_for('portal_assets.list_and_create_assets') }}" class="sidebar-nav-link {% if request.path.startswith('/portal_associacao/assets') %}active{% endif %}">
+                        <i class="fas fa-boxes"></i>
+                        <span>Assets</span>
+                    </a>
+                    <a href="{{ url_for('portal_smartdevices.get_smart_devices') }}" class="sidebar-nav-link {% if request.path.startswith('/portal_associacao/smartdevices') %}active{% endif %}">
+                        <i class="fas fa-mobile-alt"></i>
+                        <span>Smart Devices</span>
+                    </a>
+                </div>
+
+                <!-- <div class="sidebar-nav-section">
+                    <div class="sidebar-nav-title">Sistema</div>
+                    <a href="#" class="sidebar-nav-link">
+                        <i class="fas fa-cog"></i>
+                        <span>Configurações</span>
+                    </a>
+                    <a href="#" class="sidebar-nav-link">
+                        <i class="fas fa-file-alt"></i>
+                        <span>Relatórios</span>
+                    </a>
+                </div> -->
+            </nav>
+
+            <!-- User Info -->
+            <div class="sidebar-footer">
+                <div class="sidebar-user">
+                    <div class="sidebar-user-avatar">
+                        {{ user_name[0:2].upper() if user_name else 'US' }}
+                    </div>
+                    <div class="sidebar-user-info">
+                        <span class="sidebar-user-name">{{ user_name or 'Usuário' }}</span>
+                        <span class="sidebar-user-role">{{ user_email or '' }}</span>
+                    </div>
+                </div>
+                <a href="/portal_associacao/auth/logout" class="sidebar-logout" title="Sair">
+                    <i class="fas fa-sign-out-alt"></i>
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="main-header">
+                <div class="main-header-left">
+                    <button class="mobile-menu-toggle" id="mobileMenuToggle">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <h1 class="main-header-title">{% block page_title %}Portal{% endblock %}</h1>
+                    <div class="main-header-breadcrumb">
+                        {% block breadcrumb %}{% endblock %}
+                    </div>
+                </div>
+                <div class="main-header-right">
+                    {% block header_actions %}{% endblock %}
+                </div>
+            </header>
+
+            <!-- Body -->
+            <div class="main-body">
+                <!-- Flash Messages -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        <div class="alerts-container">
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible" role="alert">
+                                    <i class="fas fa-{{ 'exclamation-circle' if category == 'error' else 'check-circle' if category == 'success' else 'info-circle' }}"></i>
+                                    <span>{{ message }}</span>
+                                    <button type="button" class="btn-close" onclick="this.parentElement.remove()">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% endwith %}
+
+                <!-- Page Content -->
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        // Mobile menu toggle
+        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+        const sidebar = document.getElementById('sidebar');
+
+        if (mobileMenuToggle) {
+            mobileMenuToggle.addEventListener('click', () => {
+                sidebar.classList.toggle('active');
+            });
+        }
+
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', (e) => {
+            if (window.innerWidth <= 768) {
+                if (!sidebar.contains(e.target) && !mobileMenuToggle.contains(e.target)) {
+                    sidebar.classList.remove('active');
+                }
+            }
+        });
+
+        // Auto-dismiss alerts after 5 seconds
+        document.addEventListener('DOMContentLoaded', () => {
+            const alerts = document.querySelectorAll('.alert-dismissible');
+            alerts.forEach(alert => {
+                setTimeout(() => {
+                    alert.style.opacity = '0';
+                    setTimeout(() => alert.remove(), 300);
+                }, 5000);
+            });
+        });
+    </script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

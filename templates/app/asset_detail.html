@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0066FF">
+    <title>{{ asset['oem_serial_number'] }} - Detalhes</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        :root {
+            --primary: #0066FF;
+            --success: #34C759;
+            --danger: #FF3B30;
+            --warning: #FF9500;
+            --light: #F5F5F7;
+            --border: #E0E0E0;
+            --text: #1C1C1E;
+            --text-secondary: #8E8E93;
+            --spacing: 1rem;
+            --radius: 12px;
+        }
+
+        html, body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--light);
+            color: var(--text);
+            line-height: 1.4;
+            font-size: 16px;
+        }
+
+        body {
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ========== HEADER ========== */
+        .header {
+            background: white;
+            border-bottom: 1px solid var(--border);
+            padding: var(--spacing);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing);
+            max-width: 100%;
+        }
+
+        .back-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+
+        .back-btn:active {
+            opacity: 0.8;
+        }
+
+        .header-title {
+            flex: 1;
+            text-align: center;
+            font-size: 1.1rem;
+            font-weight: 700;
+            min-width: 0;
+        }
+
+        .header-subtitle {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        /* ========== CONTENT ========== */
+        .content {
+            padding: var(--spacing);
+            max-width: 100%;
+        }
+
+        .section {
+            background: white;
+            border-radius: var(--radius);
+            padding: var(--spacing);
+            margin-bottom: var(--spacing);
+            border: 1px solid var(--border);
+        }
+
+        .section-title {
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: var(--spacing);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* ========== HERO SECTION ========== */
+        .hero {
+            text-align: center;
+            padding: 1.5rem var(--spacing);
+        }
+
+        .asset-serial {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+            word-break: break-all;
+        }
+
+        .asset-location {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            margin-bottom: var(--spacing);
+            line-height: 1.5;
+        }
+
+        .badges {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .badge.success { background: #E5F5E5; color: var(--success); }
+        .badge.danger { background: #FFE5E5; color: var(--danger); }
+        .badge.warning { background: #FFF3CD; color: var(--warning); }
+        .badge.info { background: #E3F2FD; color: var(--primary); }
+
+        /* ========== METRICS GRID ========== */
+        .metrics {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+        }
+
+        .metric {
+            background: var(--light);
+            border-radius: var(--radius);
+            padding: var(--spacing);
+            text-align: center;
+            min-height: 100px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .metric-icon {
+            font-size: 1.5rem;
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-value {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+            word-break: break-word;
+            line-height: 1.3;
+            min-height: 1.6rem;
+            overflow-wrap: break-word;
+            hyphens: auto;
+        }
+
+        .metric-value:has-text {
+            font-size: clamp(0.9rem, 2vw, 1.2rem);
+        }
+
+        /* Responsive font size for long text */
+        @supports (container-type: inline-size) {
+            .metric {
+                container-type: inline-size;
+            }
+            
+            @container (max-width: 120px) {
+                .metric-value {
+                    font-size: 1rem;
+                }
+            }
+            
+            @container (max-width: 100px) {
+                .metric-value {
+                    font-size: 0.9rem;
+                }
+            }
+        }
+
+        .metric-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* ========== CHARTS ========== */
+        .chart-container {
+            position: relative;
+            height: 250px;
+            margin-top: var(--spacing);
+            width: 100%;
+            overflow: hidden;
+        }
+
+        /* ========== INFO LIST ========== */
+        .info-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--border);
+            gap: 1rem;
+        }
+
+        .info-item:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: var(--text);
+            flex-shrink: 0;
+            min-width: 0;
+            word-break: break-word;
+        }
+
+        .info-value {
+            color: var(--text-secondary);
+            text-align: right;
+            word-break: break-all;
+            min-width: 0;
+        }
+
+        /* ========== ACTIONS ========== */
+        .actions {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: var(--spacing);
+            flex-wrap: wrap;
+        }
+
+        .action-btn {
+            flex: 1;
+            min-width: 120px;
+            padding: 0.75rem;
+            border: none;
+            border-radius: var(--radius);
+            font-weight: 600;
+            text-decoration: none;
+            text-align: center;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .action-btn.primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .action-btn.secondary {
+            background: var(--light);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .action-btn:active {
+            opacity: 0.8;
+        }
+
+        /* ========== RESPONSIVE ========== */
+        @media (max-width: 374px) {
+            .metrics {
+                grid-template-columns: 1fr;
+            }
+            
+            .metric-value {
+                font-size: 1rem;
+            }
+            
+            .asset-serial {
+                font-size: 1.5rem;
+            }
+
+            .actions {
+                flex-direction: column;
+            }
+
+            .action-btn {
+                flex: none;
+            }
+        }
+
+        @media (min-width: 768px) {
+            .content {
+                max-width: 600px;
+                margin: 0 auto;
+            }
+            
+            .metrics {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- HEADER -->
+    <header class="header">
+        <div class="header-content">
+            <a href="/assets/" class="back-btn">← Voltar</a>
+            <div class="header-title">
+                Asset Details
+                <div class="header-subtitle">{{ user.client }}</div>
+            </div>
+            <div style="width: 80px;"></div> <!-- Spacer for centering -->
+        </div>
+    </header>
+
+    <!-- CONTENT -->
+    <main class="content">
+        <!-- Asset Hero -->
+        <div class="section hero">
+            <div class="asset-serial">{{ asset['oem_serial_number'] }}</div>
+            <div class="asset-location">
+                📍 {{ asset.get('street', '-') }}, {{ asset.get('city', '-') }}
+                {% if distance_km %}
+                    <br>🎯 {{ distance_km }}km de você
+                {% endif %}
+            </div>
+            <div class="badges">
+                {% if asset.get('is_online') is not none %}
+                    {% if asset.get('is_online') %}
+                        <span class="badge success">✅ Online</span>
+                    {% else %}
+                        <span class="badge danger">❌ Offline</span>
+                    {% endif %}
+                {% endif %}
+                
+                {% if latest_health and latest_health.get('temperature_c') %}
+                    {% if latest_health.get('temperature_c') >= 40 %}
+                        <span class="badge danger">🔥 Temp. Alta</span>
+                    {% else %}
+                        <span class="badge success">🌡️ Temp. OK</span>
+                    {% endif %}
+                {% endif %}
+                
+                {% if asset.get('battery_level') %}
+                    {% if asset.get('battery_level') < 30 %}
+                        <span class="badge warning">⚡ Bateria Baixa</span>
+                    {% else %}
+                        <span class="badge success">🔋 Bateria OK</span>
+                    {% endif %}
+                {% endif %}
+                
+                {% if asset.get('is_missing') is not none %}
+                    {% if asset.get('is_missing') %}
+                        <span class="badge danger">⚠️ Faltando</span>
+                    {% else %}
+                        <span class="badge success">✓ Presente</span>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Metrics -->
+        <div class="section">
+            <div class="section-title">📊 Métricas</div>
+            <div class="metrics">
+                <div class="metric">
+                    <span class="metric-icon">🌡️</span>
+                    <div class="metric-value">
+                        {% if latest_health and latest_health.get('temperature_c') %}
+                            {{ latest_health.get('temperature_c') }}°C
+                        {% else %}
+                            —
+                        {% endif %}
+                    </div>
+                    <div class="metric-label">Temperatura</div>
+                </div>
+                <div class="metric">
+                    <span class="metric-icon">🔋</span>
+                    <div class="metric-value">{{ asset.get('battery_level', '—') }}%</div>
+                    <div class="metric-label">Bateria</div>
+                </div>
+                <div class="metric">
+                    <span class="metric-icon">🏪</span>
+                    <div class="metric-value">{{ asset.get('outlet', '—') }}</div>
+                    <div class="metric-label">Outlet</div>
+                </div>
+                <div class="metric">
+                    <span class="metric-icon">📍</span>
+                    <div class="metric-value">{{ asset.get('city', '—') }}</div>
+                    <div class="metric-label">Cidade</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Latest Health Event -->
+        {% if latest_health_any %}
+        <div class="section">
+            <div class="section-title">🏥 Último Evento de Saúde</div>
+            <div class="info-list">
+                <div class="info-item">
+                    <div class="info-label">📅 Data/Hora</div>
+                    <div class="info-value">
+                        {% if latest_health_any.get('event_time') %}
+                            {{ latest_health_any.get('event_time').strftime('%d/%m/%Y %H:%M') if latest_health_any.get('event_time').strftime else latest_health_any.get('event_time') }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">🔍 Tipo de Evento</div>
+                    <div class="info-value">{{ latest_health_any.get('event_type', '—') }}</div>
+                </div>
+                {% if latest_health_any.get('temperature_c') %}
+                <div class="info-item">
+                    <div class="info-label">🌡️ Temperatura</div>
+                    <div class="info-value">{{ latest_health_any.get('temperature_c') }}°C</div>
+                </div>
+                {% endif %}
+                {% if latest_health_any.get('battery') %}
+                <div class="info-item">
+                    <div class="info-label">🔋 Bateria no Evento</div>
+                    <div class="info-value">{{ latest_health_any.get('battery') }}%</div>
+                </div>
+                {% endif %}
+                {% if latest_health_any.get('event_value') %}
+                <div class="info-item">
+                    <div class="info-label">📊 Valor do Evento</div>
+                    <div class="info-value">{{ latest_health_any.get('event_value') }}</div>
+                </div>
+                {% endif %}
+                {% if latest_health_any.get('event_description') %}
+                <div class="info-item">
+                    <div class="info-label">📝 Descrição</div>
+                    <div class="info-value">{{ latest_health_any.get('event_description') }}</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Latest Movement -->
+        {% if latest_movement %}
+        <div class="section">
+            <div class="section-title">🚪 Último Movimento</div>
+            <div class="info-list">
+                <div class="info-item">
+                    <div class="info-label">📅 Início</div>
+                    <div class="info-value">
+                        {% if latest_movement.get('start_time') %}
+                            {{ latest_movement.get('start_time').strftime('%d/%m/%Y %H:%M') if latest_movement.get('start_time').strftime else latest_movement.get('start_time') }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </div>
+                </div>
+                {% if latest_movement.get('end_time') %}
+                <div class="info-item">
+                    <div class="info-label">🏁 Fim</div>
+                    <div class="info-value">
+                        {{ latest_movement.get('end_time').strftime('%d/%m/%Y %H:%M') if latest_movement.get('end_time').strftime else latest_movement.get('end_time') }}
+                    </div>
+                </div>
+                {% endif %}
+                <div class="info-item">
+                    <div class="info-label">🚪 Status da Porta</div>
+                    <div class="info-value">
+                        {% if latest_movement.get('door_open') is not none %}
+                            {% if latest_movement.get('door_open') %}
+                                <span style="color: var(--danger);">🔴 Aberta</span>
+                            {% else %}
+                                <span style="color: var(--success);">🟢 Fechada</span>
+                            {% endif %}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </div>
+                </div>
+                {% if latest_movement.get('duration') %}
+                <div class="info-item">
+                    <div class="info-label">⏱️ Duração</div>
+                    <div class="info-value">
+                        {% set minutes = (latest_movement.get('duration') / 60) | round(1) %}
+                        {{ minutes }} min
+                    </div>
+                </div>
+                {% endif %}
+                {% if latest_movement.get('movement_type') %}
+                <div class="info-item">
+                    <div class="info-label">🔄 Tipo de Movimento</div>
+                    <div class="info-value">{{ latest_movement.get('movement_type') }}</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Temperature Chart -->
+        {% if chart_data.temperature %}
+        <div class="section">
+            <div class="section-title">📈 Histórico de Temperatura</div>
+            <div class="chart-container">
+                <canvas id="temperatureChart"></canvas>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Door Activity Chart -->
+        {% if chart_data.movements %}
+        <div class="section">
+            <div class="section-title">🚪 Atividade da Porta</div>
+            <div class="chart-container">
+                <canvas id="doorChart"></canvas>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Asset Information -->
+        <div class="section">
+            <div class="section-title">ℹ️ Informações Completas</div>
+            <div class="info-list">
+                <!-- Identificação -->
+                <div class="info-item">
+                    <div class="info-label">🏷️ Serial (OEM)</div>
+                    <div class="info-value">{{ asset['oem_serial_number'] }}</div>
+                </div>
+                {% if asset.get('bottler_equipment_number') %}
+                <div class="info-item">
+                    <div class="info-label">�️ Equipamento (Bottler)</div>
+                    <div class="info-value">{{ asset.get('bottler_equipment_number') }}</div>
+                </div>
+                {% endif %}
+                
+                <!-- Status -->
+                <div class="info-item">
+                    <div class="info-label">� Status Online</div>
+                    <div class="info-value">
+                        {% if asset.get('is_online') is not none %}
+                            {% if asset.get('is_online') %}
+                                <span style="color: var(--success);">✅ Sim</span>
+                            {% else %}
+                                <span style="color: var(--danger);">❌ Não</span>
+                            {% endif %}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">⚠️ Status Faltando</div>
+                    <div class="info-value">
+                        {% if asset.get('is_missing') is not none %}
+                            {% if asset.get('is_missing') %}
+                                <span style="color: var(--danger);">❌ Sim</span>
+                            {% else %}
+                                <span style="color: var(--success);">✅ Não</span>
+                            {% endif %}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Localização -->
+                <div class="info-item">
+                    <div class="info-label">� Outlet</div>
+                    <div class="info-value">{{ asset.get('outlet', '—') }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">🔢 Código Outlet</div>
+                    <div class="info-value">{{ asset.get('outlet_code', '—') }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">📍 Rua</div>
+                    <div class="info-value">{{ asset.get('street', '—') }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">🏙️ Cidade</div>
+                    <div class="info-value">{{ asset.get('city', '—') }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">🗺️ Estado</div>
+                    <div class="info-value">{{ asset.get('state', '—') }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">🌍 País</div>
+                    <div class="info-value">{{ asset.get('country', '—') }}</div>
+                </div>
+                {% if asset.get('latitude') and asset.get('longitude') %}
+                <div class="info-item">
+                    <div class="info-label">🎯 Coordenadas</div>
+                    <div class="info-value">{{ asset.get('latitude') }}, {{ asset.get('longitude') }}</div>
+                </div>
+                {% endif %}
+                
+                <!-- Dados Operacionais -->
+                <div class="info-item">
+                    <div class="info-label">🏢 Cliente</div>
+                    <div class="info-value">{{ asset.get('client', '—') }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">🏬 Sub-Cliente</div>
+                    <div class="info-value">{{ asset.get('sub_client', '—') }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">📊 Sub Trade Channel</div>
+                    <div class="info-value">{{ asset.get('sub_trade_channel', '—') }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">📦 Tipo de Asset</div>
+                    <div class="info-value">{{ asset.get('asset_type', '—') }}</div>
+                </div>
+                
+                <!-- Dados de Saúde -->
+                <div class="info-item">
+                    <div class="info-label">🌡️ Última Temperatura</div>
+                    <div class="info-value">
+                        {% if asset.get('latest_temperature_c') is not none %}
+                            {{ asset.get('latest_temperature_c') }}°C
+                        {% else %}
+                            —
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">🔋 Nível de Bateria</div>
+                    <div class="info-value">
+                        {% if asset.get('battery_level') is not none %}
+                            {{ asset.get('battery_level') }}%
+                        {% else %}
+                            —
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="section">
+            <div class="section-title">⚡ Ações</div>
+            <div class="actions">
+                {% if asset.get('latitude') and asset.get('longitude') %}
+                <a href="https://www.google.com/maps?q={{ asset.get('latitude') }},{{ asset.get('longitude') }}" 
+                   target="_blank" class="action-btn primary">
+                    🗺️ Ver no Mapa
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const chartData = {{ chart_data | tojson }};
+        
+        // Common chart options
+        const commonOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: { beginAtZero: false },
+                x: { display: true }
+            }
+        };
+        
+        // Temperature Chart
+        {% if chart_data.temperature %}
+        const tempCtx = document.getElementById('temperatureChart').getContext('2d');
+        new Chart(tempCtx, {
+            type: 'line',
+            data: {
+                labels: chartData.temperature.map(d => {
+                    const date = new Date(d.time);
+                    return date.toLocaleDateString('pt-BR', { 
+                        month: 'short', 
+                        day: 'numeric' 
+                    }) + ' ' + date.toLocaleTimeString('pt-BR', { 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                    });
+                }),
+                datasets: [{
+                    label: 'Temperatura (°C)',
+                    data: chartData.temperature.map(d => d.temperature),
+                    borderColor: '#FF3B30',
+                    backgroundColor: 'rgba(255, 59, 48, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    pointRadius: 3,
+                    pointHoverRadius: 5
+                }]
+            },
+            options: {
+                ...commonOptions,
+                scales: {
+                    ...commonOptions.scales,
+                    y: {
+                        ...commonOptions.scales.y,
+                        title: { display: true, text: 'Temperatura (°C)' }
+                    }
+                }
+            }
+        });
+        {% endif %}
+
+        // Door Activity Chart
+        {% if chart_data.movements %}
+        const doorCtx = document.getElementById('doorChart').getContext('2d');
+        new Chart(doorCtx, {
+            type: 'bar',
+            data: {
+                labels: chartData.movements.map(d => {
+                    const date = new Date(d.time);
+                    return date.toLocaleDateString('pt-BR', { 
+                        month: 'short', 
+                        day: 'numeric' 
+                    }) + ' ' + date.toLocaleTimeString('pt-BR', { 
+                        hour: '2-digit' 
+                    });
+                }),
+                datasets: [{
+                    label: 'Duração (min)',
+                    data: chartData.movements.map(d => Math.round(d.duration / 60)),
+                    backgroundColor: chartData.movements.map(d => 
+                        d.door_open ? '#FF3B30' : '#34C759'
+                    ),
+                    borderRadius: 4,
+                    maxBarThickness: 40
+                }]
+            },
+            options: {
+                ...commonOptions,
+                scales: {
+                    ...commonOptions.scales,
+                    y: {
+                        ...commonOptions.scales.y,
+                        beginAtZero: true,
+                        title: { display: true, text: 'Duração (min)' }
+                    }
+                }
+            }
+        });
+        {% endif %}
+    </script>
+</body>
+</html>

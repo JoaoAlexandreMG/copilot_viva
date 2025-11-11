@@ -1,0 +1,108 @@
+{% extends "portal/base.html" %}
+
+{% block title %}Gerenciar Outlets{% endblock %}
+{% block page_title %}Outlets{% endblock %}
+
+{% block breadcrumb %}
+    <i class="fas fa-home"></i>
+    <span>/</span>
+    <span>Outlets</span>
+{% endblock %}
+
+{% block header_actions %}
+    <button class="btn btn-primary" onclick="manager.showCreateForm()">
+        <i class="fas fa-plus"></i>
+        <span>Novo Outlet</span>
+    </button>
+{% endblock %}
+
+{% block content %}
+{% if page_type == 'list' %}
+
+<!-- Search -->
+<div class="card mb-lg">
+    <div class="card-body">
+        <div class="search-bar">
+            <i class="fas fa-search"></i>
+            <input type="text" id="searchBar" class="form-control" placeholder="Buscar outlets..." onkeyup="filterOutlets(event)">
+        </div>
+    </div>
+</div>
+
+<!-- Table -->
+<div class="table-container">
+    <table class="table">
+        <thead>
+            <tr>
+                <th style="width: 120px;">Código</th>
+                <th>Nome</th>
+                <th>Tipo</th>
+                <th>País</th>
+                <th>Cliente</th>
+                <th style="width: 140px; text-align: center;">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for outlet in outlets.items %}
+            <tr>
+                <td><span class="badge badge-secondary">{{ outlet.code }}</span></td>
+                <td style="font-weight: 500;">{{ outlet.name }}</td>
+                <td>{{ outlet.outlet_type or '-' }}</td>
+                <td>{{ outlet.country or '-' }}</td>
+                <td>{{ outlet.client or '-' }}</td>
+                <td>
+                    <div style="display: flex; gap: 0.5rem; justify-content: center;">
+                        <button class="btn btn-info btn-icon-sm" data-code="{{ (outlet.code or '') | urlencode }}" onclick="manager.showViewDetails(decodeURIComponent(this.dataset.code), viewFields)" title="Visualizar">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="btn btn-warning btn-icon-sm" data-code="{{ (outlet.code or '') | urlencode }}" onclick="manager.showEditForm(decodeURIComponent(this.dataset.code))" title="Editar">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-danger btn-icon-sm" data-code="{{ (outlet.code or '') | urlencode }}" onclick="manager.deleteEntity(decodeURIComponent(this.dataset.code))" title="Deletar">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Pagination -->
+{% if outlets.pages > 1 %}
+<ul class="pagination">
+    {% if outlets.has_prev %}
+    <li class="pagination-item">
+        <a class="pagination-link" href="{{ url_for('portal_outlets.list_and_create_outlets', page=outlets.prev_num) }}">
+            <i class="fas fa-chevron-left"></i>
+        </a>
+    </li>
+    {% endif %}
+    {% for page_num in outlets.iter_pages() %}
+        {% if page_num %}
+            <li class="pagination-item {% if page_num == outlets.page %}active{% endif %}">
+                <a class="pagination-link" href="{{ url_for('portal_outlets.list_and_create_outlets', page=page_num) }}">{{ page_num }}</a>
+            </li>
+        {% endif %}
+    {% endfor %}
+    {% if outlets.has_next %}
+    <li class="pagination-item">
+        <a class="pagination-link" href="{{ url_for('portal_outlets.list_and_create_outlets', page=outlets.next_num) }}">
+            <i class="fas fa-chevron-right"></i>
+        </a>
+    </li>
+    {% endif %}
+</ul>
+{% endif %}
+
+<!-- Modals -->
+{% include 'portal/outlets/outlets_modals.html' %}
+
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/crud-manager.js') }}"></script>
+<script src="{{ url_for('static', filename='js/outlets.js') }}"></script>
+{% endblock %}
