@@ -1,0 +1,125 @@
+<!-- View Modal -->
+<div class="modal-backdrop" id="viewModalBackdrop" style="display: none;" onclick="manager.closeViewModal()"></div>
+<div class="modal" id="viewModal" style="display: none;">
+    <div class="modal-dialog modal-dialog-xl">
+        <div class="modal-header">
+            <h3 class="modal-title">Detalhes do Smart Device</h3>
+            <button type="button" class="btn btn-icon-sm btn-outline" onclick="manager.closeViewModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body" id="viewContent"></div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="manager.closeViewModal()">Fechar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Form Modal -->
+<div class="modal-backdrop" id="formModalBackdrop" style="display: none;" onclick="manager.closeFormModal()"></div>
+<div class="modal" id="formModal" style="display: none;">
+    <div class="modal-dialog modal-dialog-lg">
+        <div class="modal-header">
+            <h3 class="modal-title" id="formTitle">Criar Novo Smart Device</h3>
+            <button type="button" class="btn btn-icon-sm btn-outline" onclick="manager.closeFormModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+            <form id="entityForm" method="POST">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label for="device_type" class="form-label form-label">Tipo</label>
+                        <input type="text" class="form-control" id="device_type" name="device_type">
+                    </div>
+                    <div class="form-group">
+                        <label for="manufacturer" class="form-label form-label">Fabricante</label>
+                        <input type="text" class="form-control" id="manufacturer" name="manufacturer">
+                    </div>
+                    <div class="form-group">
+                        <label for="serial_number" class="form-label">Serial</label>
+                        <input type="text" class="form-control" id="serial_number" name="serial_number">
+                    </div>
+                    <div class="form-group">
+                        <label for="mac_address" class="form-label">MAC Address</label>
+                        <input type="text" class="form-control" id="mac_address" name="mac_address">
+                    </div>
+                    <div class="form-group">
+                        <label for="imei" class="form-label">IMEI</label>
+                        <input type="text" class="form-control" id="imei" name="imei">
+                    </div>
+                    <div class="form-group">
+                        <label for="last_ping" class="form-label">Último Ping</label>
+                        <input type="text" class="form-control" id="last_ping" name="last_ping">
+                    </div>
+                    <div class="form-group">
+                        <label for="linked_with_asset" class="form-label">Asset Vinculado</label>
+                        <input type="text" class="form-control" id="linked_with_asset" name="linked_with_asset">
+                    </div>
+                    <div class="form-group">
+                        <label for="association" class="form-label">Associação</label>
+                        <input type="text" class="form-control" id="association" name="association">
+                    </div>
+                    <div class="form-group">
+                        <label for="outlet" class="form-label">Outlet</label>
+                        <input type="text" class="form-control" id="outlet" name="outlet">
+                    </div>
+                    <div class="form-group">
+                        <label for="outlet_code" class="form-label">Código Outlet</label>
+                        <input type="text" class="form-control" id="outlet_code" name="outlet_code">
+                    </div>
+                    <div class="form-group">
+                        <label for="outlet_type" class="form-label">Tipo Outlet</label>
+                        <input type="text" class="form-control" id="outlet_type" name="outlet_type">
+                    </div>
+                    <div class="form-group">
+                        <label for="street" class="form-label">Rua</label>
+                        <input type="text" class="form-control" id="street" name="street">
+                    </div>
+                    <div class="form-group">
+                        <label for="city" class="form-label">Cidade</label>
+                        <input type="text" class="form-control" id="city" name="city">
+                    </div>
+                    <div class="form-group">
+                        <label for="state" class="form-label">Estado</label>
+                        <input type="text" class="form-control" id="state" name="state">
+                    </div>
+                    <div class="form-group">
+                        <label for="country" class="form-label">País</label>
+                        <input type="text" class="form-control" id="country" name="country">
+                    </div>
+                    <div class="form-group">
+                        <label for="time_zone" class="form-label">Fuso Horário</label>
+                        <input type="text" class="form-control" id="time_zone" name="time_zone">
+                    </div>
+                    <div class="form-group">
+                        <label for="battery_level" class="form-label">Nível Bateria</label>
+                        <input type="text" class="form-control" id="battery_level" name="battery_level">
+                    </div>
+                </div>
+
+                <div style="margin-top: 1.5rem; display: flex; gap: 1rem; flex-wrap: wrap;">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="is_online" name="is_online" value="true">
+                        <label class="form-label" for="is_online">Online</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="is_missing" name="is_missing" value="true">
+                        <label class="form-label" for="is_missing">Desaparecido</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="is_sd_gateway" name="is_sd_gateway" value="true">
+                        <label class="form-label" for="is_sd_gateway">Gateway</label>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="manager.closeFormModal()">Cancelar</button>
+            <button type="button" class="btn btn-primary" onclick="manager.submitForm()">
+                <i class="fas fa-save"></i>
+                Salvar
+            </button>
+        </div>
+    </div>
+</div>

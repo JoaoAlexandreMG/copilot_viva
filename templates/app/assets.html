@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Assets">
+    <meta name="theme-color" content="#0066FF">
+    <title>Dashboard de Assets</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        :root {
+            --primary: #0066FF;
+            --secondary: #5AC8FA;
+            --success: #34C759;
+            --danger: #FF3B30;
+            --warning: #FF9500;
+            --light: #F5F5F7;
+            --darker: #EFEFF4;
+            --border: #D0D0D0;
+            --text: #1C1C1E;
+            --text-secondary: #8E8E93;
+            --text-tertiary: #C7C7CC;
+            --spacing-xs: 0.5rem;
+            --spacing-sm: 0.75rem;
+            --spacing-md: 1rem;
+            --spacing-lg: 1.25rem;
+            --spacing-xl: 1.5rem;
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
+            background: var(--light);
+            color: var(--text);
+            overflow: hidden;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            padding-top: max(0px, env(safe-area-inset-top));
+            padding-bottom: max(0px, env(safe-area-inset-bottom));
+        }
+
+        .app-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* ========== HEADER ========== */
+        .header {
+            background: white;
+            border-bottom: 1px solid var(--border);
+            padding: var(--spacing-sm);
+            flex-shrink: 0;
+        }
+
+        .header-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--spacing-sm);
+            min-height: 44px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            flex-shrink: 0;
+        }
+
+        .header-center {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 0;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+            flex-shrink: 0;
+        }
+        
+        .header-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text);
+            text-align: center;
+            line-height: 1.2;
+            margin: 0;
+        }
+
+        .header-subtitle {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            text-align: center;
+            margin: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 200px;
+        }
+
+        .header-icon {
+            font-size: 1rem;
+        }
+
+        .compact-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .compact-btn:hover {
+            background: #0056b3;
+            transform: translateY(-1px);
+        }
+
+        .compact-btn:active {
+            transform: scale(0.95);
+            opacity: 0.8;
+        }
+
+        .user-info-compact {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: var(--spacing-xs);
+            background: #e3f2fd;
+            border-radius: 8px;
+            min-width: 0;
+        }
+
+        .user-name {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #1976d2;
+            margin: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 60px;
+        }
+
+        .user-client {
+            font-size: 0.6rem;
+            color: #666;
+            margin: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 60px;
+        }
+
+        .back-btn {
+            background: transparent;
+            color: var(--primary);
+            border: none;
+            padding: 0.4rem 0.6rem;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .back-btn:active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .logout-btn {
+            background: #ff5722;
+            color: white;
+            border: none;
+            padding: 0.3rem;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.9rem;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logout-btn:hover {
+            background: #e64a19;
+        }
+
+        .subclient-selector {
+            margin-bottom: var(--spacing-md);
+            padding: var(--spacing-md);
+            background: white;
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .subclient-selector label {
+            display: block;
+            margin-bottom: var(--spacing-sm);
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .subclient-selector select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e0e0e0;
+            border-radius: var(--radius-sm);
+            font-size: 1rem;
+            background: white;
+            cursor: pointer;
+            transition: border-color 0.2s ease;
+        }
+
+        .subclient-selector select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        /* KPI Cards */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: var(--spacing-xs);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .kpi-card {
+            background: var(--darker);
+            border-radius: var(--radius-sm);
+            padding: var(--spacing-xs);
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .kpi-label {
+            font-size: 0.6rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.2px;
+            margin-bottom: 0.1rem;
+            line-height: 1;
+        }
+
+        .kpi-value {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--text);
+            line-height: 1;
+        }
+
+        .kpi-icon {
+            display: inline-block;
+            margin-right: 0.3rem;
+        }
+
+        /* ========== CONTENT ========== */
+        .content {
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        .content-top {
+            align-self: center;
+            flex-shrink: 0;
+            padding: 5%;
+            padding-bottom: 0;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .content-scrollable {
+            flex: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: var(--spacing-md);
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+        }
+
+        /* ========== SEARCH ========== */
+        .search-bar {
+            background: white;
+            border-radius: var(--radius-md);
+            padding: 0 var(--spacing-md);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            border: 1px solid var(--border);
+        }
+
+        .search-bar input {
+            flex: 1;
+            border: none;
+            padding: var(--spacing-sm) 0;
+            font-size: 1rem;
+            font-family: inherit;
+            background: transparent;
+            color: var(--text);
+        }
+
+        .search-bar input::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .search-bar input:focus {
+            outline: none;
+        }
+
+        .search-bar-icon {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+
+        /* ========== ASSET CARDS ========== */
+        .assets-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+        }
+
+        .asset-card-link {
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+
+        .asset-card {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg);
+            border: 1px solid var(--border);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            transition: all 0.2s ease;
+        }
+
+        .asset-card-link:hover .asset-card {
+            box-shadow: 0 4px 16px rgba(0, 102, 255, 0.2);
+            border-color: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        .asset-card:active {
+            transform: scale(0.98);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+        }
+
+        /* Card Header */
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: var(--spacing-md);
+            gap: var(--spacing-sm);
+        }
+
+        .card-asset-name {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            flex: 1;
+        }
+
+        .asset-serial {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--primary);
+        }
+
+        .asset-location {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .distance-badge {
+            display: inline-block;
+            font-size: 0.75rem;
+            background: #28a745;
+            color: white;
+            padding: 0.2rem 0.5rem;
+            border-radius: 10px;
+            font-weight: 600;
+            margin-left: 0.5rem;
+            white-space: nowrap;
+        }
+
+        .asset-distance {
+            display: inline-block;
+            font-size: 0.75rem;
+            background: var(--secondary);
+            color: white;
+            padding: 0.3rem 0.6rem;
+            border-radius: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+            margin-top: 0.3rem;
+        }
+
+        .card-status-badges {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.35rem 0.65rem;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            white-space: nowrap;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .status-badge.on {
+            background: #E5F5E5;
+            color: var(--success);
+        }
+
+        .status-badge.off {
+            background: #F5F5F5;
+            color: var(--text-secondary);
+        }
+
+        .status-badge.open {
+            background: #FFE5E5;
+            color: var(--danger);
+        }
+
+        .status-badge.closed {
+            background: #E5F5E5;
+            color: var(--success);
+        }
+
+        /* Card Body */
+        .card-body {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .metric {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .metric-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .metric-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .metric-icon {
+            margin-right: 0.35rem;
+        }
+
+        /* Battery Bar */
+        .battery-container {
+            grid-column: 1 / -1;
+        }
+
+        .battery-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        .battery-bar {
+            height: 8px;
+            background: var(--darker);
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .battery-fill {
+            height: 100%;
+            background: var(--success);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+
+        .battery-fill.warning {
+            background: var(--warning);
+        }
+
+        .battery-fill.critical {
+            background: var(--danger);
+        }
+
+        .battery-percent {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-top: 0.35rem;
+            display: block;
+        }
+
+        /* Alerts */
+        .alerts-section {
+            border-top: 1px solid var(--border);
+            padding-top: var(--spacing-md);
+        }
+
+        .alerts-title {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            margin-bottom: 0.6rem;
+        }
+
+        .alerts-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .alert-item {
+            padding: 0.5rem 0.75rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.8rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .alert-item.warning {
+            background: #FFF3CD;
+            color: #7A5C00;
+        }
+
+        .alert-item.danger {
+            background: #FFE5E5;
+            color: var(--danger);
+        }
+
+        .alert-item.success {
+            background: #E5F5E5;
+            color: var(--success);
+        }
+
+        /* ========== EMPTY STATE ========== */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem 2rem;
+            color: var(--text-secondary);
+            text-align: center;
+        }
+
+        .empty-icon {
+            font-size: 3rem;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .empty-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .empty-text {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- HEADER -->
+        <header class="header">
+            <!-- Header Row 1: Navigation and User -->
+            <div class="header-row">
+                <div class="header-left">
+                    <form method="POST" action="/logout" style="margin: 0;">
+                        <button type="submit" class="back-btn" title="Sair e Voltar ao Login">← Sair</button>
+                    </form>
+                </div>
+                
+                <div class="header-center">
+                    <h1 class="header-title">
+                        <span class="header-icon">📦</span> Assets
+                    </h1>
+                    {% if user %}
+                    <p class="header-subtitle">
+                        {{ user.client }}
+                    </p>
+                    {% endif %}
+                </div>
+                
+                <div class="header-right">
+                    {% if user %}
+                        <div class="user-info-compact">
+                            <p class="user-name">{{ user.first_name }}</p>
+                            <p class="user-client">{{ user.client[:8] }}...</p>
+                        </div>
+                        <form method="POST" action="/logout" style="margin: 0;">
+                            <button type="submit" class="logout-btn" title="Sair">🚪</button>
+                        </form>
+                    {% endif %}
+                    <button class="compact-btn" onclick="location.reload()" title="Atualizar">🔄</button>
+                </div>
+            </div>
+
+            <!-- KPI Cards -->
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-label"><span class="kpi-icon">📦</span>Total</div>
+                    <div class="kpi-value" id="kpi-total">{{ total }}</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label"><span class="kpi-icon">🏢</span>Client</div>
+                    <div class="kpi-value">{{ user.client[:6] if user else 'N/A' }}</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label"><span class="kpi-icon">⚡</span>Bateria Baixa</div>
+                    <div class="kpi-value" id="low-battery-count">0</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label"><span class="kpi-icon">🔥</span>Temp. Alta</div>
+                    <div class="kpi-value" id="high-temp-count">0</div>
+                </div>
+            </div>
+        </header>
+        
+        <!-- CONTENT -->
+        <main class="content">
+            <!-- SUBCLIENT SELECTOR -->
+            {% if available_subclients %}
+            <div class="subclient-selector">
+                <label for="subclient-select">🏢 SubClient (opcional):</label>
+                <select id="subclient-select" onchange="changeSubClient()">
+                    <option value="">Todos os SubClients</option>
+                    {% for subclient in available_subclients %}
+                        <option value="{{ subclient.subclient_code }}" 
+                                {% if selected_sub_client == subclient.subclient_code %}selected{% endif %}>
+                            {{ subclient.subclient_name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+
+            <!-- TOP SECTION (SEARCH) -->
+            <div class="content-top">
+                <div class="search-bar">
+                    <span class="search-bar-icon">🔍</span>
+                    <input type="text" id="search-input" placeholder="Buscar por serial, outlet, endereço..." onkeyup="filterAssets()">
+                </div>
+            </div>
+
+            <!-- SCROLLABLE SECTION (ASSETS) -->
+            <div class="content-scrollable">
+                {% if assets %}
+                <!-- Assets Cards List -->
+                <div class="assets-list" id="assets-container">
+                    {% for asset in assets %}
+                    <a href="/assets/{{ asset['oem_serial_number'] }}" class="asset-card-link">
+                    <div class="asset-card"
+                            data-asset-id="{{ asset['oem_serial_number'] }}"
+                            data-search="{{ asset['oem_serial_number'] }} {{ asset.get('outlet', '') }} {{ asset.get('outlet_code', '') }} {{ asset.get('street', '') }} {{ asset.get('city', '') }}"
+                            data-outlet="{{ asset.get('outlet', '') }}"
+                            data-city="{{ asset.get('city', '') }}"
+                            data-state="{{ asset.get('state', '') }}"
+                            data-country="{{ asset.get('country', '') }}"
+                            data-latitude="{{ asset.get('latitude', '') }}"
+                            data-longitude="{{ asset.get('longitude', '') }}"
+                            data-temperature="{%- if asset.get('latest_temperature_c') is not none -%}{{ 'high' if asset.get('latest_temperature_c')|float >= 40 else 'good' }}{%- else -%}unknown{%- endif -%}"
+                            data-battery="{%- if asset.get('battery_level') and asset.get('battery_level') < 30 -%}low{%- elif asset.get('battery_level') and asset.get('battery_level') >= 30 -%}good{%- else -%}unknown{%- endif -%}">
+                        <!-- Card Header with Badges -->
+                        <div class="card-header">
+                            <div class="card-asset-name">
+                                <span class="asset-serial">{{ asset.get('bottler_equipment_number', asset.get('oem_serial_number')) }}</span>
+                                <span class="asset-location">
+                                    📍 {{ asset.get('street', '-') }}, {{ asset.get('city', '-') }}
+                                    {% if asset.get('distance_km') is not none %}
+                                        <span class="distance-badge">🎯 {{ asset['distance_km'] }}km</span>
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <div class="card-status-badges">
+                                {% if asset.get('is_online') is not none %}
+                                    {% if asset.get('is_online') %}
+                                        <span class="status-badge on">� Online</span>
+                                    {% else %}
+                                        <span class="status-badge off">� Offline</span>
+                                    {% endif %}
+                                {% endif %}
+                                {% if asset.get('is_missing') is not none %}
+                                    {% if asset.get('is_missing') %}
+                                        <span class="status-badge open">❌ Perdido</span>
+                                    {% else %}
+                                        <span class="status-badge closed">✅ Presente</span>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Card Body with Metrics -->
+                        <div class="card-body">
+                            <!-- Outlet -->
+                            <div class="metric">
+                                <span class="metric-label"><span class="metric-icon">🏪</span>Outlet</span>
+                                <span class="metric-value">{{ asset.get('outlet', '-') }}</span>
+                            </div>
+
+                            <!-- Sub Trade Channel -->
+                            <div class="metric">
+                                <span class="metric-label"><span class="metric-icon">🏷️</span>Canal</span>
+                                <span class="metric-value">{{ asset.get('sub_trade_channel', '-') }}</span>
+                            </div>
+
+                            <!-- Temperature -->
+                            <div class="metric">
+                                <span class="metric-label"><span class="metric-icon">🌡</span>Temperatura</span>
+                                {% if asset.get('latest_temperature_c') is not none %}
+                                    <span class="metric-value">{{ asset.get('latest_temperature_c')|float }}°C</span>
+                                {% else %}
+                                    <span class="metric-value" style="color: var(--text-secondary);">—</span>
+                                {% endif %}
+                            </div>
+
+                            <!-- Sub Client -->
+                            <div class="metric">
+                                <span class="metric-label"><span class="metric-icon">🏢</span>SubClient</span>
+                                <span class="metric-value">{{ asset.get('sub_client', '-') }}</span>
+                            </div>
+
+                            <!-- Battery -->
+                            <div class="battery-container">
+                                <span class="battery-label"><span class="metric-icon">⚡</span>Bateria</span>
+                                <div class="battery-bar">
+                                    <div class="battery-fill" data-battery="{{ asset.get('battery_level', 0) }}"></div>
+                                </div>
+                                <span class="battery-percent" id="batt-{{ asset['oem_serial_number'] }}">{{ asset.get('battery_level', '-') }}%</span>
+                            </div>
+                        </div>
+
+                        <!-- Alerts Section -->
+                        <div class="alerts-section">
+                            <div class="alerts-title">Status</div>
+                            <div class="alerts-list" id="alerts-{{ asset['oem_serial_number'] }}">
+                                {% if asset.get('battery_level') and asset.get('battery_level') < 30 and asset.get('battery_level') > 0 %}
+                                    <div class="alert-item warning">⚠️ Bateria em {{ asset.get('battery_level') }}%</div>
+                                {% endif %}
+                                {% if asset.get('latest_temperature_c') is not none and asset.get('latest_temperature_c') >= 40 %}
+                                    <div class="alert-item danger">🔥 Temperatura crítica ({{ asset.get('latest_temperature_c')|float }}°C)</div>
+                                {% endif %}
+                                {% if asset.get('is_missing') %}
+                                    <div class="alert-item danger">❌ Asset ausente</div>
+                                {% endif %}
+                                {% if asset.get('is_online') == false %}
+                                    <div class="alert-item danger">📡 Offline - sem conexão</div>
+                                {% endif %}
+                                {% if not (asset.get('battery_level') and asset.get('battery_level') < 30) and not (asset.get('latest_temperature_c') is not none and asset.get('latest_temperature_c') >= 40) and not asset.get('is_missing') and asset.get('is_online') %}
+                                    <div class="alert-item success">✅ Tudo normal</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Additional Info & Links -->
+                        <div style="margin-top: var(--spacing-md); padding-top: var(--spacing-md); border-top: 1px solid var(--border); display: flex; gap: 0.75rem; flex-wrap: wrap; font-size: 0.8rem; color: var(--text-secondary);">
+                            <span>🔧 {{ asset.get('asset_type', '-') }}</span>
+                            <span>📍 {{ asset.get('city', '-') }}, {{ asset.get('state', '-') }}</span>
+                        </div>
+
+                        <!-- Map Link & Temperature History -->
+                        <div style="margin-top: var(--spacing-md); padding-top: var(--spacing-md); border-top: 1px solid var(--border); display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                            {% if asset.get('latitude') and asset.get('longitude') %}
+                            <button onclick="event.preventDefault(); event.stopPropagation(); window.open('https://www.google.com/maps?q={{ asset['latitude'] }},{{ asset['longitude'] }}', '_blank')" style="display: inline-flex; align-items: center; gap: 0.5rem; color: var(--primary); background: none; border: none; text-decoration: none; font-weight: 600; font-size: 0.9rem; cursor: pointer;">
+                                <span>🗺️</span>Ver no Mapa
+                            </button>
+                            {% endif %}
+                            {% if asset.get('latest_temperature_c') is not none %}
+                            <button onclick="event.preventDefault(); event.stopPropagation(); viewTemperatureHistory('{{ asset['oem_serial_number'] }}')" style="display: inline-flex; align-items: center; gap: 0.5rem; color: var(--primary); background: none; border: none; text-decoration: none; font-weight: 600; font-size: 0.9rem; cursor: pointer;">
+                                <span>🌡️</span>Histórico Temp.
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                    </a>
+                    {% endfor %}
+                </div>
+
+                {% else %}
+                <!-- Empty State -->
+                <div class="empty-state">
+                    <div class="empty-icon">📦</div>
+                    <h2 class="empty-title">Nenhum Asset Encontrado</h2>
+                    <p class="empty-text">Parece que não há assets para exibir no momento.</p>
+                </div>
+                {% endif %}
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Initialize battery bars with data
+        function initializeBatteryBars() {
+            const batteryBars = document.querySelectorAll('.battery-fill');
+            batteryBars.forEach(bar => {
+                const batteryValue = parseInt(bar.getAttribute('data-battery')) || 0;
+                const percentage = Math.min(Math.max(batteryValue, 0), 100);
+                bar.style.width = percentage + '%';
+                
+                // Change color based on battery level
+                bar.classList.remove('warning', 'critical');
+                if (percentage < 20) {
+                    bar.classList.add('critical');
+                } else if (percentage < 50) {
+                    bar.classList.add('warning');
+                }
+            });
+        }
+
+        // Simple search functionality
+        function filterAssets() {
+            const searchInput = document.getElementById('search-input').value.toLowerCase();
+            const assetCards = document.querySelectorAll('.asset-card');
+
+            assetCards.forEach(card => {
+                const assetData = card.getAttribute('data-search').toLowerCase();
+                
+                if (assetData.includes(searchInput)) {
+                    card.style.display = '';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+
+            // Update stats
+            updateAssetStats();
+        }
+
+        function updateAssetStats() {
+            let lowBatteryCount = 0;
+            let highTempCount = 0;
+
+            const assetCards = document.querySelectorAll('.asset-card');
+            
+            assetCards.forEach(card => {
+                if (card.style.display !== 'none') {
+                    const batteryPercent = parseInt(card.querySelector('.battery-percent')?.textContent) || 0;
+                    if (batteryPercent > 0 && batteryPercent < 30) {
+                        lowBatteryCount++;
+                    }
+
+                    if (card.querySelector('.alert-item.danger') && 
+                        card.querySelector('.alert-item.danger').textContent.includes('Temperatura')) {
+                        highTempCount++;
+                    }
+                }
+            });
+
+            // Update KPI cards
+            document.getElementById('low-battery-count').textContent = lowBatteryCount;
+            document.getElementById('high-temp-count').textContent = highTempCount;
+        }
+
+        function viewTemperatureHistory(assetSerialNumber) {
+            fetch(`/assets/api/temperature-history/${assetSerialNumber}`)
+                .then(r => {
+                    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                    return r.json();
+                })
+                .then(data => {
+                    displayTemperatureModal(data);
+                })
+                .catch(error => {
+                    console.error('Erro:', error);
+                    alert('Erro ao buscar histórico de temperatura');
+                });
+        }
+
+        function displayTemperatureModal(asset) {
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0,0,0,0.5);
+                display: flex;
+                align-items: flex-end;
+                z-index: 1000;
+            `;
+
+            const content = document.createElement('div');
+            content.style.cssText = `
+                background: white;
+                width: 100%;
+                max-height: 80vh;
+                overflow-y: auto;
+                border-radius: 16px 16px 0 0;
+                padding: 1.5rem;
+            `;
+
+            let historyHTML = '';
+            let correlationHTML = '';
+
+            if (asset.health_history) {
+                const h = asset.health_history;
+                historyHTML = `
+                    <div style="background: #F5F5F7; padding: 1rem; border-radius: 12px; margin-bottom: 1.5rem;">
+                        <div style="font-size: 0.8rem; color: #8E8E93; margin-bottom: 0.5rem; text-transform: uppercase; font-weight: 600;">📊 Última Leitura</div>
+                        <div style="font-size: 2rem; font-weight: 700; color: ${h.temperature_c >= 40 ? '#FF3B30' : '#34C759'};">
+                            ${h.temperature_c}°C
+                        </div>
+                        <div style="font-size: 0.9rem; color: #8E8E93; margin-top: 0.5rem;">
+                            ${h.event_time ? new Date(h.event_time).toLocaleString('pt-BR') : 'Data não disponível'}
+                        </div>
+                    </div>
+                `;
+
+                if (h.location_temperature_correlation) {
+                    const corr = h.location_temperature_correlation;
+                    const locTemp = corr.location_data;
+                    const diff = corr.temperature_difference_c;
+                    const diffColor = diff > 0 ? '#FF9500' : '#34C759';
+
+                    correlationHTML = `
+                        <div style="margin-bottom: 1.5rem;">
+                            <h3 style="font-size: 0.9rem; font-weight: 600; text-transform: uppercase; color: #8E8E93; margin-bottom: 1rem;">🌡️ Correlação com Local</h3>
+
+                            <div style="background: #E5F5E5; padding: 1rem; border-radius: 12px; margin-bottom: 1rem;">
+                                <div style="font-size: 0.8rem; color: #8E8E93; margin-bottom: 0.25rem;">Temperatura no Local (${locTemp.date} às ${locTemp.hour}h)</div>
+                                <div style="font-size: 1.5rem; font-weight: 700;">${locTemp.temperature_c}°C</div>
+                            </div>
+
+                            <div style="background: #FFF3CD; padding: 1rem; border-radius: 12px;">
+                                <div style="font-size: 0.8rem; color: #7A5C00; margin-bottom: 0.25rem;">Diferença de Temperatura</div>
+                                <div style="font-size: 1.25rem; font-weight: 700; color: ${diffColor};">
+                                    ${diff > 0 ? '+' : ''}${diff.toFixed(1)}°C ${diff > 0 ? '(Mais quente)' : '(Mais frio)'}
+                                </div>
+                                <div style="font-size: 0.85rem; margin-top: 0.5rem; color: #7A5C00;">
+                                    O freezer está ${Math.abs(diff).toFixed(1)}°C ${diff > 0 ? 'acima' : 'abaixo'} da temperatura ambiente
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+
+            let recentHTML = '';
+            if (asset.recent_temperatures && asset.recent_temperatures.length > 0) {
+                recentHTML = `
+                    <div>
+                        <h3 style="font-size: 0.9rem; font-weight: 600; text-transform: uppercase; color: #8E8E93; margin-bottom: 1rem;">📈 Últimas Leituras</h3>
+                        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                            ${asset.recent_temperatures.map((temp, idx) => `
+                                <div style="display: flex; justify-content: space-between; padding: 0.75rem; background: #F5F5F7; border-radius: 8px;">
+                                    <div>
+                                        <div style="font-weight: 600; color: #1C1C1E;">${temp.temperature_c}°C</div>
+                                        <div style="font-size: 0.8rem; color: #8E8E93;">
+                                            ${temp.event_time ? new Date(temp.event_time).toLocaleString('pt-BR') : 'N/A'}
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            content.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h2 style="margin: 0; font-size: 1.25rem;">${asset.oem_serial_number}</h2>
+                    <button onclick="this.closest('[style*=fixed]').remove()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">✕</button>
+                </div>
+
+                ${historyHTML}
+                ${correlationHTML}
+                ${recentHTML}
+            `;
+
+            modal.appendChild(content);
+            modal.onclick = (e) => {
+                if (e.target === modal) modal.remove();
+            };
+            document.body.appendChild(modal);
+        }
+
+        // Change subclient filter
+        function changeSubClient() {
+            const select = document.getElementById('subclient-select');
+            const selectedValue = select.value;
+            
+            // Get current URL params
+            const urlParams = new URLSearchParams(window.location.search);
+            
+            if (selectedValue) {
+                urlParams.set('sub_client', selectedValue);
+            } else {
+                urlParams.delete('sub_client');
+            }
+            
+            // Redirect with new params
+            window.location.href = window.location.pathname + '?' + urlParams.toString();
+        }
+
+        // Request location permission and redirect
+        function requestLocationAndRedirect() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        const urlParams = new URLSearchParams(window.location.search);
+                        urlParams.set('user_lat', position.coords.latitude);
+                        urlParams.set('user_lon', position.coords.longitude);
+                        window.location.href = window.location.pathname + '?' + urlParams.toString();
+                    },
+                    function(error) {
+                        console.log('Geolocation error:', error);
+                        // Continue without location
+                    }
+                );
+            }
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeBatteryBars();
+            updateAssetStats();
+            
+            // Request location if not already provided
+            const urlParams = new URLSearchParams(window.location.search);
+            if (!urlParams.get('user_lat') || !urlParams.get('user_lon')) {
+                requestLocationAndRedirect();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1117 @@
+{% extends "portal/base.html" %}
+
+{% block title %}Rastreio de Assets{% endblock %}
+{% block page_title %}Rastreio de Assets{% endblock %}
+
+{% block breadcrumb %}
+<span class="breadcrumb-separator">/</span>
+<span class="breadcrumb-item">Rastreio</span>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+<style>
+    .tracking-container {
+        display: flex;
+        gap: 20px;
+        height: calc(100vh - 180px);
+    }
+
+    .tracking-sidebar {
+        width: 320px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        padding: 20px;
+        overflow-y: auto;
+    }
+
+    .tracking-map-container {
+        flex: 1;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+    }
+
+    #map {
+        width: 100%;
+        height: 100%;
+        border-radius: 12px;
+    }
+
+    .tracking-stats {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
+    .stat-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 15px;
+        border-radius: 8px;
+        color: white;
+    }
+
+    .stat-card.success {
+        background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%);
+    }
+
+    .stat-card.warning {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+
+    .stat-card.info {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+
+    .stat-value {
+        font-size: 24px;
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+
+    .stat-label {
+        font-size: 12px;
+        opacity: 0.9;
+    }
+
+    .device-filter {
+        margin-bottom: 15px;
+    }
+
+    .device-filter input,
+    .device-filter select {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 14px;
+        background-color: white;
+    }
+
+    .device-filter select:focus,
+    .device-filter input:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+    }
+
+    .device-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .device-item {
+        padding: 12px;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .device-item:hover {
+        border-color: #667eea;
+        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+        background-color: #f8f9fa;
+    }
+    .device-item-disabled {
+        cursor: not-allowed;
+        opacity: 0.75;
+    }
+    .device-item-disabled:hover {
+        border-color: #e0e0e0;
+        box-shadow: none;
+        background-color: #fff;
+    }
+
+    .device-name {
+        font-weight: 600;
+        margin-bottom: 5px;
+        color: #333;
+        font-size: 14px;
+    }
+
+    .device-info {
+        font-size: 12px;
+        color: #666;
+        margin-bottom: 3px;
+    }
+
+    .leaflet-popup-content {
+        margin: 10px;
+    }
+
+    .popup-title {
+        font-weight: 600;
+        font-size: 14px;
+        margin-bottom: 8px;
+        color: #333;
+    }
+
+    .popup-info {
+        font-size: 12px;
+        margin-bottom: 4px;
+        color: #666;
+    }
+
+
+    .no-devices {
+        text-align: center;
+        padding: 40px 20px;
+        color: #999;
+    }
+
+    .custom-marker .device-marker {
+        transition: all 0.3s ease;
+    }
+
+    @keyframes pulse {
+        0%, 100% {
+            box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.7);
+        }
+        50% {
+            box-shadow: 0 0 0 15px rgba(255, 215, 0, 0);
+        }
+    }
+
+    @media (max-width: 768px) {
+        .tracking-container {
+            flex-direction: column;
+            height: auto;
+        }
+
+        .tracking-sidebar {
+            width: 100%;
+            max-height: 400px;
+        }
+
+        .tracking-map-container {
+            height: 500px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="tracking-container">
+    <!-- Sidebar com lista de dispositivos -->
+    <div class="tracking-sidebar">
+        <div class="tracking-stats">
+            <div class="stat-card">
+                <div class="stat-value" id="totalDevices">0</div>
+                <div class="stat-label">Assets Rastreáveis</div>
+            </div>
+        </div>
+
+        <div class="device-filter">
+            <input type="text" id="deviceSearch" placeholder="Buscar por serial, outlet ou localidade...">
+        </div>
+
+        <div class="device-filter">
+            <select id="subclientFilter" style="width: 100%; padding: 10px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
+                <option value="">Todos os Subclients</option>
+            </select>
+        </div>
+
+        <!-- Filtros Avançados (Colapsáveis) -->
+        <div style="margin-bottom: 15px; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+            <button onclick="toggleAdvancedFilters()" style="
+                width: 100%;
+                padding: 10px;
+                background: #f5f5f5;
+                border: none;
+                text-align: left;
+                cursor: pointer;
+                font-weight: 600;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            ">
+                🔧 Filtros Avançados
+                <span id="filterToggleIcon">▼</span>
+            </button>
+            <div id="advancedFiltersPanel" style="display: none; padding: 15px; background: white; border-top: 1px solid #e0e0e0;">
+                <div class="device-filter">
+                    <label style="font-size: 12px; font-weight: 600; color: #333; display: block; margin-bottom: 5px;">Número de Equipamento</label>
+                    <input type="text" id="filterBottlerEquipmentNumber" placeholder="Ex: EQ-12345" style="width: 100%; padding: 8px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 13px;">
+                </div>
+                <div class="device-filter">
+                    <label style="font-size: 12px; font-weight: 600; color: #333; display: block; margin-bottom: 5px;">Serial OEM</label>
+                    <input type="text" id="filterOemSerialNumber" placeholder="Ex: SN-987654" style="width: 100%; padding: 8px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 13px;">
+                </div>
+                <div class="device-filter">
+                    <label style="font-size: 12px; font-weight: 600; color: #333; display: block; margin-bottom: 5px;">Outlet</label>
+                    <input type="text" id="filterOutlet" placeholder="Ex: Loja ABC" style="width: 100%; padding: 8px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 13px;">
+                </div>
+                <div class="device-filter">
+                    <label style="font-size: 12px; font-weight: 600; color: #333; display: block; margin-bottom: 5px;">Canal de Comércio</label>
+                    <input type="text" id="filterSubTradeChannel" placeholder="Ex: Varejo" style="width: 100%; padding: 8px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 13px;">
+                </div>
+                <div class="device-filter">
+                    <label style="font-size: 12px; font-weight: 600; color: #333; display: block; margin-bottom: 5px;">Cidade</label>
+                    <input type="text" id="filterCity" placeholder="Ex: São Paulo" style="width: 100%; padding: 8px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 13px;">
+                </div>
+                <div class="device-filter">
+                    <label style="font-size: 12px; font-weight: 600; color: #333; display: block; margin-bottom: 5px;">Estado</label>
+                    <input type="text" id="filterState" placeholder="Ex: SP" style="width: 100%; padding: 8px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 13px;">
+                </div>
+                <div class="device-filter">
+                    <label style="font-size: 12px; font-weight: 600; color: #333; display: block; margin-bottom: 5px;">País</label>
+                    <input type="text" id="filterCountry" placeholder="Ex: Brasil" style="width: 100%; padding: 8px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 13px;">
+                </div>
+                <div class="device-filter">
+                    <label style="font-size: 12px; font-weight: 600; color: #333; display: block; margin-bottom: 5px;">Status Online</label>
+                    <select id="filterIsOnline" style="width: 100%; padding: 8px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 13px;">
+                        <option value="">Todos</option>
+                        <option value="true">🟢 Online</option>
+                        <option value="false">🔴 Offline</option>
+                    </select>
+                </div>
+                <div class="device-filter">
+                    <label style="font-size: 12px; font-weight: 600; color: #333; display: block; margin-bottom: 5px;">Status Perdido</label>
+                    <select id="filterIsMissing" style="width: 100%; padding: 8px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 13px;">
+                        <option value="">Todos</option>
+                        <option value="true">⚠️ Perdido</option>
+                        <option value="false">✅ Normal</option>
+                    </select>
+                </div>
+                <button onclick="clearAdvancedFilters()" style="
+                    width: 100%;
+                    padding: 8px;
+                    background: #e0e0e0;
+                    border: none;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    font-size: 13px;
+                    font-weight: 600;
+                    margin-top: 10px;
+                ">🔄 Limpar Filtros</button>
+            </div>
+        </div>
+
+        <ul class="device-list" id="deviceList">
+            <li class="no-devices">Carregando assets...</li>
+        </ul>
+    </div>
+
+    <!-- Mapa -->
+    <div class="tracking-map-container">
+        <div id="map"></div>
+    </div>
+
+    <!-- Painel de Detalhes (Modal) -->
+    <div id="detailsPanel" style="
+        position: fixed;
+        right: -450px;
+        top: 0;
+        width: 450px;
+        height: 100vh;
+        background: white;
+        box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
+        overflow-y: auto;
+        transition: right 0.3s ease;
+        z-index: 1000;
+        border-left: 3px solid #667eea;
+    ">
+        <div style="padding: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 id="detailsTitle" style="margin: 0; color: #333;">Detalhes do Asset</h2>
+                <button onclick="closeDetailsPanel()" style="
+                    background: none;
+                    border: none;
+                    font-size: 24px;
+                    cursor: pointer;
+                    color: #999;
+                ">×</button>
+            </div>
+            <div id="detailsContent" style="font-size: 14px;">
+                <p style="color: #999; text-align: center;">Carregando...</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script>
+    let map;
+    let markers = L.markerClusterGroup();
+    let allDevices = [];
+    let selectedMarker = null;
+    let currentSearchTerm = '';
+    let currentSubclient = '';
+    let searchDebounceHandle = null;
+    let availableSubclients = [];
+
+    // Inicializar o mapa
+    function initMap() {
+        map = L.map('map').setView([0, 0], 2);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            maxZoom: 19
+        }).addTo(map);
+
+        map.addLayer(markers);
+    }
+
+    let currentPage = 1;
+    let totalPages = 1;
+    let itemsPerPage = 20;
+
+    // Carregar dispositivos com paginação
+    async function loadDevices(page = 1, searchTerm, subclient, useOptimized = true) {
+        if (typeof searchTerm === 'undefined') {
+            searchTerm = currentSearchTerm;
+        } else {
+            currentSearchTerm = searchTerm;
+        }
+
+        if (typeof subclient === 'undefined') {
+            subclient = currentSubclient;
+        } else {
+            currentSubclient = subclient;
+        }
+
+        try {
+            let url;
+            let params = new URLSearchParams();
+            
+            // Coletar filtros avançados
+            const advancedFilters = {
+                bottler_equipment_number: document.getElementById('filterBottlerEquipmentNumber')?.value?.trim() || '',
+                oem_serial_number: document.getElementById('filterOemSerialNumber')?.value?.trim() || '',
+                outlet: document.getElementById('filterOutlet')?.value?.trim() || '',
+                sub_trade_channel: document.getElementById('filterSubTradeChannel')?.value?.trim() || '',
+                city: document.getElementById('filterCity')?.value?.trim() || '',
+                state: document.getElementById('filterState')?.value?.trim() || '',
+                country: document.getElementById('filterCountry')?.value?.trim() || '',
+                is_online: document.getElementById('filterIsOnline')?.value?.trim() || '',
+                is_missing: document.getElementById('filterIsMissing')?.value?.trim() || ''
+            };
+            
+            // CORREÇÃO: A lógica 'useOptimized' deve ser baseada no estado *atual*
+            // Se o usuário limpar o filtro, deve voltar a usar a view
+            const hasAdvancedFilters = Object.values(advancedFilters).some(v => v !== '');
+            const isFiltering = (searchTerm && searchTerm.trim() !== '') || (subclient && subclient.trim() !== '') || hasAdvancedFilters;
+
+            if (useOptimized && !isFiltering) {
+                // Use the ultra-fast MATERIALIZED VIEW endpoint when no filters
+                url = `/portal_associacao/tracking/devices`;
+                console.log('🚀 Usando API otimizada (MATERIALIZED VIEW)');
+            } else {
+                // Use standard endpoint with filters
+                params.append('page', page);
+                params.append('per_page', itemsPerPage);
+                
+                if (searchTerm && searchTerm.trim() !== '') {
+                    params.append('search', searchTerm.trim());
+                }
+
+                if (subclient && subclient.trim() !== '') {
+                    // Enviar como sub_client para manter compatibilidade com API
+                    params.append('sub_client', subclient.trim());
+                    console.log(`🔍 Filtrando por subclient: ${subclient}`);
+                }
+                
+                // Adicionar filtros avançados
+                if (advancedFilters.bottler_equipment_number) {
+                    params.append('bottler_equipment_number', advancedFilters.bottler_equipment_number);
+                }
+                if (advancedFilters.oem_serial_number) {
+                    params.append('oem_serial_number', advancedFilters.oem_serial_number);
+                }
+                if (advancedFilters.outlet) {
+                    params.append('outlet', advancedFilters.outlet);
+                }
+                if (advancedFilters.sub_trade_channel) {
+                    params.append('sub_trade_channel', advancedFilters.sub_trade_channel);
+                }
+                if (advancedFilters.city) {
+                    params.append('city', advancedFilters.city);
+                }
+                if (advancedFilters.state) {
+                    params.append('state', advancedFilters.state);
+                }
+                if (advancedFilters.country) {
+                    params.append('country', advancedFilters.country);
+                }
+                if (advancedFilters.is_online) {
+                    params.append('is_online', advancedFilters.is_online);
+                }
+                if (advancedFilters.is_missing) {
+                    params.append('is_missing', advancedFilters.is_missing);
+                }
+                
+                url = `/portal_associacao/tracking/devices?${params.toString()}`;
+                console.log('🔍 Usando API com filtros');
+            }
+
+            console.log('📡 Carregando:', url);
+            const startTime = performance.now();
+
+            const response = await fetch(url);
+
+            if (!response.ok) {
+                console.error('❌ Erro HTTP:', response.status, response.statusText);
+                if (response.status === 302) {
+                    console.warn('🔐 Redirecionado para login - faça login novamente');
+                    window.location.href = '/portal_associacao/auth/login';
+                    return;
+                }
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const result = await response.json();
+            const loadTime = performance.now() - startTime;
+            
+            if (result.optimized) {
+                console.log(`⏱️ API Otimizada carregou ${result.data.length} assets em ${loadTime.toFixed(2)}ms`);
+            } else {
+                console.log(`⏱️ API padrão carregou ${result.data.length} assets em ${loadTime.toFixed(2)}ms`);
+            }
+
+            if (!result.data || !result.pagination) {
+                console.error('❌ Resposta inválida:', result);
+                document.getElementById('deviceList').innerHTML = '<li class="no-devices">Resposta inválida do servidor</li>';
+                return;
+            }
+
+            const devices = result.data;
+            const pagination = result.pagination;
+
+            console.log(`📊 Página ${pagination.page}: ${devices.length} devices`);
+
+            // Atualizar lista de subclients disponíveis
+            if (result.available_subclients && result.available_subclients.length > 0) {
+                updateSubclientOptions(result.available_subclients);
+            }
+
+            // Atualizar informações de paginação
+            currentPage = pagination.page;
+            totalPages = pagination.pages || 1;
+
+            allDevices = devices;
+            updateStats(devices, pagination.total, result.optimized);
+            displayDevices(devices, pagination, result.optimized);
+            addMarkersToMap(devices);
+
+            // Ajustar zoom do mapa para mostrar todos os marcadores
+            if (markers.getLayers().length > 0) {
+                map.fitBounds(markers.getBounds(), { padding: [50, 50] });
+            }
+        } catch (error) {
+            console.error('❌ Erro ao carregar dispositivos:', error);
+            document.getElementById('deviceList').innerHTML = '<li class="no-devices">Erro ao carregar dispositivos: ' + error.message + '</li>';
+        }
+    }
+
+    // Atualizar estatísticas
+    function updateStats(devices, total = null, optimized = false) {
+        // Se total for fornecido, use o total geral; senão use o tamanho dos devices
+        const displayTotal = total !== null ? total : devices.length;
+        const label = 'Assets';
+        document.getElementById('totalDevices').textContent = displayTotal;
+        document.querySelector('.stat-label').textContent = label;
+    }
+
+    // Atualizar opções de subclient
+    function updateSubclientOptions(subclients) {
+        const subclientSelect = document.getElementById('subclientFilter');
+        const currentValue = subclientSelect.value;
+        
+        // Limpar opções existentes (exceto a primeira)
+        while (subclientSelect.children.length > 1) {
+            subclientSelect.removeChild(subclientSelect.lastChild);
+        }
+        
+        // Se não houver subclients, desabilitar o filtro
+        if (!subclients || subclients.length === 0) {
+            subclientSelect.disabled = true;
+            return;
+        }
+        
+        subclientSelect.disabled = false;
+        
+        // Adicionar novas opções
+        subclients.forEach(subclient => {
+            const option = document.createElement('option');
+            // Usar subclient_code como valor e subclient_name como texto
+            const code = subclient.subclient_code || subclient.subclient || '';
+            const name = subclient.subclient_name || subclient.subclient_name || code;
+            
+            if (code) {
+                option.value = code;
+                option.textContent = name;
+                subclientSelect.appendChild(option);
+            }
+        });
+        
+        // Restaurar valor selecionado se ainda existir
+        if (currentValue) {
+            const existsOption = Array.from(subclientSelect.options).some(opt => opt.value === currentValue);
+            if (existsOption) {
+                subclientSelect.value = currentValue;
+            }
+        }
+        
+        availableSubclients = subclients;
+        console.log(`✅ ${subclients.length} subclients carregados no filtro`);
+    }
+
+    // Exibir dispositivos na lista
+    function displayDevices(devices, pagination = null, optimized = false) {
+        const deviceList = document.getElementById('deviceList');
+
+        if (!devices || devices.length === 0) {
+            deviceList.innerHTML = '<li class="no-devices">Nenhum asset com localização disponível</li>';
+            return;
+        }
+
+        let html = devices.map(device => {
+            const hasLocation = device.has_location && device.latitude !== null && device.longitude !== null;
+            const clickAction = hasLocation
+                ? `onclick="zoomToDevice(${device.latitude}, ${device.longitude})"`
+                : `onclick="alert('Localização indisponível para este asset')"`
+
+            // Temperatura da MATERIALIZED VIEW - formatada corretamente
+            let temperatureStatus = '';
+            if (device.latest_cabinet_temperature_c !== null && device.latest_cabinet_temperature_c !== undefined) {
+                const temp = parseFloat(device.latest_cabinet_temperature_c);
+                const tempColor = temp <= 5 ? '#56ab2f' : temp <= 10 ? '#f5576c' : '#e74c3c';
+                temperatureStatus = `<div class="device-info" style="color: ${tempColor};">🌡️ Temperatura: ${temp.toFixed(1)}°C</div>`;
+            }
+
+            // Estatísticas de porta da MATERIALIZED VIEW - formatadas corretamente
+            let doorStatsStatus = '';
+            if (device.door_event_average_morning || device.door_event_average_afternoon || device.door_event_average_night) {
+                const morning = parseFloat(device.door_event_average_morning || 0).toFixed(1);
+                const afternoon = parseFloat(device.door_event_average_afternoon || 0).toFixed(1);
+                const night = parseFloat(device.door_event_average_night || 0).toFixed(1);
+                doorStatsStatus = `
+                    <div class="device-info" style="font-size: 12px; color: #666; margin-top: 5px;">
+                        🚪 Aberturas/dia: Manhã: ${morning} | Tarde: ${afternoon} | Noite: ${night}
+                    </div>
+                `;
+            }
+
+            // Status Online (CORRIGIDO: Este campo EXISTE na materialized view)
+            let onlineStatus = '';
+            if (device.is_online !== null && device.is_online !== undefined) {
+                const onlineDisplay = device.is_online ? '🟢 Online' : '🔴 Offline';
+                onlineStatus = `<div class="device-info">${onlineDisplay}</div>`;
+            } else {
+                onlineStatus = `<div class="device-info">⚪ Status não disponível</div>`;
+            }
+
+            // Status Missing (CORRIGIDO: Este campo EXISTE na materialized view)
+            let missingStatus = '';
+            if (device.is_missing) {
+                missingStatus = `<div class="device-info" style="color: #e74c3c;">⚠️ Perdido</div>`;
+            } else {
+                missingStatus = `<div class="device-info" style="color: #56ab2f;">✅ Normal</div>`;
+            }
+
+            return `
+                <li class="device-item ${hasLocation ? '' : 'device-item-disabled'}" ${clickAction}>
+                    <div class="device-name" style="margin-bottom: 8px;">
+                        ${device.bottler_equipment_number || 'N/A'}
+                    </div>
+                    
+                    <div class="device-info" style="font-weight: 600; color: #667eea; margin-bottom: 6px;">
+                        📋 Serial: ${device.oem_serial_number || 'N/A'}
+                    </div>
+                    
+                    <div class="device-info" style="margin-bottom: 4px;">
+                        🏪 Outlet: ${device.outlet || 'N/A'}
+                    </div>
+                    
+                    ${device.sub_trade_channel ? `<div class="device-info" style="margin-bottom: 4px;">🏷️ Canal: ${device.sub_trade_channel}</div>` : ''}
+                    
+                    <div class="device-info" style="margin-bottom: 6px;">
+                        📍 Local: ${device.city || 'N/A'}${device.state ? ', ' + device.state : ''}${device.country ? ', ' + device.country : ''}
+                    </div>
+                    
+                    ${temperatureStatus}
+                    
+                    ${doorStatsStatus}
+                    
+                    <div style="border-top: 1px solid #e0e0e0; margin: 8px 0; padding-top: 6px;">
+                        ${onlineStatus}
+                        ${missingStatus}
+                    </div>
+                </li>
+            `;
+        }).join('');
+
+        // Adicionar controles de paginação se existir
+        if (pagination && pagination.pages > 1) {
+            html += `
+                <li style="list-style: none; padding: 15px; text-align: center; border-top: 1px solid #e0e0e0; margin-top: 10px;">
+                    <div style="display: flex; gap: 10px; justify-content: center; align-items: center;">
+                        <button
+                            class="btn btn-sm btn-outline"
+                            onclick="loadDevices(${pagination.page - 1}, currentSearchTerm, currentSubclient, false)"
+                            ${!pagination.has_prev ? 'disabled' : ''}
+                            style="padding: 6px 12px; font-size: 12px;">
+                            ← Anterior
+                        </button>
+                        <span style="font-size: 12px; min-width: 100px; text-align: center;">
+                            Página <strong>${pagination.page}</strong> de <strong>${pagination.pages}</strong>
+                        </span>
+                        <button
+                            class="btn btn-sm btn-outline"
+                            onclick="loadDevices(${pagination.page + 1}, currentSearchTerm, currentSubclient, false)"
+                            ${!pagination.has_next ? 'disabled' : ''}
+                            style="padding: 6px 12px; font-size: 12px;">
+                            Próxima →
+                        </button>
+                    </div>
+                </li>
+            `;
+        }
+
+        deviceList.innerHTML = html;
+    }
+
+    // Adicionar marcadores ao mapa
+    function addMarkersToMap(devices) {
+        markers.clearLayers();
+
+        devices.forEach(device => {
+            if (!device.has_location || device.latitude === null || device.longitude === null) {
+                return;
+            }
+
+            // Escolher cor do marcador baseado no status
+            // (CORRIGIDO: Adicionadas verificações de 'undefined' para campos que
+            // podem não existir na materialized view)
+            let markerColor = '#56ab2f'; // Verde padrão
+            
+            if (device.is_missing) {
+                markerColor = '#e74c3c'; // Vermelho para perdidos
+            } else if (device.is_power_on === false) { // Checa se existe e é 'false'
+                markerColor = '#f39c12'; // Laranja para desligados
+            } else if (device.battery_level !== null && device.battery_level !== undefined && device.battery_level < 20) {
+                markerColor = '#e74c3c'; // Vermelho para bateria baixa
+            } else if (device.battery_level !== null && device.battery_level !== undefined && device.battery_level < 50) {
+                markerColor = '#f5576c'; // Rosa para bateria média
+            } else if (device.latest_cabinet_temperature_c !== null && device.latest_cabinet_temperature_c !== undefined && device.latest_cabinet_temperature_c > 10) {
+                markerColor = '#e74c3c'; // Vermelho para temperatura alta
+            } else if (device.latest_cabinet_temperature_c !== null && device.latest_cabinet_temperature_c !== undefined && device.latest_cabinet_temperature_c > 5) {
+                markerColor = '#f5576c'; // Rosa para temperatura moderada
+            }
+
+            const icon = L.divIcon({
+                html: `<div class="device-marker" style="background-color: ${markerColor}; width: 24px; height: 24px; border-radius: 50%; border: 4px solid white; box-shadow: 0 4px 8px rgba(0,0,0,0.4);"></div>`,
+                className: 'custom-marker',
+                iconSize: [32, 32],
+                iconAnchor: [16, 16]
+            });
+
+            const marker = L.marker([device.latitude, device.longitude], { icon: icon });
+
+            // --- Popup Content (CORRIGIDO) ---
+            // Adicionadas verificações ternárias para campos que podem não
+            // existir na materialized view.
+
+            const batteryDisplay = (device.battery_level !== null && device.battery_level !== undefined && device.battery_level > 0)
+                ? `<div class="popup-info"><strong>Bateria:</strong> ${device.battery_level}% (${device.battery_status || 'N/A'})</div>`
+                : '';
+
+            const powerDisplay = (device.is_power_on !== null && device.is_power_on !== undefined)
+                ? `<div class="popup-info"><strong>Energia:</strong> ${device.is_power_on ? 'Ligado' : 'Desligado'}</div>`
+                : '';
+
+            const missingDisplay = device.is_missing
+                ? `<div class="popup-info" style="color: #e74c3c;"><strong>Status:</strong> ⚠️ Perdido</div>`
+                : '';
+
+            const distanceDisplay = (device.distance_km !== null && device.distance_km !== undefined)
+                ? `<div class="popup-info"><strong>Distância:</strong> ${parseFloat(device.distance_km).toFixed(1)}km</div>`
+                : '';
+
+            // Temperatura (Vem da View)
+            const temperatureDisplay = (device.latest_cabinet_temperature_c !== null && device.latest_cabinet_temperature_c !== undefined)
+                ? `<div class="popup-info"><strong>Temperatura:</strong> ${parseFloat(device.latest_cabinet_temperature_c).toFixed(1)}°C</div>`
+                : '';
+
+            // Estatísticas de porta (Vem da View)
+            let doorStatsDisplay = '';
+            if (device.door_event_average_morning || device.door_event_average_afternoon || device.door_event_average_night) {
+                const morning = parseFloat(device.door_event_average_morning || 0).toFixed(1);
+                const afternoon = parseFloat(device.door_event_average_afternoon || 0).toFixed(1);
+                const night = parseFloat(device.door_event_average_night || 0).toFixed(1);
+                doorStatsDisplay = `<div class="popup-info"><strong>Aberturas/dia:</strong> M:${morning} T:${afternoon} N:${night}</div>`;
+            }
+
+            const popupContent = `
+                <div>
+                    <div class="popup-title">${device.asset_type || 'Asset'}</div>
+                    <div class="popup-info"><strong>Serial:</strong> ${device.oem_serial_number || 'N/A'}</div>
+                    <div class="popup-info"><strong>Outlet:</strong> ${device.outlet || 'N/A'}</div>
+                    ${device.outlet_code ? `<div class="popup-info"><strong>Código Outlet:</strong> ${device.outlet_code}</div>` : ''}
+                    <div class="popup-info"><strong>Localidade:</strong> ${device.city || 'N/A'}${device.state ? ', ' + device.state : ''}</div>
+                    ${device.street ? `<div class="popup-info"><strong>Endereço:</strong> ${device.street}</div>` : ''}
+                    <hr style="margin: 8px 0; border: none; border-top: 1px solid #e0e0e0;">
+                    <div class="popup-info"><strong>Coordenadas:</strong> ${parseFloat(device.latitude).toFixed(6)}, ${parseFloat(device.longitude).toFixed(6)}</div>
+                    ${distanceDisplay}
+                    ${temperatureDisplay}
+                    ${batteryDisplay}
+                    ${powerDisplay}
+                    ${missingDisplay}
+                    ${doorStatsDisplay}
+                </div>
+            `;
+
+            marker.bindPopup(popupContent);
+            marker.deviceData = device; // Armazenar dados do device no marker
+            markers.addLayer(marker);
+        });
+    }
+
+    // Zoom para dispositivo específico
+    function zoomToDevice(lat, lng) {
+        // Remover destaque do marker anterior
+        if (selectedMarker) {
+            try {
+                const oldIcon = selectedMarker.getElement();
+                if (oldIcon) {
+                    const oldMarkerDiv = oldIcon.querySelector('.device-marker');
+                    if (oldMarkerDiv) {
+                        oldMarkerDiv.style.width = '24px';
+                        oldMarkerDiv.style.height = '24px';
+                        oldMarkerDiv.style.border = '4px solid white';
+                        oldMarkerDiv.style.transform = 'scale(1)';
+                        oldMarkerDiv.style.animation = 'none';
+                    }
+                }
+            } catch (e) {
+                console.warn("Não foi possível remover destaque do marcador anterior:", e.message);
+            }
+        }
+
+        // Encontrar o marker correspondente
+        markers.eachLayer((marker) => {
+            if (marker.getLatLng().lat === lat && marker.getLatLng().lng === lng) {
+                selectedMarker = marker;
+
+                // Destacar o marker selecionado
+                try {
+                    const markerElement = marker.getElement();
+                    if (markerElement) {
+                        const markerDiv = markerElement.querySelector('.device-marker');
+                        if (markerDiv) {
+                            markerDiv.style.width = '40px';
+                            markerDiv.style.height = '40px';
+                            markerDiv.style.border = '6px solid #FFD700';
+                            markerDiv.style.transform = 'scale(1.2)';
+                            markerDiv.style.animation = 'pulse 2s infinite';
+                        }
+                    }
+                } catch (e) {
+                    console.warn("Não foi possível destacar o marcador:", e.message);
+                }
+
+                // Abrir painel de detalhes
+                if (marker.deviceData) {
+                    loadAssetDetails(marker.deviceData.oem_serial_number);
+                }
+
+                // Abrir popup automaticamente
+                marker.openPopup();
+            }
+        });
+
+        // Zoom no mapa
+        map.setView([lat, lng], 17);
+    }
+
+    // Carregar detalhes completos do asset
+    async function loadAssetDetails(assetSerial) {
+        try {
+            // Este endpoint (api/asset/:serial) é o "lento" que busca
+            // todos os detalhes, não a view materializada.
+            const response = await fetch(`/portal_associacao/tracking/api/asset/${assetSerial}`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            displayAssetDetails(data);
+            openDetailsPanel();
+        } catch (error) {
+            console.error('Erro ao carregar detalhes:', error);
+            document.getElementById('detailsContent').innerHTML = `
+                <p style="color: #e74c3c; text-align: center;">Erro ao carregar detalhes: ${error.message}</p>
+            `;
+        }
+    }
+
+    // Exibir detalhes do asset
+    function displayAssetDetails(data) {
+        const asset = data.asset;
+        const movement = data.latest_movement;
+        const health = data.health_data;
+        const doors = data.door_events;
+        const alerts = data.alerts;
+
+        document.getElementById('detailsTitle').textContent = `${asset.oem_serial_number}`;
+
+        let html = `
+            <div style="border-bottom: 2px solid #f0f0f0; padding-bottom: 15px; margin-bottom: 15px;">
+                <h3 style="margin: 0 0 10px 0; color: #333; font-size: 16px;">${asset.asset_type}</h3>
+                <div style="color: #666; font-size: 13px;">
+                    <p style="margin: 5px 0;"><strong>Outlet:</strong> ${asset.outlet}</p>
+                    <p style="margin: 5px 0;"><strong>Tipo:</strong> ${asset.outlet_type}</p>
+                    <p style="margin: 5px 0;"><strong>Local:</strong> ${asset.city}${asset.state ? ', ' + asset.state : ''}, ${asset.country}</p>
+                    <p style="margin: 5px 0;"><strong>Endereço:</strong> ${asset.street}</p>
+                </div>
+            </div>
+        `;
+
+        // Seção de localização
+        if (movement) {
+            html += `
+                <div style="border-bottom: 2px solid #f0f0f0; padding-bottom: 15px; margin-bottom: 15px;">
+                    <h4 style="margin: 0 0 10px 0; color: #333; font-size: 14px;">📍 Localização</h4>
+                    <div style="color: #666; font-size: 13px;">
+                        <p style="margin: 5px 0;"><strong>Coordenadas:</strong> ${movement.latitude?.toFixed(6)}, ${movement.longitude?.toFixed(6)}</p>
+                        <p style="margin: 5px 0;"><strong>Deslocamento:</strong> ${movement.displacement_meter?.toFixed(2) || 'N/A'}m</p>
+                        <p style="margin: 5px 0;"><strong>Acurácia:</strong> ${movement.accuracy_meter?.toFixed(2) || 'N/A'}m</p>
+                        <p style="margin: 5px 0;"><strong>Tipo:</strong> ${movement.movement_type || 'N/A'}</p>
+                        <p style="margin: 5px 0; font-size: 12px; color: #999;">Registrado em: ${new Date(movement.start_time).toLocaleString('pt-BR')}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Seção de bateria e temperatura
+        if (health) {
+            const batteryColor = health.battery_level > 50 ? '#56ab2f' : health.battery_level > 20 ? '#f5576c' : '#e74c3c';
+            html += `
+                <div style="border-bottom: 2px solid #f0f0f0; padding-bottom: 15px; margin-bottom: 15px;">
+                    <h4 style="margin: 0 0 10px 0; color: #333; font-size: 14px;">🔋 Saúde do Equipamento</h4>
+                    <div style="color: #666; font-size: 13px;">
+                        <p style="margin: 5px 0;"><strong style="color: ${batteryColor};">Bateria:</strong> <span style="color: ${batteryColor}; font-weight: bold;">${health.battery_level || 'N/A'}%</span></p>
+                        <p style="margin: 5px 0;"><strong>Status Bateria:</strong> ${health.battery_status || 'N/A'}</p>
+                        <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 10px 0;">
+                        <p style="margin: 5px 0;"><strong>Temperatura Câmara:</strong> ${health.temperature_c?.toFixed(1) || 'N/A'}°C / ${health.temperature_f?.toFixed(1) || 'N/A'}°F</p>
+                        <p style="margin: 5px 0;"><strong>Evaporador:</strong> ${health.evaporator_temperature_c?.toFixed(1) || 'N/A'}°C</p>
+                        <p style="margin: 5px 0;"><strong>Condensador:</strong> ${health.condensor_temperature_c?.toFixed(1) || 'N/A'}°C</p>
+                        <p style="margin: 5px 0;"><strong>Ambiente:</strong> ${health.ambient_temperature_c?.toFixed(1) || 'N/A'}°C</p>
+                        <p style="margin: 5px 0;"><strong>Máxima Câmara:</strong> ${health.max_cabinet_temperature_c?.toFixed(1) || 'N/A'}°C</p>
+                        <p style="margin: 5px 0;"><strong>Mínima Câmara:</strong> ${health.min_cabinet_temperature_c?.toFixed(1) || 'N/A'}°C</p>
+                        <p style="margin: 5px 0; font-size: 12px; color: #999;">Registrado em: ${new Date(health.event_time).toLocaleString('pt-BR')}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Seção de portas
+        html += `
+            <div style="border-bottom: 2px solid #f0f0f0; padding-bottom: 15px; margin-bottom: 15px;">
+                <h4 style="margin: 0 0 10px 0; color: #333; font-size: 14px;">🚪 Aberturas de Porta</h4>
+                <div style="color: #666; font-size: 13px;">
+                    <p style="margin: 5px 0;"><strong>Aberturas (últimos 7 dias):</strong> ${doors.recent_count || 0}</p>
+        `;
+        
+        if (doors.average_duration_sec) {
+            html += `<p style="margin: 5px 0;"><strong>Duração média:</strong> ${parseFloat(doors.average_duration_sec).toFixed(1)}s</p>`;
+        }
+        
+        if (doors.latest) {
+            html += `
+                <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 10px 0;">
+                <p style="margin: 5px 0; font-weight: bold;">Última abertura:</p>
+                <p style="margin: 5px 0;"><strong>Porta:</strong> ${doors.latest.door || 'N/A'}</p>
+                <p style="margin: 5px 0;"><strong>Duração:</strong> ${doors.latest.door_open_duration_sec || 0}s</p>
+                <p style="margin: 5px 0;"><strong>Temperatura abertura:</strong> ${doors.latest.door_open_temperature || 'N/A'}°C</p>
+                <p style="margin: 5px 0;"><strong>Temperatura fechamento:</strong> ${doors.latest.door_close_temperature || 'N/A'}°C</p>
+                <p style="margin: 5px 0; font-size: 12px; color: #999;">Aberta em: ${new Date(doors.latest.open_event_time).toLocaleString('pt-BR')}</p>
+            `;
+        }
+        
+        html += `</div></div>`;
+
+        // Seção de alertas
+        if (alerts.length > 0) {
+            html += `
+                <div style="border-bottom: 2px solid #f0f0f0; padding-bottom: 15px; margin-bottom: 15px;">
+                    <h4 style="margin: 0 0 10px 0; color: #e74c3c; font-size: 14px;">⚠️ Alertas Ativos (${alerts.length})</h4>
+                    <div style="color: #666; font-size: 13px;">
+            `;
+            
+            alerts.forEach(alert => {
+                const priorityColor = alert.priority === 'High' ? '#e74c3c' : alert.priority === 'Medium' ? '#f5576c' : '#f39c12';
+                html += `
+                    <div style="background: #f8f9fa; padding: 10px; border-radius: 6px; margin-bottom: 10px; border-left: 3px solid ${priorityColor};">
+                        <p style="margin: 0 0 5px 0; font-weight: bold; color: ${priorityColor};">${alert.alert_type}</p>
+                        <p style="margin: 0 0 5px 0; font-size: 12px;">${alert.alert_text}</p>
+                        <p style="margin: 0 0 3px 0; font-size: 11px;"><strong>Prioridade:</strong> ${alert.priority}</p>
+                        <p style="margin: 0 0 3px 0; font-size: 11px;"><strong>Tempo:</strong> ${alert.age || 'N/A'}</p>
+                        <p style="margin: 0; font-size: 11px; color: #999;">Desde: ${new Date(alert.alert_at).toLocaleString('pt-BR')}</p>
+                    </div>
+                `;
+            });
+            
+            html += `</div></div>`;
+        } else {
+            html += `
+                <div style="border-bottom: 2px solid #f0f0f0; padding-bottom: 15px; margin-bottom: 15px;">
+                    <h4 style="margin: 0 0 10px 0; color: #333; font-size: 14px;">✅ Sem Alertas Ativos</h4>
+                </div>
+            `;
+        }
+
+        document.getElementById('detailsContent').innerHTML = html;
+    }
+
+    // Abrir painel de detalhes
+    function openDetailsPanel() {
+        const panel = document.getElementById('detailsPanel');
+        panel.style.right = '0';
+    }
+
+    // Fechar painel de detalhes
+    function closeDetailsPanel() {
+        const panel = document.getElementById('detailsPanel');
+        panel.style.right = '-450px';
+    }
+
+    // Buscar dispositivos
+    // Alternar painel de filtros avançados
+    function toggleAdvancedFilters() {
+        const panel = document.getElementById('advancedFiltersPanel');
+        const icon = document.getElementById('filterToggleIcon');
+        
+        if (panel.style.display === 'none') {
+            panel.style.display = 'block';
+            icon.textContent = '▲';
+        } else {
+            panel.style.display = 'none';
+            icon.textContent = '▼';
+        }
+    }
+
+    // Limpar todos os filtros avançados
+    function clearAdvancedFilters() {
+        document.getElementById('filterBottlerEquipmentNumber').value = '';
+        document.getElementById('filterOemSerialNumber').value = '';
+        document.getElementById('filterOutlet').value = '';
+        document.getElementById('filterSubTradeChannel').value = '';
+        document.getElementById('filterCity').value = '';
+        document.getElementById('filterState').value = '';
+        document.getElementById('filterCountry').value = '';
+        document.getElementById('filterIsOnline').value = '';
+        document.getElementById('filterIsMissing').value = '';
+        
+        console.log('🔄 Filtros avançados limpos');
+        
+        // Recarregar com filtros limpos
+        const useOptimized = (currentSearchTerm.trim() === '' && currentSubclient.trim() === '');
+        loadDevices(1, currentSearchTerm, currentSubclient, useOptimized);
+    }
+
+    // Event listeners para filtros avançados
+    function setupAdvancedFilterListeners() {
+        const advancedFilterInputs = [
+            'filterBottlerEquipmentNumber',
+            'filterOemSerialNumber',
+            'filterOutlet',
+            'filterSubTradeChannel',
+            'filterCity',
+            'filterState',
+            'filterCountry',
+            'filterIsOnline',
+            'filterIsMissing'
+        ];
+        
+        advancedFilterInputs.forEach(inputId => {
+            const element = document.getElementById(inputId);
+            if (element) {
+                element.addEventListener('input', () => {
+                    if (searchDebounceHandle) {
+                        clearTimeout(searchDebounceHandle);
+                    }
+                    searchDebounceHandle = setTimeout(() => {
+                        console.log('🔧 Filtros avançados alterados, recarregando...');
+                        const useOptimized = false; // Sempre usar filtros se há filtro avançado
+                        loadDevices(1, currentSearchTerm, currentSubclient, useOptimized);
+                    }, 500);
+                });
+                
+                element.addEventListener('change', () => {
+                    if (searchDebounceHandle) {
+                        clearTimeout(searchDebounceHandle);
+                    }
+                    searchDebounceHandle = setTimeout(() => {
+                        console.log('🔧 Filtros avançados alterados, recarregando...');
+                        const useOptimized = false; // Sempre usar filtros se há filtro avançado
+                        loadDevices(1, currentSearchTerm, currentSubclient, useOptimized);
+                    }, 500);
+                });
+            }
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const searchInput = document.getElementById('deviceSearch');
+        const subclientSelect = document.getElementById('subclientFilter');
+
+        // Event listener para busca por texto
+        searchInput.addEventListener('input', (e) => {
+            const rawTerm = e.target.value;
+            if (searchDebounceHandle) {
+                clearTimeout(searchDebounceHandle);
+            }
+            searchDebounceHandle = setTimeout(() => {
+                console.log(`🔎 Buscando por: "${rawTerm}"`);
+                // Se o termo de busca for limpo, volte a usar a view otimizada
+                const useOptimized = (rawTerm.trim() === '' && currentSubclient.trim() === '');
+                loadDevices(1, rawTerm, currentSubclient, useOptimized);
+            }, 300);
+        });
+
+        // Event listener para filtro de subclient
+        subclientSelect.addEventListener('change', (e) => {
+            const selectedSubclient = e.target.value;
+            console.log(`🏷️ Subclient selecionado: "${selectedSubclient || 'Todos'}"`);
+            
+            // Se o filtro for limpo, volte a usar a view otimizada
+            const useOptimized = (currentSearchTerm.trim() === '' && selectedSubclient.trim() === '');
+            
+            // Recarregar na página 1 com o novo filtro
+            loadDevices(1, currentSearchTerm, selectedSubclient, useOptimized);
+        });
+        
+        // Configurar listeners para filtros avançados
+        setupAdvancedFilterListeners();
+        
+        console.log('✅ Event listeners inicializados');
+    });
+
+    // Inicializar
+    console.log('🗺️ Inicializando mapa...');
+    initMap();
+    
+    console.log('📥 Carregando assets iniciais...');
+    loadDevices(1, '', '', true); // Carga inicial sempre otimizada
+    
+    console.log('✅ Sistema de rastreio inicializado');
+
+    // Recarregar dispositivos a cada 60 segundos (mantém na página atual)
+    // Descomente se quiser auto-refresh:
+    // setInterval(() => {
+    //     const isFiltering = (currentSearchTerm.trim() !== '' || currentSubclient.trim() !== '');
+    //     loadDevices(currentPage, currentSearchTerm, currentSubclient, !isFiltering);
+    // }, 60000);
+</script>
+{% endblock %}

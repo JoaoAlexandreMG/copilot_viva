@@ -1,0 +1,97 @@
+<!-- View Modal -->
+<div class="modal-backdrop" id="viewModalBackdrop" style="display: none;" onclick="manager.closeViewModal()"></div>
+<div class="modal" id="viewModal" style="display: none;">
+    <div class="modal-dialog modal-dialog-xl">
+        <div class="modal-header">
+            <h3 class="modal-title">Detalhes do Outlet</h3>
+            <button type="button" class="btn btn-icon-sm btn-outline" onclick="manager.closeViewModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body" id="viewContent"></div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="manager.closeViewModal()">Fechar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Form Modal -->
+<div class="modal-backdrop" id="formModalBackdrop" style="display: none;" onclick="manager.closeFormModal()"></div>
+<div class="modal" id="formModal" style="display: none;">
+    <div class="modal-dialog modal-dialog-lg">
+        <div class="modal-header">
+            <h3 class="modal-title" id="formTitle">Criar Novo Outlet</h3>
+            <button type="button" class="btn btn-icon-sm btn-outline" onclick="manager.closeFormModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+            <form id="entityForm" method="POST">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label for="name" class="form-label">Nome <span style="color: var(--color-danger);">*</span></label>
+                        <input type="text" class="form-control" id="name" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="code" class="form-label">Código <span style="color: var(--color-danger);">*</span></label>
+                        <input type="text" class="form-control" id="code" name="code" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="outlet_type" class="form-label">Tipo</label>
+                        <input type="text" class="form-control" id="outlet_type" name="outlet_type">
+                    </div>
+                    <div class="form-group">
+                        <label for="country" class="form-label">País</label>
+                        <input type="text" class="form-control" id="country" name="country">
+                    </div>
+                    <div class="form-group">
+                        <label for="state" class="form-label">Estado</label>
+                        <input type="text" class="form-control" id="state" name="state">
+                    </div>
+                    <div class="form-group">
+                        <label for="city" class="form-label">Cidade</label>
+                        <input type="text" class="form-control" id="city" name="city">
+                    </div>
+                    <div class="form-group">
+                        <label for="street" class="form-label">Rua</label>
+                        <input type="text" class="form-control" id="street" name="street">
+                    </div>
+                    <div class="form-group">
+                        <label for="address_2" class="form-label">Endereço 2</label>
+                        <input type="text" class="form-control" id="address_2" name="address_2">
+                    </div>
+                    <div class="form-group">
+                        <label for="latitude" class="form-label">Latitude</label>
+                        <input type="number" step="0.000001" class="form-control" id="latitude" name="latitude">
+                    </div>
+                    <div class="form-group">
+                        <label for="longitude" class="form-label">Longitude</label>
+                        <input type="number" step="0.000001" class="form-control" id="longitude" name="longitude">
+                    </div>
+                </div>
+
+                <div style="margin-top: 1.5rem; display: flex; gap: 1rem;">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="is_key_outlet" name="is_key_outlet" value="true">
+                        <label class="form-label" for="is_key_outlet">Key Outlet</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="is_smart" name="is_smart" value="true">
+                        <label class="form-label" for="is_smart">Smart</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="is_active" name="is_active" value="true" checked>
+                        <label class="form-label" for="is_active">Ativo</label>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="manager.closeFormModal()">Cancelar</button>
+            <button type="button" class="btn btn-primary" onclick="manager.submitForm()">
+                <i class="fas fa-save"></i>
+                Salvar
+            </button>
+        </div>
+    </div>
+</div>

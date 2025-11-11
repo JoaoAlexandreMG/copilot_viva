@@ -1,0 +1,94 @@
+{% extends "portal/base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block breadcrumb %}
+    <i class="fas fa-home"></i>
+    <span>Dashboard</span>
+{% endblock %}
+
+{% block content %}
+<!-- Welcome Section -->
+<div class="card mb-xl">
+    <div class="card-body">
+        <h2 style="font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem;">Bem-vindo ao Portal de Gerenciamento</h2>
+        <p style="color: var(--color-gray-600); margin: 0;">Gerencie todos os recursos da sua organização em um único lugar.</p>
+    </div>
+</div>
+
+<!-- Dashboard Cards -->
+<div class="dashboard-cards">
+    <!-- Rastreio Card -->
+    <a href="{{url_for('portal_tracking.render_tracking')}}" class="dashboard-card">
+        <div class="dashboard-card-icon info">
+            <i class="fas fa-location-dot"></i>
+        </div>
+        <h3 class="dashboard-card-title">Rastreio</h3>
+        <p class="dashboard-card-subtitle">Mapa de localização de dispositivos</p>
+    </a>
+
+    <!-- Users Card -->
+    <a href="{{url_for('portal_users.list_and_create_users')}}" class="dashboard-card">
+        <div class="dashboard-card-icon primary">
+            <i class="fas fa-users"></i>
+        </div>
+        <h3 class="dashboard-card-title">Usuários</h3>
+        <p class="dashboard-card-subtitle">Gerencie usuários e permissões</p>
+    </a>
+
+    <!-- Outlets Card -->
+    <a href="{{url_for('portal_outlets.get_outlets')}}" class="dashboard-card">
+        <div class="dashboard-card-icon success">
+            <i class="fas fa-store"></i>
+        </div>
+        <h3 class="dashboard-card-title">Outlets</h3>
+        <p class="dashboard-card-subtitle">Administre pontos de venda</p>
+    </a>
+
+    <!-- Assets Card -->
+    <a href="{{url_for('portal_assets.list_and_create_assets')}}" class="dashboard-card">
+        <div class="dashboard-card-icon warning">
+            <i class="fas fa-boxes"></i>
+        </div>
+        <h3 class="dashboard-card-title">Assets</h3>
+        <p class="dashboard-card-subtitle">Controle de ativos e equipamentos</p>
+    </a>
+
+    <!-- Smart Devices Card -->
+    <a href="{{url_for('portal_smartdevices.get_smart_devices')}}" class="dashboard-card">
+        <div class="dashboard-card-icon danger">
+            <i class="fas fa-mobile-alt"></i>
+        </div>
+        <h3 class="dashboard-card-title">Smart Devices</h3>
+        <p class="dashboard-card-subtitle">Dispositivos inteligentes conectados</p>
+    </a>
+</div>
+
+<!-- Quick Stats (Optional - can be implemented later with real data) -->
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Estatísticas Rápidas</h3>
+    </div>
+    <div class="card-body">
+        <div class="dashboard-cards" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+            <div style="text-align: center; padding: 1rem;">
+            <div style="font-size: 2rem; font-weight: 700; color: var(--color-primary);">{{ stats.total_users }}</div>
+            <div style="font-size: 0.875rem; color: var(--color-gray-600); margin-top: 0.25rem;">Total de Usuários</div>
+            </div>
+            <div style="text-align: center; padding: 1rem;">
+            <div style="font-size: 2rem; font-weight: 700; color: var(--color-success);">{{ stats.active_outlets }}</div>
+            <div style="font-size: 0.875rem; color: var(--color-gray-600); margin-top: 0.25rem;">Outlets Ativos</div>
+            </div>
+            <div style="text-align: center; padding: 1rem;">
+            <div style="font-size: 2rem; font-weight: 700; color: var(--color-warning);">{{ stats.total_assets }}</div>
+            <div style="font-size: 0.875rem; color: var(--color-gray-600); margin-top: 0.25rem;">Assets Registrados</div>
+            </div>
+            <div style="text-align: center; padding: 1rem;">
+            <div style="font-size: 2rem; font-weight: 700; color: var(--color-danger);">{{ stats.online_smartdevices }}</div>
+            <div style="font-size: 0.875rem; color: var(--color-gray-600); margin-top: 0.25rem;">Dispositivos Online</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
