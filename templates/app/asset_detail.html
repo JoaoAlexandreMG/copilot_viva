@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#0066FF">
     <title>{{ asset['oem_serial_number'] }} - Detalhes</title>
@@ -337,7 +337,7 @@
     <!-- HEADER -->
     <header class="header">
         <div class="header-content">
-            <a href="/assets/" class="back-btn">← Voltar</a>
+            <a href="{{ url_for('assets.list_assets') }}" class="back-btn">← Voltar</a>
             <div class="header-title">
                 Asset Details
                 <div class="header-subtitle">{{ user.client }}</div>
@@ -386,7 +386,7 @@
                     {% if asset.get('is_missing') %}
                         <span class="badge danger">⚠️ Faltando</span>
                     {% else %}
-                        <span class="badge success">✓ Presente</span>
+                        <span class="badge success">✓ No local</span>
                     {% endif %}
                 {% endif %}
             </div>
@@ -424,6 +424,60 @@
                 </div>
             </div>
         </div>
+
+        <!-- Technical Information from Views -->
+        {% if asset.get('latest_voltage') or asset.get('latest_power_consumption') or asset.get('compressor_time') %}
+        <div class="section">
+            <div class="section-title">⚙️ Informações Técnicas</div>
+            <div class="info-list">
+                {% if asset.get('latest_voltage') %}
+                <div class="info-item">
+                    <div class="info-label">⚡ Voltagem do Cooler</div>
+                    <div class="info-value">{{ asset.get('latest_voltage')|round(2) }}V</div>
+                </div>
+                {% endif %}
+                {% if asset.get('latest_power_consumption') %}
+                <div class="info-item">
+                    <div class="info-label">🔌 Consumo Médio</div>
+                    <div class="info-value">{{ asset.get('latest_power_consumption')|round(2) }}W</div>
+                </div>
+                {% endif %}
+                {% if asset.get('compressor_time') %}
+                <div class="info-item">
+                    <div class="info-label">⏱️ Tempo Compressor</div>
+                    <div class="info-value">{{ asset.get('compressor_time')|round(1) }}%</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Door Event Statistics -->
+        {% if asset.get('door_event_average_morning') or asset.get('door_event_average_afternoon') or asset.get('door_event_average_night') %}
+        <div class="section">
+            <div class="section-title">🚪 Estatísticas de Abertura (30 dias)</div>
+            <div class="info-list">
+                {% if asset.get('door_event_average_morning') %}
+                <div class="info-item">
+                    <div class="info-label">🌅 Média Manhã</div>
+                    <div class="info-value">{{ asset.get('door_event_average_morning')|round(1) }} aberturas/dia</div>
+                </div>
+                {% endif %}
+                {% if asset.get('door_event_average_afternoon') %}
+                <div class="info-item">
+                    <div class="info-label">☀️ Média Tarde</div>
+                    <div class="info-value">{{ asset.get('door_event_average_afternoon')|round(1) }} aberturas/dia</div>
+                </div>
+                {% endif %}
+                {% if asset.get('door_event_average_night') %}
+                <div class="info-item">
+                    <div class="info-label">🌙 Média Noite</div>
+                    <div class="info-value">{{ asset.get('door_event_average_night')|round(1) }} aberturas/dia</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
 
         <!-- Latest Health Event -->
         {% if latest_health_any %}
@@ -478,7 +532,7 @@
             <div class="section-title">🚪 Último Movimento</div>
             <div class="info-list">
                 <div class="info-item">
-                    <div class="info-label">📅 Início</div>
+                    <div class="info-label">📅 Data</div>
                     <div class="info-value">
                         {% if latest_movement.get('start_time') %}
                             {{ latest_movement.get('start_time').strftime('%d/%m/%Y %H:%M') if latest_movement.get('start_time').strftime else latest_movement.get('start_time') }}
@@ -487,41 +541,10 @@
                         {% endif %}
                     </div>
                 </div>
-                {% if latest_movement.get('end_time') %}
+                {% if latest_movement.get('displacement_meter') is not none %}
                 <div class="info-item">
-                    <div class="info-label">🏁 Fim</div>
-                    <div class="info-value">
-                        {{ latest_movement.get('end_time').strftime('%d/%m/%Y %H:%M') if latest_movement.get('end_time').strftime else latest_movement.get('end_time') }}
-                    </div>
-                </div>
-                {% endif %}
-                <div class="info-item">
-                    <div class="info-label">🚪 Status da Porta</div>
-                    <div class="info-value">
-                        {% if latest_movement.get('door_open') is not none %}
-                            {% if latest_movement.get('door_open') %}
-                                <span style="color: var(--danger);">🔴 Aberta</span>
-                            {% else %}
-                                <span style="color: var(--success);">🟢 Fechada</span>
-                            {% endif %}
-                        {% else %}
-                            —
-                        {% endif %}
-                    </div>
-                </div>
-                {% if latest_movement.get('duration') %}
-                <div class="info-item">
-                    <div class="info-label">⏱️ Duração</div>
-                    <div class="info-value">
-                        {% set minutes = (latest_movement.get('duration') / 60) | round(1) %}
-                        {{ minutes }} min
-                    </div>
-                </div>
-                {% endif %}
-                {% if latest_movement.get('movement_type') %}
-                <div class="info-item">
-                    <div class="info-label">🔄 Tipo de Movimento</div>
-                    <div class="info-value">{{ latest_movement.get('movement_type') }}</div>
+                    <div class="info-label">👣 Deslocamento</div>
+                    <div class="info-value">{{ latest_movement.get('displacement_meter')|round(2) }}m</div>
                 </div>
                 {% endif %}
             </div>
@@ -529,7 +552,7 @@
         {% endif %}
 
         <!-- Temperature Chart -->
-        {% if chart_data.temperature %}
+        {% if chart_data.temperature and chart_data.temperature|length > 0 %}
         <div class="section">
             <div class="section-title">📈 Histórico de Temperatura</div>
             <div class="chart-container">
@@ -539,9 +562,16 @@
         {% endif %}
 
         <!-- Door Activity Chart -->
-        {% if chart_data.movements %}
+        {% if chart_data.door_events and chart_data.door_events|length > 0 %}
         <div class="section">
-            <div class="section-title">🚪 Atividade da Porta</div>
+            <h2 class="section-title">🚪 Atividade de Porta</h2>
+            <div class="chart-container">
+                <canvas id="doorChart"></canvas>
+            </div>
+        </div>
+        {% elif chart_data.movements and chart_data.movements|length > 0 %}
+        <div class="section">
+            <h2 class="section-title">🚪 Atividade de Porta</h2>
             <div class="chart-container">
                 <canvas id="doorChart"></canvas>
             </div>
@@ -559,14 +589,14 @@
                 </div>
                 {% if asset.get('bottler_equipment_number') %}
                 <div class="info-item">
-                    <div class="info-label">�️ Equipamento (Bottler)</div>
+                    <div class="info-label">⚙️ Equipamento (Bottler)</div>
                     <div class="info-value">{{ asset.get('bottler_equipment_number') }}</div>
                 </div>
                 {% endif %}
                 
                 <!-- Status -->
                 <div class="info-item">
-                    <div class="info-label">� Status Online</div>
+                    <div class="info-label">📊 Online?</div>
                     <div class="info-value">
                         {% if asset.get('is_online') is not none %}
                             {% if asset.get('is_online') %}
@@ -580,7 +610,7 @@
                     </div>
                 </div>
                 <div class="info-item">
-                    <div class="info-label">⚠️ Status Faltando</div>
+                    <div class="info-label">⚠️ Está ausente?</div>
                     <div class="info-value">
                         {% if asset.get('is_missing') is not none %}
                             {% if asset.get('is_missing') %}
@@ -595,30 +625,47 @@
                 </div>
                 
                 <!-- Localização -->
+                {% if asset.get('outlet') and asset.get('outlet') not in ['—', '-', ''] %}
                 <div class="info-item">
-                    <div class="info-label">� Outlet</div>
-                    <div class="info-value">{{ asset.get('outlet', '—') }}</div>
+                    <div class="info-label">🏪 Outlet</div>
+                    <div class="info-value">{{ asset.get('outlet') }}</div>
                 </div>
+                {% endif %}
+                
+                {% if asset.get('outlet_code') and asset.get('outlet_code') not in ['—', '-', ''] %}
                 <div class="info-item">
                     <div class="info-label">🔢 Código Outlet</div>
-                    <div class="info-value">{{ asset.get('outlet_code', '—') }}</div>
+                    <div class="info-value">{{ asset.get('outlet_code') }}</div>
                 </div>
+                {% endif %}
+                
+                {% if asset.get('street') and asset.get('street') not in ['—', '-', ''] %}
                 <div class="info-item">
                     <div class="info-label">📍 Rua</div>
-                    <div class="info-value">{{ asset.get('street', '—') }}</div>
+                    <div class="info-value">{{ asset.get('street') }}</div>
                 </div>
+                {% endif %}
+                
+                {% if asset.get('city') and asset.get('city') not in ['—', '-', ''] %}
                 <div class="info-item">
                     <div class="info-label">🏙️ Cidade</div>
-                    <div class="info-value">{{ asset.get('city', '—') }}</div>
+                    <div class="info-value">{{ asset.get('city') }}</div>
                 </div>
+                {% endif %}
+                
+                {% if asset.get('state') and asset.get('state') not in ['—', '-', ''] %}
                 <div class="info-item">
                     <div class="info-label">🗺️ Estado</div>
-                    <div class="info-value">{{ asset.get('state', '—') }}</div>
+                    <div class="info-value">{{ asset.get('state') }}</div>
                 </div>
+                {% endif %}
+                
+                {% if asset.get('country') and asset.get('country') not in ['—', '-', ''] %}
                 <div class="info-item">
                     <div class="info-label">🌍 País</div>
-                    <div class="info-value">{{ asset.get('country', '—') }}</div>
+                    <div class="info-value">{{ asset.get('country') }}</div>
                 </div>
+                {% endif %}
                 {% if asset.get('latitude') and asset.get('longitude') %}
                 <div class="info-item">
                     <div class="info-label">🎯 Coordenadas</div>
@@ -627,44 +674,48 @@
                 {% endif %}
                 
                 <!-- Dados Operacionais -->
+                {% if asset.get('client') and asset.get('client') not in ['—', '-', ''] %}
                 <div class="info-item">
                     <div class="info-label">🏢 Cliente</div>
-                    <div class="info-value">{{ asset.get('client', '—') }}</div>
+                    <div class="info-value">{{ asset.get('client') }}</div>
                 </div>
+                {% endif %}
+                
+                {% if asset.get('sub_client') and asset.get('sub_client') not in ['—', '-', ''] %}
                 <div class="info-item">
                     <div class="info-label">🏬 Sub-Cliente</div>
-                    <div class="info-value">{{ asset.get('sub_client', '—') }}</div>
+                    <div class="info-value">{{ asset.get('sub_client') }}</div>
                 </div>
+                {% endif %}
+                
+                {% if asset.get('sub_trade_channel') and asset.get('sub_trade_channel') not in ['—', '-', ''] %}
                 <div class="info-item">
                     <div class="info-label">📊 Sub Trade Channel</div>
-                    <div class="info-value">{{ asset.get('sub_trade_channel', '—') }}</div>
+                    <div class="info-value">{{ asset.get('sub_trade_channel') }}</div>
                 </div>
+                {% endif %}
+                
+                {% if asset.get('asset_type') and asset.get('asset_type') not in ['—', '-', ''] %}
                 <div class="info-item">
                     <div class="info-label">📦 Tipo de Asset</div>
-                    <div class="info-value">{{ asset.get('asset_type', '—') }}</div>
+                    <div class="info-value">{{ asset.get('asset_type') }}</div>
                 </div>
+                {% endif %}
                 
                 <!-- Dados de Saúde -->
+                {% if asset.get('latest_temperature_c') is not none and asset.get('latest_temperature_c') != 0 %}
                 <div class="info-item">
                     <div class="info-label">🌡️ Última Temperatura</div>
-                    <div class="info-value">
-                        {% if asset.get('latest_temperature_c') is not none %}
-                            {{ asset.get('latest_temperature_c') }}°C
-                        {% else %}
-                            —
-                        {% endif %}
-                    </div>
+                    <div class="info-value">{{ asset.get('latest_temperature_c') }}°C</div>
                 </div>
+                {% endif %}
+                
+                {% if asset.get('battery_level') is not none and asset.get('battery_level') != 0 %}
                 <div class="info-item">
                     <div class="info-label">🔋 Nível de Bateria</div>
-                    <div class="info-value">
-                        {% if asset.get('battery_level') is not none %}
-                            {{ asset.get('battery_level') }}%
-                        {% else %}
-                            —
-                        {% endif %}
-                    </div>
+                    <div class="info-value">{{ asset.get('battery_level') }}%</div>
                 </div>
+                {% endif %}
             </div>
         </div>
 
@@ -685,6 +736,36 @@
     <script>
         const chartData = {{ chart_data | tojson }};
         
+        // Debug: Log chart data
+        console.log('Chart Data:', chartData);
+        console.log('Temperature events:', chartData.temperature ? chartData.temperature.length : 0);
+        console.log('Door events:', chartData.door_events ? chartData.door_events.length : 0);
+        console.log('Movements:', chartData.movements ? chartData.movements.length : 0);
+        
+        // Hide empty chart sections
+        if ((!chartData.door_events || chartData.door_events.length === 0) && 
+            (!chartData.movements || chartData.movements.length === 0)) {
+            const doorChartCanvas = document.getElementById('doorChart');
+            if (doorChartCanvas) {
+                const section = doorChartCanvas.closest('.section');
+                if (section) {
+                    section.style.display = 'none';
+                    console.log('Hiding door chart section - no data');
+                }
+            }
+        }
+        
+        if (!chartData.temperature || chartData.temperature.length === 0) {
+            const tempChartCanvas = document.getElementById('temperatureChart');
+            if (tempChartCanvas) {
+                const section = tempChartCanvas.closest('.section');
+                if (section) {
+                    section.style.display = 'none';
+                    console.log('Hiding temperature chart section - no data');
+                }
+            }
+        }
+        
         // Common chart options
         const commonOptions = {
             responsive: true,
@@ -700,20 +781,21 @@
         
         // Temperature Chart
         {% if chart_data.temperature %}
-        const tempCtx = document.getElementById('temperatureChart').getContext('2d');
-        new Chart(tempCtx, {
-            type: 'line',
-            data: {
-                labels: chartData.temperature.map(d => {
-                    const date = new Date(d.time);
-                    return date.toLocaleDateString('pt-BR', { 
-                        month: 'short', 
-                        day: 'numeric' 
-                    }) + ' ' + date.toLocaleTimeString('pt-BR', { 
-                        hour: '2-digit', 
-                        minute: '2-digit' 
-                    });
-                }),
+        if (chartData.temperature && chartData.temperature.length > 0) {
+            const tempCtx = document.getElementById('temperatureChart').getContext('2d');
+            new Chart(tempCtx, {
+                type: 'line',
+                data: {
+                    labels: chartData.temperature.map(d => {
+                        const date = new Date(d.time);
+                        return date.toLocaleDateString('pt-BR', { 
+                            month: 'short', 
+                            day: 'numeric' 
+                        }) + ' ' + date.toLocaleTimeString('pt-BR', { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                        });
+                    }),
                 datasets: [{
                     label: 'Temperatura (°C)',
                     data: chartData.temperature.map(d => d.temperature),
@@ -736,11 +818,88 @@
                 }
             }
         });
+        }
         {% endif %}
 
         // Door Activity Chart
-        {% if chart_data.movements %}
-        const doorCtx = document.getElementById('doorChart').getContext('2d');
+        {% if chart_data.door_events %}
+        if (chartData.door_events && chartData.door_events.length > 0) {
+            const doorCtx = document.getElementById('doorChart').getContext('2d');
+            
+            // Aggregate door events by day for better visualization
+            const doorDataByDay = {};
+            chartData.door_events.forEach(d => {
+            const date = new Date(d.time);
+            const dayKey = date.toLocaleDateString('pt-BR', { month: 'short', day: 'numeric' });
+            
+            if (!doorDataByDay[dayKey]) {
+                doorDataByDay[dayKey] = {
+                    count: 0,
+                    totalDuration: 0,
+                    morning: 0,
+                    afternoon: 0,
+                    night: 0
+                };
+            }
+            
+            doorDataByDay[dayKey].count += d.door_count || 1;
+            doorDataByDay[dayKey].totalDuration += d.duration || 0;
+            
+            // Classify by time of day
+            if (d.time_of_day === 'Morning') doorDataByDay[dayKey].morning++;
+            else if (d.time_of_day === 'Afternoon') doorDataByDay[dayKey].afternoon++;
+            else if (d.time_of_day === 'Night') doorDataByDay[dayKey].night++;
+        });
+        
+        const doorLabels = Object.keys(doorDataByDay).slice(-7); // Last 7 days
+        const doorCounts = doorLabels.map(k => doorDataByDay[k].count);
+        
+        new Chart(doorCtx, {
+            type: 'bar',
+            data: {
+                labels: doorLabels,
+                datasets: [{
+                    label: 'Aberturas de Porta',
+                    data: doorCounts,
+                    backgroundColor: '#667eea',
+                    borderRadius: 4,
+                    maxBarThickness: 40
+                }]
+            },
+            options: {
+                ...commonOptions,
+                scales: {
+                    ...commonOptions.scales,
+                    y: {
+                        ...commonOptions.scales.y,
+                        beginAtZero: true,
+                        title: { display: true, text: 'Número de Aberturas' }
+                    }
+                },
+                plugins: {
+                    ...commonOptions.plugins,
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const dayKey = context.label;
+                                const data = doorDataByDay[dayKey];
+                                return [
+                                    `Total: ${data.count} aberturas`,
+                                    `Manhã: ${data.morning}`,
+                                    `Tarde: ${data.afternoon}`,
+                                    `Noite: ${data.night}`,
+                                    `Duração Total: ${Math.round(data.totalDuration / 60)}min`
+                                ];
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        }
+        {% elif chart_data.movements %}
+        if (chartData.movements && chartData.movements.length > 0) {
+            const doorCtx = document.getElementById('doorChart').getContext('2d');
         new Chart(doorCtx, {
             type: 'bar',
             data: {
@@ -775,6 +934,7 @@
                 }
             }
         });
+        }
         {% endif %}
     </script>
 </body>

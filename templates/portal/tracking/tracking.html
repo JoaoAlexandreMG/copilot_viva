@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 <style>
     .tracking-container {
         display: flex;
@@ -209,9 +210,9 @@
             </div>
         </div>
 
-        <div class="device-filter">
+        <!-- <div class="device-filter">
             <input type="text" id="deviceSearch" placeholder="Buscar por serial, outlet ou localidade...">
-        </div>
+        </div> -->
 
         <div class="device-filter">
             <select id="subclientFilter" style="width: 100%; padding: 10px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
@@ -305,32 +306,44 @@
         <div id="map"></div>
     </div>
 
-    <!-- Painel de Detalhes (Modal) -->
+    <!-- Painel de Detalhes (Sidebar Direita) -->
     <div id="detailsPanel" style="
         position: fixed;
-        right: -450px;
+        right: -500px;
         top: 0;
-        width: 450px;
+        width: 500px;
         height: 100vh;
         background: white;
-        box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
+        box-shadow: -2px 0 12px rgba(0, 0, 0, 0.15);
         overflow-y: auto;
         transition: right 0.3s ease;
         z-index: 1000;
-        border-left: 3px solid #667eea;
+        border-left: 4px solid #667eea;
     ">
-        <div style="padding: 20px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h2 id="detailsTitle" style="margin: 0; color: #333;">Detalhes do Asset</h2>
+        <!-- Header com fechar -->
+        <div style="position: sticky; top: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; color: white; z-index: 10;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h2 id="detailsTitle" style="margin: 0; font-size: 20px;">Detalhes do Asset</h2>
                 <button onclick="closeDetailsPanel()" style="
                     background: none;
                     border: none;
-                    font-size: 24px;
+                    font-size: 28px;
                     cursor: pointer;
-                    color: #999;
+                    color: white;
+                    padding: 0;
+                    width: 32px;
+                    height: 32px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border-radius: 4px;
                 ">×</button>
             </div>
-            <div id="detailsContent" style="font-size: 14px;">
+        </div>
+
+        <!-- Conteúdo -->
+        <div style="padding: 20px;">
+            <div id="detailsContent">
                 <p style="color: #999; text-align: center;">Carregando...</p>
             </div>
         </div>
@@ -366,6 +379,21 @@
     let currentPage = 1;
     let totalPages = 1;
     let itemsPerPage = 20;
+    let deviceMap = {}; // Mapa para armazenar devices por serial
+    
+    // Filtros iniciais da URL (se existirem)
+    let initialFilters = {
+        bottler_equipment_number: '{{ filters.bottler_equipment_number }}',
+        oem_serial_number: '{{ filters.oem_serial_number }}',
+        outlet: '{{ filters.outlet }}',
+        sub_trade_channel: '{{ filters.sub_trade_channel }}',
+        city: '{{ filters.city }}',
+        state: '{{ filters.state }}',
+        country: '{{ filters.country }}',
+        is_online: '{{ filters.is_online }}',
+        is_missing: '{{ filters.is_missing }}',
+        subclient: '{{ filters.subclient }}'
+    };
 
     // Carregar dispositivos com paginação
     async function loadDevices(page = 1, searchTerm, subclient, useOptimized = true) {
@@ -405,24 +433,28 @@
 
             if (useOptimized && !isFiltering) {
                 // Use the ultra-fast MATERIALIZED VIEW endpoint when no filters
-                url = `/portal_associacao/tracking/devices`;
-                console.log('🚀 Usando API otimizada (MATERIALIZED VIEW)');
+                // load_all=true carrega TODOS os assets para o mapa (sem paginação)
+                params.append('load_all', 'true');
+                url = `/portal_associacao/tracking/devices?${params.toString()}`;
+                // console.log('🚀 Usando API otimizada (MATERIALIZED VIEW) - Carregando TODOS os assets para o mapa');
             } else {
-                // Use standard endpoint with filters
+                // Use SAME ENDPOINT but with filters applied
+                // load_all=true sempre para carregar TODOS para o mapa
+                params.append('load_all', 'true');
                 params.append('page', page);
-                params.append('per_page', itemsPerPage);
                 
                 if (searchTerm && searchTerm.trim() !== '') {
+                    // Busca por texto - pode ser serial, outlet, etc
                     params.append('search', searchTerm.trim());
                 }
 
                 if (subclient && subclient.trim() !== '') {
-                    // Enviar como sub_client para manter compatibilidade com API
-                    params.append('sub_client', subclient.trim());
-                    console.log(`🔍 Filtrando por subclient: ${subclient}`);
+                    // NOTA: A view não tem filtro de subclient direto, 
+                    // então vamos buscar por outlet que é relacionado
+                    // console.log(`🔍 Filtrando por subclient: ${subclient}`);
                 }
                 
-                // Adicionar filtros avançados
+                // Adicionar filtros avançados (estes SÃO suportados pela view)
                 if (advancedFilters.bottler_equipment_number) {
                     params.append('bottler_equipment_number', advancedFilters.bottler_equipment_number);
                 }
@@ -452,10 +484,10 @@
                 }
                 
                 url = `/portal_associacao/tracking/devices?${params.toString()}`;
-                console.log('🔍 Usando API com filtros');
+                // console.log('🔍 Usando API com filtros aplicados no backend');
             }
 
-            console.log('📡 Carregando:', url);
+            // console.log('📡 Carregando:', url);
             const startTime = performance.now();
 
             const response = await fetch(url);
@@ -474,9 +506,9 @@
             const loadTime = performance.now() - startTime;
             
             if (result.optimized) {
-                console.log(`⏱️ API Otimizada carregou ${result.data.length} assets em ${loadTime.toFixed(2)}ms`);
+                // console.log(`⏱️ API Otimizada carregou ${result.data.length} assets em ${loadTime.toFixed(2)}ms`);
             } else {
-                console.log(`⏱️ API padrão carregou ${result.data.length} assets em ${loadTime.toFixed(2)}ms`);
+                // console.log(`⏱️ API padrão carregou ${result.data.length} assets em ${loadTime.toFixed(2)}ms`);
             }
 
             if (!result.data || !result.pagination) {
@@ -488,7 +520,7 @@
             const devices = result.data;
             const pagination = result.pagination;
 
-            console.log(`📊 Página ${pagination.page}: ${devices.length} devices`);
+            // console.log(`📊 Página ${pagination.page}: ${devices.length} devices`);
 
             // Atualizar lista de subclients disponíveis
             if (result.available_subclients && result.available_subclients.length > 0) {
@@ -499,10 +531,13 @@
             currentPage = pagination.page;
             totalPages = pagination.pages || 1;
 
+            // Usar map_data para o mapa (todos os assets quando load_all=true)
+            const mapDevices = result.map_data || devices;
+            
             allDevices = devices;
             updateStats(devices, pagination.total, result.optimized);
             displayDevices(devices, pagination, result.optimized);
-            addMarkersToMap(devices);
+            addMarkersToMap(mapDevices);  // Usar map_data aqui!
 
             // Ajustar zoom do mapa para mostrar todos os marcadores
             if (markers.getLayers().length > 0) {
@@ -564,7 +599,7 @@
         }
         
         availableSubclients = subclients;
-        console.log(`✅ ${subclients.length} subclients carregados no filtro`);
+        // console.log(`✅ ${subclients.length} subclients carregados no filtro`);
     }
 
     // Exibir dispositivos na lista
@@ -576,11 +611,15 @@
             return;
         }
 
+        // Armazenar devices no mapa global para acesso posterior
+        devices.forEach(device => {
+            if (device.oem_serial_number) {
+                deviceMap[device.oem_serial_number] = device;
+            }
+        });
+
         let html = devices.map(device => {
             const hasLocation = device.has_location && device.latitude !== null && device.longitude !== null;
-            const clickAction = hasLocation
-                ? `onclick="zoomToDevice(${device.latitude}, ${device.longitude})"`
-                : `onclick="alert('Localização indisponível para este asset')"`
 
             // Temperatura da MATERIALIZED VIEW - formatada corretamente
             let temperatureStatus = '';
@@ -621,7 +660,7 @@
             }
 
             return `
-                <li class="device-item ${hasLocation ? '' : 'device-item-disabled'}" ${clickAction}>
+                <li class="device-item ${hasLocation ? '' : 'device-item-disabled'}" onclick="event.stopPropagation(); selectAndShowAsset('${device.oem_serial_number}')">
                     <div class="device-name" style="margin-bottom: 8px;">
                         ${device.bottler_equipment_number || 'N/A'}
                     </div>
@@ -821,11 +860,6 @@
                     console.warn("Não foi possível destacar o marcador:", e.message);
                 }
 
-                // Abrir painel de detalhes
-                if (marker.deviceData) {
-                    loadAssetDetails(marker.deviceData.oem_serial_number);
-                }
-
                 // Abrir popup automaticamente
                 marker.openPopup();
             }
@@ -835,25 +869,6 @@
         map.setView([lat, lng], 17);
     }
 
-    // Carregar detalhes completos do asset
-    async function loadAssetDetails(assetSerial) {
-        try {
-            // Este endpoint (api/asset/:serial) é o "lento" que busca
-            // todos os detalhes, não a view materializada.
-            const response = await fetch(`/portal_associacao/tracking/api/asset/${assetSerial}`);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const data = await response.json();
-            displayAssetDetails(data);
-            openDetailsPanel();
-        } catch (error) {
-            console.error('Erro ao carregar detalhes:', error);
-            document.getElementById('detailsContent').innerHTML = `
-                <p style="color: #e74c3c; text-align: center;">Erro ao carregar detalhes: ${error.message}</p>
-            `;
-        }
-    }
 
     // Exibir detalhes do asset
     function displayAssetDetails(data) {
@@ -983,7 +998,779 @@
     // Fechar painel de detalhes
     function closeDetailsPanel() {
         const panel = document.getElementById('detailsPanel');
-        panel.style.right = '-450px';
+        panel.style.right = '-500px';
+    }
+
+    // Selecionar asset e mostrar detalhes
+    function selectAndShowAsset(serialNumber) {
+        if (!serialNumber) {
+            console.error("❌ Serial number é inválido.");
+            return;
+        }
+        // console.log(`🔍 Carregando detalhes para o serial: ${serialNumber}`);
+        
+        // Buscar o device no mapa para obter coordenadas
+        const device = deviceMap[serialNumber];
+        if (device && device.latitude && device.longitude) {
+            // Fazer zoom e focar no mapa
+            zoomToDevice(device.latitude, device.longitude);
+        }
+        
+        loadAndShowAssetDetails(serialNumber);
+    }
+
+    // Carrega e exibe os detalhes do asset
+    async function loadAndShowAssetDetails(serialNumber) {
+        try {
+            const response = await fetch(`/portal_associacao/tracking/asset_details/${serialNumber}`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const device = await response.json();
+            
+            // console.log("✅ Detalhes recebidos:", device);
+            showAssetDetails(device);
+
+        } catch (error) {
+            console.error('❌ Erro ao carregar detalhes do asset:', error);
+            document.getElementById('detailsContent').innerHTML = `<p style="color: #e74c3c; text-align: center;">Erro ao carregar dados: ${error.message}</p>`;
+            openDetailsPanel();
+        }
+    }
+
+    // Exibir detalhes do asset no painel lateral
+    function showAssetDetails(device) {
+        // Primeiro fazer uma requisição para obter detalhes completos
+        if (device.oem_serial_number) {
+            fetch(`/portal_associacao/tracking/asset-details/${device.oem_serial_number}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success' || data.oem_serial_number) {
+                        const asset = data.status === 'success' ? data.asset_details : data;
+                        displayAssetDetails(asset);
+                        // Carregar dados analíticos em paralelo
+                        loadAssetAnalytics(device.oem_serial_number);
+                    } else {
+                        console.error('Erro ao buscar detalhes do asset:', data.message);
+                        displayAssetDetails(device); // Fallback para dados básicos
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro na requisição:', error);
+                    displayAssetDetails(device); // Fallback para dados básicos
+                });
+        } else {
+            displayAssetDetails(device);
+        }
+    }
+
+    // Carregar dados analíticos do asset
+    let analyticsChart = null;
+    let doorChartInstance = null;
+    let temperatureStatusChart = null;
+
+    function loadAssetAnalytics(serial) {
+        fetch(`/portal_associacao/tracking/asset-analytics/${serial}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    displayAnalyticsTab(data);
+                }
+            })
+            .catch(error => console.error('Erro ao carregar analytics:', error));
+    }
+
+    function displayAnalyticsTab(analytics) {
+        const analyticsPanel = document.getElementById('analyticsPanel');
+        if (!analyticsPanel) return;
+
+        const temp_min = analytics.temperature_status.temp_min;
+        const temp_max = analytics.temperature_status.temp_max;
+        const stats = analytics.statistics;
+        const hourly = analytics.hourly_data;
+        const doors = analytics.door_periods;
+
+        let html = `
+            <!-- Gráfico de Temperatura e Porta (24h) -->
+            <div style="background: #f8f9fa; padding: 18px; border-radius: 12px; margin-bottom: 20px;">
+                <div style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 15px; display: flex; align-items: center;">
+                    📈 <span style="margin-left: 8px;">ANÁLISE 24 HORAS</span>
+                </div>
+                
+                <!-- Tabs para Gráficos -->
+                <div style="display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 2px solid #e0e0e0;">
+                    <button onclick="showAnalyticsChart('temp')" id="tabTemp" style="
+                        padding: 10px 15px;
+                        background: none;
+                        border: none;
+                        cursor: pointer;
+                        font-weight: 600;
+                        color: #667eea;
+                        border-bottom: 3px solid #667eea;
+                        font-size: 13px;
+                    ">🌡️ Temperatura</button>
+                    <button onclick="showAnalyticsChart('doors')" id="tabDoors" style="
+                        padding: 10px 15px;
+                        background: none;
+                        border: none;
+                        cursor: pointer;
+                        font-weight: 600;
+                        color: #999;
+                        border-bottom: 3px solid transparent;
+                        font-size: 13px;
+                    ">🚪 Aberturas</button>
+                    <button onclick="showAnalyticsChart('status')" id="tabStatus" style="
+                        padding: 10px 15px;
+                        background: none;
+                        border: none;
+                        cursor: pointer;
+                        font-weight: 600;
+                        color: #999;
+                        border-bottom: 3px solid transparent;
+                        font-size: 13px;
+                    ">📊 Status Temp</button>
+                </div>
+
+                <!-- Container para gráficos -->
+                <div style="position: relative; height: 250px; margin-bottom: 15px;">
+                    <canvas id="analyticsChartCanvas" style="display: block;"></canvas>
+                </div>
+
+                <!-- Estatísticas Rápidas -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 15px; padding-top: 15px; border-top: 1px solid #e0e0e0;">
+                    <div style="text-align: center; padding: 12px; background: #fff; border-radius: 8px; border-left: 3px solid #667eea;">
+                        <div style="font-size: 11px; color: #999; font-weight: 600; margin-bottom: 6px;">TEMP. MÉDIA</div>
+                        <div style="font-size: 20px; font-weight: bold; color: #667eea;">
+                            ${stats.avg_temperature.toFixed(1)}°C
+                        </div>
+                        <div style="font-size: 10px; color: #999; margin-top: 4px;">Máx: ${stats.max_temperature.toFixed(1)}°C</div>
+                    </div>
+                    <div style="text-align: center; padding: 12px; background: #fff; border-radius: 8px; border-left: 3px solid #f39c12;">
+                        <div style="font-size: 11px; color: #999; font-weight: 600; margin-bottom: 6px;">CONSUMO MÉD.</div>
+                        <div style="font-size: 20px; font-weight: bold; color: #f39c12;">
+                            ${stats.avg_power_consumption.toFixed(0)}W
+                        </div>
+                        <div style="font-size: 10px; color: #999; margin-top: 4px;">Compressor: ${stats.avg_compressor_time.toFixed(0)}%</div>
+                    </div>
+                    <div style="text-align: center; padding: 12px; background: #fff; border-radius: 8px; border-left: 3px solid #56ab2f;">
+                        <div style="font-size: 11px; color: #999; font-weight: 600; margin-bottom: 6px;">BAT. MÉDIA</div>
+                        <div style="font-size: 20px; font-weight: bold; color: #56ab2f;">
+                            ${stats.avg_battery.toFixed(0)}%
+                        </div>
+                        <div style="font-size: 10px; color: #999; margin-top: 4px;">Últimos 30 dias</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Atividade de Porta por Período -->
+            <div style="background: #f8f9fa; padding: 18px; border-radius: 12px; margin-bottom: 20px;">
+                <div style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 15px;">
+                    📊 Distribuição de Aberturas (30 dias)
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+                    <div style="text-align: center; padding: 15px; background: #fff; border-radius: 8px; border: 2px solid #f39c12;">
+                        <div style="font-size: 11px; color: #999; font-weight: 600; margin-bottom: 8px;">MANHÃ</div>
+                        <div style="font-size: 28px; font-weight: bold; color: #f39c12; margin: 8px 0;">
+                            ${doors.morning}
+                        </div>
+                        <div style="font-size: 10px; color: #666;">aberturas</div>
+                    </div>
+                    <div style="text-align: center; padding: 15px; background: #fff; border-radius: 8px; border: 2px solid #e74c3c;">
+                        <div style="font-size: 11px; color: #999; font-weight: 600; margin-bottom: 8px;">TARDE</div>
+                        <div style="font-size: 28px; font-weight: bold; color: #e74c3c; margin: 8px 0;">
+                            ${doors.afternoon}
+                        </div>
+                        <div style="font-size: 10px; color: #666;">aberturas</div>
+                    </div>
+                    <div style="text-align: center; padding: 15px; background: #fff; border-radius: 8px; border: 2px solid #6c5ce7;">
+                        <div style="font-size: 11px; color: #999; font-weight: 600; margin-bottom: 8px;">NOITE</div>
+                        <div style="font-size: 28px; font-weight: bold; color: #6c5ce7; margin: 8px 0;">
+                            ${doors.night}
+                        </div>
+                        <div style="font-size: 10px; color: #666;">aberturas</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status de Temperatura -->
+            <div style="background: #f8f9fa; padding: 18px; border-radius: 12px;">
+                <div style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 15px;">
+                    🌡️ Status de Temperatura (${temp_min}°C - ${temp_max}°C)
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                    <div style="text-align: center; padding: 15px; background: #fff; border-radius: 8px; border: 2px solid #56ab2f;">
+                        <div style="font-size: 11px; color: #999; font-weight: 600; margin-bottom: 6px;">✅ OK</div>
+                        <div style="font-size: 24px; font-weight: bold; color: #56ab2f;">
+                            ${analytics.temperature_status.ok}
+                        </div>
+                        <div style="font-size: 10px; color: #666;">Normal</div>
+                    </div>
+                    <div style="text-align: center; padding: 15px; background: #fff; border-radius: 8px; border: 2px solid #e74c3c;">
+                        <div style="font-size: 11px; color: #999; font-weight: 600; margin-bottom: 6px;">🔥 ACIMA</div>
+                        <div style="font-size: 24px; font-weight: bold; color: #e74c3c;">
+                            ${analytics.temperature_status.above}
+                        </div>
+                        <div style="font-size: 10px; color: #666;">Acima ${temp_max}°C</div>
+                    </div>
+                    <div style="text-align: center; padding: 15px; background: #fff; border-radius: 8px; border: 2px solid #5dade2;">
+                        <div style="font-size: 11px; color: #999; font-weight: 600; margin-bottom: 6px;">❄️ ABAIXO</div>
+                        <div style="font-size: 24px; font-weight: bold; color: #5dade2;">
+                            ${analytics.temperature_status.below}
+                        </div>
+                        <div style="font-size: 10px; color: #666;">Abaixo ${temp_min}°C</div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        analyticsPanel.innerHTML = html;
+        
+        // Renderizar o gráfico inicial (temperatura)
+        setTimeout(() => {
+            renderAnalyticsChart('temp', hourly, analytics);
+        }, 100);
+    }
+
+    function showAnalyticsChart(type) {
+        // Atualizar tabs
+        document.getElementById('tabTemp').style.color = type === 'temp' ? '#667eea' : '#999';
+        document.getElementById('tabTemp').style.borderBottomColor = type === 'temp' ? '#667eea' : 'transparent';
+        
+        document.getElementById('tabDoors').style.color = type === 'doors' ? '#667eea' : '#999';
+        document.getElementById('tabDoors').style.borderBottomColor = type === 'doors' ? '#667eea' : 'transparent';
+        
+        document.getElementById('tabStatus').style.color = type === 'status' ? '#667eea' : '#999';
+        document.getElementById('tabStatus').style.borderBottomColor = type === 'status' ? '#667eea' : 'transparent';
+        
+        // Renderizar gráfico baseado no tipo selecionado
+        // Os dados já foram carregados globalmente
+    }
+
+    function renderAnalyticsChart(type, hourly, analytics) {
+        const ctx = document.getElementById('analyticsChartCanvas');
+        if (!ctx) return;
+
+        // Destruir gráfico anterior se existir
+        if (analyticsChart) {
+            analyticsChart.destroy();
+        }
+
+        let chartConfig = {};
+
+        if (type === 'temp') {
+            chartConfig = {
+                type: 'line',
+                data: {
+                    labels: hourly.labels,
+                    datasets: [{
+                        label: 'Temperatura (°C)',
+                        data: hourly.temperature,
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        pointBackgroundColor: '#667eea',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { color: '#666', font: { size: 11 } },
+                            grid: { color: 'rgba(0,0,0,0.05)' }
+                        },
+                        x: {
+                            ticks: { color: '#666', font: { size: 11 } },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            };
+        } else if (type === 'doors') {
+            chartConfig = {
+                type: 'bar',
+                data: {
+                    labels: hourly.labels,
+                    datasets: [{
+                        label: 'Aberturas de Porta',
+                        data: hourly.doors,
+                        backgroundColor: '#f39c12',
+                        borderColor: '#e67e22',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { color: '#666', font: { size: 11 } },
+                            grid: { color: 'rgba(0,0,0,0.05)' }
+                        },
+                        x: {
+                            ticks: { color: '#666', font: { size: 11 } },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            };
+        } else if (type === 'status') {
+            chartConfig = {
+                type: 'doughnut',
+                data: {
+                    labels: ['✅ OK', '🔥 Acima', '❄️ Abaixo'],
+                    datasets: [{
+                        data: [
+                            analytics.temperature_status.ok,
+                            analytics.temperature_status.above,
+                            analytics.temperature_status.below
+                        ],
+                        backgroundColor: ['#56ab2f', '#e74c3c', '#5dade2'],
+                        borderColor: '#fff',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { font: { size: 11 }, padding: 15 }
+                        }
+                    }
+                }
+            };
+        }
+
+        analyticsChart = new Chart(ctx, chartConfig);
+    }
+
+    // Função para exibir os detalhes do asset
+    function displayAssetDetails(device) {
+        document.getElementById('detailsTitle').textContent = device.bottler_equipment_number || 'Asset';
+        
+        const statusOnline = device.is_online ? '🟢 Online' : '🔴 Offline';
+        const statusMissing = device.is_missing ? '⚠️ Perdido' : '✅ Normal';
+        
+        // Temperaturas com validação
+        const tempColor = (device.latest_cabinet_temperature_c && (device.latest_cabinet_temperature_c > 20 || device.latest_cabinet_temperature_c < 1)) ? '#e74c3c' : '#56ab2f';
+        const ambientTempColor = (device.latest_ambient_temperature_c && (device.latest_ambient_temperature_c > 35 || device.latest_ambient_temperature_c < 0)) ? '#e74c3c' : '#56ab2f';
+        
+        // Bateria com cor
+        const batteryLevel = device.battery_level_percentage || device.latest_battery_level_percentage || device.battery_level || 0;
+        const batteryColor = batteryLevel < 20 ? '#e74c3c' : batteryLevel < 50 ? '#f39c12' : '#56ab2f';
+        
+        let html = `
+            <!-- Abas de navegação -->
+            <div style="display: flex; gap: 5px; margin: -20px -20px 20px -20px; padding: 15px 20px 0 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-bottom: 2px solid rgba(0,0,0,0.1);">
+                <button onclick="switchDetailsTab('basic')" id="tabBasic" style="
+                    padding: 12px 20px;
+                    background: rgba(255,255,255,0.3);
+                    color: white;
+                    border: none;
+                    cursor: pointer;
+                    font-weight: 600;
+                    font-size: 13px;
+                    border-radius: 6px 6px 0 0;
+                    transition: all 0.3s;
+                ">📋 Detalhes</button>
+                <button onclick="switchDetailsTab('analytics')" id="tabAnalytics" style="
+                    padding: 12px 20px;
+                    background: rgba(255,255,255,0.1);
+                    color: rgba(255,255,255,0.7);
+                    border: none;
+                    cursor: pointer;
+                    font-weight: 600;
+                    font-size: 13px;
+                    border-radius: 6px 6px 0 0;
+                    transition: all 0.3s;
+                ">📈 Analytics</button>
+            </div>
+
+            <!-- Panel de Detalhes -->
+            <div id="basicPanel" style="display: block;">
+                <!-- Header com Status Principal -->
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 12px; margin-bottom: 20px; color: white; position: relative; margin-top: -20px; margin-left: -20px; margin-right: -20px; padding-left: 20px; border-radius: 0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <h3 style="margin: 0; font-size: 18px; font-weight: bold;">${device.bottler_equipment_number || 'N/A'}</h3>
+                            <p style="margin: 5px 0 0 0; opacity: 0.9; font-size: 14px;">Serial: ${device.oem_serial_number || 'N/A'}</p>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 24px; margin-bottom: 5px;">${statusOnline}</div>
+                            <div style="font-size: 12px; opacity: 0.8;">${statusMissing}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Métricas Principais em Grid -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                    <!-- Bateria -->
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 10px; border: 2px solid ${batteryColor}; position: relative;">
+                        <div style="font-size: 11px; color: #666; font-weight: 600; margin-bottom: 8px;">🔋 BATERIA</div>
+                        <div style="font-size: 24px; font-weight: bold; color: ${batteryColor};">${batteryLevel}%</div>
+                        <div style="background: #e0e0e0; height: 6px; border-radius: 3px; margin-top: 8px; overflow: hidden;">
+                            <div style="background: ${batteryColor}; height: 100%; width: ${batteryLevel}%; border-radius: 3px; transition: width 0.3s;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Temperatura Gabinete -->
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 10px; border: 2px solid ${tempColor};">
+                        <div style="font-size: 11px; color: #666; font-weight: 600; margin-bottom: 8px;">🌡️ TEMP. GABINETE</div>
+                        <div style="font-size: 24px; font-weight: bold; color: ${tempColor};">
+                            ${device.latest_cabinet_temperature_c ? device.latest_cabinet_temperature_c.toFixed(1) : 'N/A'}°C
+                        </div>
+                        ${device.latest_ambient_temperature_c ? 
+                            `<div style="font-size: 12px; color: #666; margin-top: 4px;">
+                                Ambiente: <span style="color: ${ambientTempColor}; font-weight: 600;">${device.latest_ambient_temperature_c.toFixed(1)}°C</span>
+                            </div>` : ''
+                        }
+                    </div>
+                </div>
+
+                <!-- Informações de Localização -->
+                <div style="background: #f8f9fa; padding: 18px; border-radius: 12px; margin-bottom: 18px; border-left: 4px solid #667eea;">
+                    <div style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 12px; display: flex; align-items: center;">
+                        📍 <span style="margin-left: 8px;">LOCALIZAÇÃO</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div>
+                            <div style="font-size: 11px; color: #999; font-weight: 600; margin-bottom: 4px;">Outlet</div>
+                            <div style="font-size: 13px; color: #333; font-weight: 600;">${device.outlet || 'N/A'}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 11px; color: #999; font-weight: 600; margin-bottom: 4px;">Sub Cliente</div>
+                            <div style="font-size: 13px; color: #333; font-weight: 600;">${device.sub_client || 'N/A'}</div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 12px;">
+                        <div style="font-size: 11px; color: #999; font-weight: 600; margin-bottom: 4px;">Canal</div>
+                        <div style="font-size: 13px; color: #333; margin-bottom: 8px;">${device.sub_trade_channel || 'N/A'}</div>
+                        <div style="font-size: 11px; color: #999; font-weight: 600; margin-bottom: 4px;">Endereço</div>
+                        <div style="font-size: 13px; color: #666;">
+                            ${[device.city, device.state, device.country].filter(Boolean).join(', ') || 'N/A'}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Informações Técnicas -->
+                <div style="background: #f8f9fa; padding: 18px; border-radius: 12px; margin-bottom: 18px; border-left: 4px solid #56ab2f;">
+                    <div style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 12px; display: flex; align-items: center;">
+                        🔧 <span style="margin-left: 8px;">INFORMAÇÕES TÉCNICAS</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr; gap: 10px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                            <div>
+                                <div style="font-size: 11px; color: #999; font-weight: 600; margin-bottom: 4px;">MAC Device</div>
+                                <div style="font-size: 12px; color: #333; font-family: monospace; background: #e9ecef; padding: 4px 8px; border-radius: 4px;">
+                                    ${device.smart_device_mac || 'N/A'}
+                                </div>
+                            </div>
+                            <div>
+                                <div style="font-size: 11px; color: #999; font-weight: 600; margin-bottom: 4px;">Status Energia</div>
+                                <div style="font-size: 13px; color: #333;">
+                                    ${device.power_status || 'N/A'}
+                                </div>
+                            </div>
+                        </div>
+                        ${device.asset_type || device.outlet_type ? 
+                            `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #dee2e6;">
+                                <div style="font-size: 11px; color: #999; font-weight: 600; margin-bottom: 4px;">Tipo/Modelo</div>
+                                <div style="font-size: 13px; color: #333;">
+                                    ${[device.asset_type, device.outlet_type].filter(Boolean).join(' - ') || 'N/A'}
+                                </div>
+                            </div>` : ''
+                        }
+                    </div>
+                </div>
+
+                <!-- Estatísticas de Atividade -->
+                ${(device.door_event_average_morning || device.door_event_average_afternoon || device.door_event_average_night) ? 
+                    `<div style="background: #f8f9fa; padding: 18px; border-radius: 12px; margin-bottom: 18px; border-left: 4px solid #f39c12;">
+                        <div style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 12px; display: flex; align-items: center;">
+                            📊 <span style="margin-left: 8px;">ATIVIDADE DE PORTA</span>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                            <div style="text-align: center; padding: 10px; background: #fff; border-radius: 8px;">
+                                <div style="font-size: 11px; color: #999; font-weight: 600;">MANHÃ</div>
+                                <div style="font-size: 18px; font-weight: bold; color: #f39c12; margin: 4px 0;">
+                                    ${device.door_event_average_morning ? parseFloat(device.door_event_average_morning).toFixed(1) : '0'}
+                                </div>
+                                <div style="font-size: 10px; color: #666;">aberturas/dia</div>
+                            </div>
+                            <div style="text-align: center; padding: 10px; background: #fff; border-radius: 8px;">
+                                <div style="font-size: 11px; color: #999; font-weight: 600;">TARDE</div>
+                                <div style="font-size: 18px; font-weight: bold; color: #e74c3c; margin: 4px 0;">
+                                    ${device.door_event_average_afternoon ? parseFloat(device.door_event_average_afternoon).toFixed(1) : '0'}
+                                </div>
+                                <div style="font-size: 10px; color: #666;">aberturas/dia</div>
+                            </div>
+                            <div style="text-align: center; padding: 10px; background: #fff; border-radius: 8px;">
+                                <div style="font-size: 11px; color: #999; font-weight: 600;">NOITE</div>
+                                <div style="font-size: 18px; font-weight: bold; color: #6c5ce7; margin: 4px 0;">
+                                    ${device.door_event_average_night ? parseFloat(device.door_event_average_night).toFixed(1) : '0'}
+                                </div>
+                                <div style="font-size: 10px; color: #666;">aberturas/dia</div>
+                            </div>
+                        </div>
+                    </div>` : ''
+                }
+
+                <!-- Status Detalhado -->
+                ${device.total_compressor_on_time_percent || device.avg_power_consumption_watt ? 
+                    `<div style="background: #f8f9fa; padding: 18px; border-radius: 12px; margin-bottom: 18px; border-left: 4px solid #e17055;">
+                        <div style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 12px; display: flex; align-items: center;">
+                            ⚙️ <span style="margin-left: 8px;">OPERAÇÃO</span>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            ${device.total_compressor_on_time_percent ? 
+                                `<div style="padding: 12px; background: #fff; border-radius: 6px;">
+                                    <div style="font-size: 11px; color: #999; font-weight: 600; margin-bottom: 4px;">Compressor ON</div>
+                                    <div style="font-size: 16px; font-weight: bold; color: #e17055;">
+                                        ${parseFloat(device.total_compressor_on_time_percent).toFixed(1)}%
+                                    </div>
+                                </div>` : ''
+                            }
+                            ${device.avg_power_consumption_watt ? 
+                                `<div style="padding: 12px; background: #fff; border-radius: 6px;">
+                                    <div style="font-size: 11px; color: #999; font-weight: 600; margin-bottom: 4px;">Consumo Médio</div>
+                                    <div style="font-size: 16px; font-weight: bold; color: #e17055;">
+                                        ${parseFloat(device.avg_power_consumption_watt).toFixed(0)}W
+                                    </div>
+                                </div>` : ''
+                            }
+                        </div>
+                    </div>` : ''
+                }
+
+                <!-- Botões de Ação -->
+                <div style="margin-top: 20px;">
+                    <a href="https://www.google.com/maps?q=${device.latest_latitude},${device.latest_longitude}" target="_blank" style="
+                        display: block;
+                        padding: 12px;
+                        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+                        color: white;
+                        border: none;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        font-size: 13px;
+                        font-weight: 600;
+                        text-align: center;
+                        text-decoration: none;
+                        transition: transform 0.2s;
+                    " onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+                        �️ Ver no Google Maps
+                    </a>
+                </div>
+            </div>
+
+            <!-- Panel de Analytics -->
+            <div id="analyticsPanel" style="display: none;">
+                <div style="text-align: center; padding: 40px 20px; color: #999;">
+                    <p>Carregando dados analíticos...</p>
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('detailsContent').innerHTML = html;
+        openDetailsPanel();
+    }
+
+    // Alternar entre abas do painel de detalhes
+    function switchDetailsTab(tab) {
+        const basicPanel = document.getElementById('basicPanel');
+        const analyticsPanel = document.getElementById('analyticsPanel');
+        const tabBasic = document.getElementById('tabBasic');
+        const tabAnalytics = document.getElementById('tabAnalytics');
+
+        if (tab === 'basic') {
+            basicPanel.style.display = 'block';
+            analyticsPanel.style.display = 'none';
+            tabBasic.style.background = 'rgba(255,255,255,0.3)';
+            tabBasic.style.color = 'white';
+            tabAnalytics.style.background = 'rgba(255,255,255,0.1)';
+            tabAnalytics.style.color = 'rgba(255,255,255,0.7)';
+        } else {
+            basicPanel.style.display = 'none';
+            analyticsPanel.style.display = 'block';
+            tabBasic.style.background = 'rgba(255,255,255,0.1)';
+            tabBasic.style.color = 'rgba(255,255,255,0.7)';
+            tabAnalytics.style.background = 'rgba(255,255,255,0.3)';
+            tabAnalytics.style.color = 'white';
+        }
+    }
+
+
+    // Exibir detalhes do asset no painel lateral
+    function showAssetDetails(device) {
+        document.getElementById('detailsTitle').textContent = device.bottler_equipment_number || 'Asset';
+        
+        const statusOnline = device.is_online ? '🟢 Online' : '🔴 Offline';
+        const statusMissing = device.is_missing ? '⚠️ Perdido' : '✅ Normal';
+        
+        const tempColor = (device.latest_cabinet_temperature_c > 20 || device.latest_cabinet_temperature_c < 1) ? '#e74c3c' : '#56ab2f';
+        
+        let html = `
+            <!-- Informações Principais -->
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+                    <div>
+                        <div style="font-size: 11px; color: #999; font-weight: 600; margin-bottom: 3px;">Serial OEM</div>
+                        <div style="font-size: 14px; font-weight: 600; color: #333;">${device.oem_serial_number || 'N/A'}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 11px; color: #999; font-weight: 600; margin-bottom: 3px;">Status</div>
+                        <div style="font-size: 14px; font-weight: 600;">${statusOnline}</div>
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr; gap: 10px;">
+                    <div>
+                        <div style="font-size: 11px; color: #999; font-weight: 600; margin-bottom: 3px;">Temperatura</div>
+                        <div style="font-size: 14px; font-weight: 600; color: ${tempColor};">${device.latest_cabinet_temperature_c ? device.latest_cabinet_temperature_c.toFixed(1) : 'N/A'}°C</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status -->
+            <div style="display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 15px;">
+                <div style="background: #f0f3ff; padding: 12px; border-radius: 8px; border-left: 3px solid #667eea;">
+                    <div style="font-size: 11px; color: #667eea; font-weight: 600; margin-bottom: 5px;">🔌 Status Operacional</div>
+                    <div style="font-size: 12px; color: #333;">${statusMissing}</div>
+                </div>
+            </div>
+
+            <!-- Localização -->
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <div style="font-size: 12px; font-weight: 600; color: #333; margin-bottom: 10px;">📍 Localização</div>
+                <div style="font-size: 13px; color: #666; margin-bottom: 5px;">
+                    <strong>Outlet:</strong> ${device.outlet || 'N/A'}
+                </div>
+                <div style="font-size: 13px; color: #666; margin-bottom: 5px;">
+                    <strong>Canal:</strong> ${device.sub_trade_channel || 'N/A'}
+                </div>
+                <div style="font-size: 13px; color: #666;">
+                    <strong>Local:</strong> ${device.city || 'N/A'}${device.state ? ', ' + device.state : ''}${device.country ? ', ' + device.country : ''}
+                </div>
+            </div>
+
+            <!-- Informações Técnicas -->
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <div style="font-size: 12px; font-weight: 600; color: #333; margin-bottom: 10px;">🔧 Informações Técnicas</div>
+                <div style="font-size: 13px; color: #666; margin-bottom: 5px;">
+                    <strong>Equipamento:</strong> ${device.bottler_equipment_number || 'N/A'}
+                </div>
+                <div style="font-size: 13px; color: #666; margin-bottom: 5px;">
+                    <strong>MAC Device:</strong> ${device.smart_device_mac || 'N/A'}
+                </div>
+                <div style="font-size: 13px; color: #666;">
+                    <strong>Sub Client:</strong> ${device.sub_client || 'N/A'}
+                </div>
+            </div>
+
+            <!-- Estatísticas de Porta -->
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <div style="font-size: 12px; font-weight: 600; color: #333; margin-bottom: 10px;">🚪 Aberturas de Porta (Médias)</div>
+                <div style="font-size: 13px; color: #666; margin-bottom: 5px;">
+                    <strong>Manhã:</strong> ${device.door_event_average_morning ? parseFloat(device.door_event_average_morning).toFixed(1) : '0'} por dia
+                </div>
+                <div style="font-size: 13px; color: #666; margin-bottom: 5px;">
+                    <strong>Tarde:</strong> ${device.door_event_average_afternoon ? parseFloat(device.door_event_average_afternoon).toFixed(1) : '0'} por dia
+                </div>
+                <div style="font-size: 13px; color: #666;">
+                    <strong>Noite:</strong> ${device.door_event_average_night ? parseFloat(device.door_event_average_night).toFixed(1) : '0'} por dia
+                </div>
+            </div>
+
+            <!-- Botão Google Maps -->
+            <div style="margin-bottom: 15px;">
+                <a href="https://www.google.com/maps?q=${device.latest_latitude},${device.latest_longitude}" target="_blank" style="
+                    display: block;
+                    padding: 10px;
+                    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+                    color: white;
+                    border: none;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    font-size: 13px;
+                    font-weight: 600;
+                    text-align: center;
+                    text-decoration: none;
+                ">🗺️ Ver no Google Maps</a>
+            </div>
+
+        `;
+        
+        document.getElementById('detailsContent').innerHTML = html;
+        openDetailsPanel();
+    }
+
+    // Calcular tempo desde a última atualização
+    function calculateTimeAgo(timestamp) {
+        if (!timestamp) return 'N/A';
+        const date = new Date(timestamp);
+        const now = new Date();
+        const seconds = Math.floor((now - date) / 1000);
+        
+        if (seconds < 60) return 'Agora';
+        if (seconds < 3600) return Math.floor(seconds / 60) + 'm atrás';
+        if (seconds < 86400) return Math.floor(seconds / 3600) + 'h atrás';
+        return Math.floor(seconds / 86400) + 'd atrás';
+    }
+
+    // Renderizar gráfico de bateria
+    function renderBatteryChart(batteryLevel) {
+        const canvas = document.getElementById('batteryChart');
+        if (!canvas) return;
+        
+        const ctx = canvas.getContext('2d');
+        const width = canvas.width;
+        const height = canvas.height;
+        const padding = 10;
+        const barWidth = width - (padding * 2);
+        const barHeight = 30;
+        
+        ctx.clearRect(0, 0, width, height);
+        
+        // Background da barra
+        ctx.fillStyle = '#e0e0e0';
+        ctx.fillRect(padding, height / 2 - barHeight / 2, barWidth, barHeight);
+        
+        // Cor baseada no nível
+        let color = '#56ab2f'; // Verde
+        if (batteryLevel < 20) color = '#e74c3c'; // Vermelho
+        else if (batteryLevel < 50) color = '#f5576c'; // Rosa
+        
+        // Barra de bateria
+        ctx.fillStyle = color;
+        ctx.fillRect(padding, height / 2 - barHeight / 2, barWidth * (batteryLevel / 100), barHeight);
+        
+        // Texto
+        ctx.fillStyle = '#333';
+        ctx.font = 'bold 14px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(batteryLevel + '%', width / 2, height / 2 + 5);
+    }
+
+    // Zoom para o device no mapa
+    function zoomToDeviceOnMap(lat, lon) {
+        if (lat && lon) {
+            map.setView([lat, lon], 16);
+            closeDetailsPanel();
+        }
     }
 
     // Buscar dispositivos
@@ -1013,7 +1800,14 @@
         document.getElementById('filterIsOnline').value = '';
         document.getElementById('filterIsMissing').value = '';
         
-        console.log('🔄 Filtros avançados limpos');
+        // Limpar também o subclient
+        document.getElementById('subclientFilter').value = '';
+        currentSubclient = '';
+        
+        // console.log('🔄 Filtros avançados limpos');
+        
+        // Limpar a URL
+        window.history.replaceState({}, '', window.location.pathname);
         
         // Recarregar com filtros limpos
         const useOptimized = (currentSearchTerm.trim() === '' && currentSubclient.trim() === '');
@@ -1042,9 +1836,11 @@
                         clearTimeout(searchDebounceHandle);
                     }
                     searchDebounceHandle = setTimeout(() => {
-                        console.log('🔧 Filtros avançados alterados, recarregando...');
+                        // console.log('🔧 Filtros avançados alterados, recarregando...');
                         const useOptimized = false; // Sempre usar filtros se há filtro avançado
                         loadDevices(1, currentSearchTerm, currentSubclient, useOptimized);
+                        // Atualizar a URL com os filtros
+                        updateUrlWithFilters();
                     }, 500);
                 });
                 
@@ -1053,9 +1849,11 @@
                         clearTimeout(searchDebounceHandle);
                     }
                     searchDebounceHandle = setTimeout(() => {
-                        console.log('🔧 Filtros avançados alterados, recarregando...');
+                        // console.log('🔧 Filtros avançados alterados, recarregando...');
                         const useOptimized = false; // Sempre usar filtros se há filtro avançado
                         loadDevices(1, currentSearchTerm, currentSubclient, useOptimized);
+                        // Atualizar a URL com os filtros
+                        updateUrlWithFilters();
                     }, 500);
                 });
             }
@@ -1063,49 +1861,135 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-        const searchInput = document.getElementById('deviceSearch');
+        // const searchInput = document.getElementById('deviceSearch');
         const subclientSelect = document.getElementById('subclientFilter');
 
-        // Event listener para busca por texto
-        searchInput.addEventListener('input', (e) => {
-            const rawTerm = e.target.value;
-            if (searchDebounceHandle) {
-                clearTimeout(searchDebounceHandle);
-            }
-            searchDebounceHandle = setTimeout(() => {
-                console.log(`🔎 Buscando por: "${rawTerm}"`);
-                // Se o termo de busca for limpo, volte a usar a view otimizada
-                const useOptimized = (rawTerm.trim() === '' && currentSubclient.trim() === '');
-                loadDevices(1, rawTerm, currentSubclient, useOptimized);
-            }, 300);
-        });
+        // Aplicar filtros iniciais da URL (se existirem)
+        let hasUrlFilters = false;
+        
+        if (initialFilters.bottler_equipment_number) {
+            document.getElementById('filterBottlerEquipmentNumber').value = initialFilters.bottler_equipment_number;
+            hasUrlFilters = true;
+        }
+        if (initialFilters.oem_serial_number) {
+            document.getElementById('filterOemSerialNumber').value = initialFilters.oem_serial_number;
+            hasUrlFilters = true;
+        }
+        if (initialFilters.outlet) {
+            document.getElementById('filterOutlet').value = initialFilters.outlet;
+            hasUrlFilters = true;
+        }
+        if (initialFilters.sub_trade_channel) {
+            document.getElementById('filterSubTradeChannel').value = initialFilters.sub_trade_channel;
+            hasUrlFilters = true;
+        }
+        if (initialFilters.city) {
+            document.getElementById('filterCity').value = initialFilters.city;
+            hasUrlFilters = true;
+        }
+        if (initialFilters.state) {
+            document.getElementById('filterState').value = initialFilters.state;
+            hasUrlFilters = true;
+        }
+        if (initialFilters.country) {
+            document.getElementById('filterCountry').value = initialFilters.country;
+            hasUrlFilters = true;
+        }
+        if (initialFilters.is_online) {
+            document.getElementById('filterIsOnline').value = initialFilters.is_online;
+            hasUrlFilters = true;
+        }
+        if (initialFilters.is_missing) {
+            document.getElementById('filterIsMissing').value = initialFilters.is_missing;
+            hasUrlFilters = true;
+        }
+        if (initialFilters.subclient) {
+            // O subclient será preenchido após carregar a lista
+            currentSubclient = initialFilters.subclient;
+            hasUrlFilters = true;
+        }
+        
+        // Se houver filtros na URL, abrir o painel de filtros avançados
+        if (hasUrlFilters) {
+            const panel = document.getElementById('advancedFiltersPanel');
+            const icon = document.getElementById('filterToggleIcon');
+            panel.style.display = 'block';
+            icon.textContent = '▲';
+            console.log('🔍 Filtros aplicados da URL');
+        }
+
+        // // Event listener para busca por texto
+        // searchInput.addEventListener('input', (e) => {
+        //     const rawTerm = e.target.value;
+        //     if (searchDebounceHandle) {
+        //         clearTimeout(searchDebounceHandle);
+        //     }
+        //     searchDebounceHandle = setTimeout(() => {
+        //         console.log(`🔎 Buscando por: "${rawTerm}"`);
+        //         // Se o termo de busca for limpo, volte a usar a view otimizada
+        //         const useOptimized = (rawTerm.trim() === '' && currentSubclient.trim() === '');
+        //         loadDevices(1, rawTerm, currentSubclient, useOptimized);
+        //     }, 300);
+        // });
 
         // Event listener para filtro de subclient
         subclientSelect.addEventListener('change', (e) => {
             const selectedSubclient = e.target.value;
-            console.log(`🏷️ Subclient selecionado: "${selectedSubclient || 'Todos'}"`);
+            // console.log(`🏷️ Subclient selecionado: "${selectedSubclient || 'Todos'}"`);
             
             // Se o filtro for limpo, volte a usar a view otimizada
             const useOptimized = (currentSearchTerm.trim() === '' && selectedSubclient.trim() === '');
             
             // Recarregar na página 1 com o novo filtro
             loadDevices(1, currentSearchTerm, selectedSubclient, useOptimized);
+            
+            // Atualizar a URL com o filtro
+            updateUrlWithFilters();
         });
         
         // Configurar listeners para filtros avançados
         setupAdvancedFilterListeners();
         
-        console.log('✅ Event listeners inicializados');
+        // console.log('✅ Event listeners inicializados');
     });
 
+    // Função para atualizar a URL com os filtros atuais
+    function updateUrlWithFilters() {
+        const params = new URLSearchParams();
+        
+        const filters = {
+            bottler_equipment_number: document.getElementById('filterBottlerEquipmentNumber')?.value?.trim() || '',
+            oem_serial_number: document.getElementById('filterOemSerialNumber')?.value?.trim() || '',
+            outlet: document.getElementById('filterOutlet')?.value?.trim() || '',
+            sub_trade_channel: document.getElementById('filterSubTradeChannel')?.value?.trim() || '',
+            city: document.getElementById('filterCity')?.value?.trim() || '',
+            state: document.getElementById('filterState')?.value?.trim() || '',
+            country: document.getElementById('filterCountry')?.value?.trim() || '',
+            is_online: document.getElementById('filterIsOnline')?.value?.trim() || '',
+            is_missing: document.getElementById('filterIsMissing')?.value?.trim() || '',
+            subclient: currentSubclient
+        };
+        
+        // Adicionar apenas filtros não vazios aos parâmetros
+        Object.keys(filters).forEach(key => {
+            if (filters[key]) {
+                params.append(key, filters[key]);
+            }
+        });
+        
+        // Atualizar a URL sem recarregar a página
+        const newUrl = params.toString() ? `${window.location.pathname}?${params.toString()}` : window.location.pathname;
+        window.history.replaceState({}, '', newUrl);
+    }
+
     // Inicializar
-    console.log('🗺️ Inicializando mapa...');
+    // console.log('🗺️ Inicializando mapa...');
     initMap();
     
-    console.log('📥 Carregando assets iniciais...');
+    // console.log('📥 Carregando assets iniciais...');
     loadDevices(1, '', '', true); // Carga inicial sempre otimizada
     
-    console.log('✅ Sistema de rastreio inicializado');
+    // console.log('✅ Sistema de rastreio inicializado');
 
     // Recarregar dispositivos a cada 60 segundos (mantém na página atual)
     // Descomente se quiser auto-refresh:

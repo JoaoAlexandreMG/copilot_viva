@@ -130,14 +130,40 @@ def calculate_door_event_statistics(db_session, asset_serial_number, days=30):
 @tracking_bp.route("/", methods=["GET"])
 @require_authentication
 def render_tracking():
-    if request.method == "GET":
-        try:
-            return render_template("portal/tracking/tracking.html")
-        except Exception as e:
-            print(f"[ERROR] Error rendering tracking page: {str(e)}")
-            return redirect(url_for("dashboard.render_dashboard"))
-
-    return render_template("portal/tracking/tracking.html")
+    """
+    Renderiza a página de tracking com suporte a filtros via GET parameters.
+    
+    Parâmetros GET suportados:
+    - bottler_equipment_number: Número do equipamento
+    - oem_serial_number: Número de série OEM
+    - outlet: Nome do outlet
+    - sub_trade_channel: Canal de comércio
+    - city: Cidade
+    - state: Estado
+    - country: País
+    - is_online: Status online (true/false)
+    - is_missing: Status perdido (true/false)
+    - subclient: Código do subclient
+    """
+    try:
+        # Capturar parâmetros GET para passar ao template
+        filters = {
+            'bottler_equipment_number': request.args.get('bottler_equipment_number', ''),
+            'oem_serial_number': request.args.get('oem_serial_number', ''),
+            'outlet': request.args.get('outlet', ''),
+            'sub_trade_channel': request.args.get('sub_trade_channel', ''),
+            'city': request.args.get('city', ''),
+            'state': request.args.get('state', ''),
+            'country': request.args.get('country', ''),
+            'is_online': request.args.get('is_online', ''),
+            'is_missing': request.args.get('is_missing', ''),
+            'subclient': request.args.get('subclient', '')
+        }
+        
+        return render_template("portal/tracking/tracking.html", filters=filters)
+    except Exception as e:
+        print(f"[ERROR] Error rendering tracking page: {str(e)}")
+        return redirect(url_for("dashboard.render_dashboard"))
 
 
 @tracking_bp.route("/devices", methods=["GET"])
@@ -155,6 +181,7 @@ def get_assets_optimized():
     - country: País
     - is_online: Status online (true/false)
     - is_missing: Status perdido (true/false)
+    - load_all: Se true, carrega TODOS os assets (sem paginação) para o mapa
     """
     db_session = get_session()
     client_code = session.get("user", {}).get("client")
@@ -174,6 +201,7 @@ def get_assets_optimized():
         country = request.args.get('country', '').strip()
         is_online = request.args.get('is_online', '').strip().lower()
         is_missing = request.args.get('is_missing', '').strip().lower()
+        load_all = request.args.get('load_all', 'false').strip().lower() == 'true'
         
         # Adicionar filtros de string (case-insensitive)
         if bottler_equipment_number:
@@ -218,28 +246,51 @@ def get_assets_optimized():
         # Construir a query WHERE
         where_sql = " AND ".join(where_clauses)
         
-        # 2. Buscar todos os assets da Materialized View com filtros aplicados
-        sql_assets = text(f"SELECT * FROM mv_client_assets_report WHERE {where_sql}")
-        result_assets = db_session.execute(sql_assets, params)
+        # 2. Buscar COUNT total de assets para paginação
+        sql_count = text(f"SELECT COUNT(*) as total FROM mv_client_assets_report WHERE {where_sql}")
+        total_count = db_session.execute(sql_count, params).scalar() or 0
         
-        data = []
-        for row in result_assets:
-            # Converte o objeto Row para um dict
+        # 3. Paginação para a LISTA
+        items_per_page = 50
+        page = request.args.get('page', 1, type=int)
+        list_offset = (page - 1) * items_per_page
+        total_pages = (total_count + items_per_page - 1) // items_per_page
+        
+        # 4. Buscar os assets da página ATUAL para a LISTA (paginado)
+        sql_list = text(f"SELECT * FROM mv_client_assets_report WHERE {where_sql} LIMIT :limit OFFSET :offset")
+        params['limit'] = items_per_page
+        params['offset'] = list_offset
+        result_list = db_session.execute(sql_list, params)
+        
+        list_data = []
+        for row in result_list:
             asset_data = dict(row._mapping)
-            
-            # --- Transformação de Dados Crucial ---
-            # O template JS espera 'latitude', 'longitude' e 'has_location'.
-            # Nossa view tem 'latest_latitude' e 'latest_longitude'.
             lat = asset_data.pop('latest_latitude', None)
             lon = asset_data.pop('latest_longitude', None)
-            
             asset_data['latitude'] = lat
             asset_data['longitude'] = lon
             asset_data['has_location'] = bool(lat and lon)
-            
-            data.append(asset_data)
+            list_data.append(asset_data)
+        
+        # 5. Se load_all=true, buscar TODOS os assets para o MAPA (sem paginação)
+        map_data = []
+        if load_all:
+            sql_map = text(f"SELECT * FROM mv_client_assets_report WHERE {where_sql}")
+            result_map = db_session.execute(sql_map, params)
+            for row in result_map:
+                asset_data = dict(row._mapping)
+                lat = asset_data.pop('latest_latitude', None)
+                lon = asset_data.pop('latest_longitude', None)
+                asset_data['latitude'] = lat
+                asset_data['longitude'] = lon
+                asset_data['has_location'] = bool(lat and lon)
+                map_data.append(asset_data)
+            print(f"[INFO] Carregando TODOS os {len(map_data)} assets para o mapa (load_all=true)")
+        else:
+            # Se load_all=false, usar apenas os da página para o mapa
+            map_data = list_data
 
-        # 3. Buscar subclients distintos para o filtro
+        # 5. Buscar subclients distintos para o filtro
         sql_subclients = text("""
             SELECT subclient_code, subclient_name 
             FROM subclients 
@@ -252,7 +303,7 @@ def get_assets_optimized():
         result_subclients = db_session.execute(sql_subclients, {'client': client_code})
         available_subclients = [dict(row._mapping) for row in result_subclients]
 
-        # 4. Log de filtros aplicados
+        # 6. Log de filtros aplicados
         active_filters = {
             'bottler_equipment_number': bottler_equipment_number,
             'oem_serial_number': oem_serial_number,
@@ -269,13 +320,17 @@ def get_assets_optimized():
         if active_filters:
             print(f"[INFO] Filtros aplicados: {active_filters}")
 
-        # 5. Construir a resposta no formato que o JS espera
+        # 7. Construir a resposta no formato que o JS espera
         return jsonify({
-            "data": data,
+            "data": list_data,  # Lista paginada para exibição na sidebar
+            "map_data": map_data,  # Todos os dados para o mapa (quando load_all=true)
             "pagination": {
-                "page": 1,
-                "pages": 1,
-                "total": len(data)
+                "page": page,
+                "pages": total_pages,
+                "total": total_count,
+                "per_page": items_per_page,
+                "has_prev": page > 1,
+                "has_next": page < total_pages
             },
             "available_subclients": available_subclients,
             "active_filters": active_filters,
@@ -287,4 +342,332 @@ def get_assets_optimized():
         return jsonify({"error": "Erro ao consultar a view materializada", "details": str(e)}), 500
     finally:
         db_session.close()
-    
+
+@tracking_bp.route("/asset_details/<serial_number>", methods=["GET"])
+@require_authentication
+def get_asset_details(serial_number):
+    """
+    Retorna detalhes completos e agregados de um único asset,
+    consumindo múltiplas materialized views e views.
+    """
+    db_session = get_session()
+    client_code = session.get("user", {}).get("client")
+
+    try:
+        # 1. Dados básicos do asset (mv_client_assets_report)
+        basic_sql = text("""
+            SELECT
+                client,
+                bottler_equipment_number,
+                oem_serial_number,
+                outlet,
+                sub_trade_channel,
+                city,
+                state,
+                country,
+                sub_client,
+                smart_device_mac,
+                latest_cabinet_temperature_c,
+                is_online,
+                is_missing,
+                latest_latitude,
+                latest_longitude,
+                door_event_average_morning,
+                door_event_average_afternoon,
+                door_event_average_night
+            FROM mv_client_assets_report
+            WHERE client = :client AND oem_serial_number = :serial
+        """)
+        
+        basic_result = db_session.execute(basic_sql, {"client": client_code, "serial": serial_number}).fetchone()
+        
+        if not basic_result:
+            return jsonify({"error": "Asset não encontrado"}), 404
+
+        # 2. Dados de saúde detalhados (assets_health_latest_event_24h_view)
+        health_sql = text("""
+            SELECT
+                battery,
+                battery_status,
+                temperature_c,
+                evaporator_temperature_c,
+                condensor_temperature_c,
+                ambient_temperature_c,
+                max_cabinet_temperature_c,
+                min_cabinet_temperature_c,
+                avg_power_consumption_watt,
+                total_compressor_on_time_percent,
+                light,
+                light_status,
+                cooler_voltage_v,
+                max_voltage_v,
+                min_voltage_v,
+                interval_min,
+                event_time,
+                asset_type,
+                outlet_type
+            FROM assets_health_latest_event_24h_view
+            WHERE client = :client AND asset_serial_number = :serial
+            ORDER BY event_time DESC
+            LIMIT 1
+        """)
+        
+        health_result = db_session.execute(health_sql, {"client": client_code, "serial": serial_number}).fetchone()
+
+        # 3. Estatísticas do dashboard (mv_dashboard_stats_main)
+        stats_sql = text("""
+            SELECT
+                latest_battery,
+                latest_temperature_c,
+                has_recent_movement_24h
+            FROM mv_dashboard_stats_main
+            WHERE client = :client AND oem_serial_number = :serial
+        """)
+        
+        stats_result = db_session.execute(stats_sql, {"client": client_code, "serial": serial_number}).fetchone()
+
+        # 4. Combinar todos os dados
+        asset_details = dict(basic_result._mapping)
+        
+        # Adicionar dados de saúde se disponíveis
+        if health_result:
+            health_data = dict(health_result._mapping)
+            asset_details.update({
+                'battery_level': health_data.get('battery'),
+                'battery_status': health_data.get('battery_status'),
+                'evaporator_temperature_c': health_data.get('evaporator_temperature_c'),
+                'condensor_temperature_c': health_data.get('condensor_temperature_c'),
+                'ambient_temperature_c': health_data.get('ambient_temperature_c'),
+                'max_cabinet_temperature_c': health_data.get('max_cabinet_temperature_c'),
+                'min_cabinet_temperature_c': health_data.get('min_cabinet_temperature_c'),
+                'avg_power_consumption_watt': health_data.get('avg_power_consumption_watt'),
+                'total_compressor_on_time_percent': health_data.get('total_compressor_on_time_percent'),
+                'light_status': health_data.get('light_status'),
+                'cooler_voltage_v': health_data.get('cooler_voltage_v'),
+                'max_voltage_v': health_data.get('max_voltage_v'),
+                'min_voltage_v': health_data.get('min_voltage_v'),
+                'last_health_event': health_data.get('event_time'),
+                'asset_type': health_data.get('asset_type'),
+                'outlet_type': health_data.get('outlet_type')
+            })
+
+        # Adicionar dados das estatísticas se disponíveis
+        if stats_result:
+            stats_data = dict(stats_result._mapping)
+            asset_details.update({
+                'has_recent_movement_24h': stats_data.get('has_recent_movement_24h'),
+                'latest_battery_from_stats': stats_data.get('latest_battery'),
+                'latest_temperature_from_stats': stats_data.get('latest_temperature_c')
+            })
+
+        # 5. Garantir que nenhum valor None seja enviado
+        for key, value in asset_details.items():
+            if value is None:
+                if any(word in key.lower() for word in ['average', 'level', 'temperature', 'voltage', 'power', 'percent']):
+                    asset_details[key] = 0
+                elif 'time' in key.lower():
+                    asset_details[key] = None  # Manter None para timestamps
+                else:
+                    asset_details[key] = 'N/A'
+
+        return jsonify(asset_details)
+
+    except Exception as e:
+        print(f"[ERROR] Erro em get_asset_details: {str(e)}")
+        return jsonify({"error": "Erro ao buscar detalhes do asset", "details": str(e)}), 500
+    finally:
+        db_session.close()
+
+@tracking_bp.route("/asset-analytics/<serial_number>", methods=["GET"])
+@require_authentication
+def get_asset_analytics(serial_number):
+    """
+    Retorna dados analíticos detalhados do asset similar ao dashboard.
+    Inclui gráficos de temperatura e porta ao longo do dia, estatísticas de consumo, etc.
+    """
+    db_session = get_session()
+    client_code = session.get("user", {}).get("client")
+
+    try:
+        from datetime import datetime, timedelta, timezone
+        
+        # Validações
+        now = datetime.now(timezone.utc)
+        one_day_before = now - timedelta(hours=24)
+        thirty_days_ago = now - timedelta(days=30)
+
+        # Obter definições de alerta para temperatura
+        temp_alert_definition = db_session.query(AlertsDefinition).filter(
+            AlertsDefinition.client == client_code,
+            AlertsDefinition.type == "Temperature Alert"
+        ).first()
+        
+        temp_min = temp_alert_definition.temperature_below if temp_alert_definition and temp_alert_definition.temperature_below is not None else 0
+        temp_max = temp_alert_definition.temperature_above if temp_alert_definition and temp_alert_definition.temperature_above is not None else 7
+
+        # 1. Dados horários de temperatura e porta para o asset específico
+        hourly_sql = text("""
+            SELECT
+                EXTRACT(HOUR FROM he.event_time AT TIME ZONE 'UTC') as hour_value,
+                AVG(CAST(he.temperature_c as FLOAT)) as hourly_avg_temp,
+                COUNT(de.id) as hourly_door_count
+            FROM health_events he
+            LEFT JOIN door de ON he.asset_serial_number = de.asset_serial_number 
+                AND DATE(de.open_event_time) = DATE(he.event_time)
+                AND EXTRACT(HOUR FROM de.open_event_time) = EXTRACT(HOUR FROM he.event_time)
+            WHERE he.client = :client 
+                AND he.asset_serial_number = :serial
+                AND he.event_time >= :one_day_before
+            GROUP BY EXTRACT(HOUR FROM he.event_time AT TIME ZONE 'UTC')
+            ORDER BY hour_value
+        """)
+        
+        hourly_data = db_session.execute(
+            hourly_sql, 
+            {
+                "client": client_code, 
+                "serial": serial_number,
+                "one_day_before": one_day_before
+            }
+        ).fetchall()
+
+        # Processar dados horários
+        hourly_temp = {}
+        hourly_doors = {}
+        def _round_preserve_sign(v, decimals=2, min_display=0.01):
+            if v is None:
+                return 0
+            raw = float(v)
+            rounded = round(raw, decimals)
+            if rounded == 0 and raw < 0:
+                return -min_display
+            return float(rounded)
+        for row in hourly_data:
+            hour = int(row.hour_value) if row.hour_value is not None else 0
+            hourly_temp[hour] = _round_preserve_sign(row.hourly_avg_temp)
+            hourly_doors[hour] = int(row.hourly_door_count if row.hourly_door_count else 0)
+
+        # Preencher horas vazias
+        hourly_labels = [f"{h:02d}:00" for h in range(24)]
+        hourly_temp_data = [hourly_temp.get(h, 0) for h in range(24)]
+        hourly_door_data = [hourly_doors.get(h, 0) for h in range(24)]
+
+        # 2. Estatísticas agregadas últimos 30 dias
+        stats_sql = text("""
+            WITH LatestHealth AS (
+                SELECT battery, temperature_c, avg_power_consumption_watt, total_compressor_on_time_percent,
+                       ROW_NUMBER() OVER (ORDER BY event_time DESC) AS rn
+                FROM health_events
+                WHERE client = :client 
+                    AND asset_serial_number = :serial
+                    AND event_time >= :thirty_days_ago
+            )
+            SELECT
+                AVG(CAST(temperature_c as FLOAT)) as avg_temperature,
+                MAX(CAST(temperature_c as FLOAT)) as max_temperature,
+                MIN(CAST(temperature_c as FLOAT)) as min_temperature,
+                AVG(CAST(battery as FLOAT)) as avg_battery,
+                AVG(CAST(avg_power_consumption_watt as FLOAT)) as avg_power,
+                AVG(CAST(total_compressor_on_time_percent as FLOAT)) as avg_compressor_time
+            FROM LatestHealth
+        """)
+        
+        stats_result = db_session.execute(
+            stats_sql,
+            {
+                "client": client_code,
+                "serial": serial_number,
+                "thirty_days_ago": thirty_days_ago
+            }
+        ).fetchone()
+
+        # 3. Contagem de eventos de porta por período do dia
+        door_period_sql = text("""
+            SELECT
+                CASE 
+                    WHEN EXTRACT(HOUR FROM open_event_time) >= 6 AND EXTRACT(HOUR FROM open_event_time) < 12 THEN 'morning'
+                    WHEN EXTRACT(HOUR FROM open_event_time) >= 12 AND EXTRACT(HOUR FROM open_event_time) < 18 THEN 'afternoon'
+                    ELSE 'night'
+                END as period,
+                COUNT(*) as count
+            FROM door
+            WHERE client = :client 
+                AND asset_serial_number = :serial
+                AND open_event_time >= :thirty_days_ago
+            GROUP BY period
+        """)
+        
+        door_period = db_session.execute(
+            door_period_sql,
+            {
+                "client": client_code,
+                "serial": serial_number,
+                "thirty_days_ago": thirty_days_ago
+            }
+        ).fetchall()
+
+        door_periods = {row.period: row.count for row in door_period}
+
+        # 4. Status de temperatura categorizado
+        temp_status_sql = text("""
+            SELECT
+                CASE 
+                    WHEN CAST(temperature_c as FLOAT) BETWEEN :temp_min AND :temp_max THEN 'ok'
+                    WHEN CAST(temperature_c as FLOAT) > :temp_max THEN 'above'
+                    ELSE 'below'
+                END as status,
+                COUNT(*) as count
+            FROM health_events
+            WHERE client = :client 
+                AND asset_serial_number = :serial
+                AND event_time >= :thirty_days_ago
+            GROUP BY status
+        """)
+        
+        temp_status = db_session.execute(
+            temp_status_sql,
+            {
+                "client": client_code,
+                "serial": serial_number,
+                "thirty_days_ago": thirty_days_ago,
+                "temp_min": temp_min,
+                "temp_max": temp_max
+            }
+        ).fetchall()
+
+        temp_status_counts = {row.status: row.count for row in temp_status}
+
+        return jsonify({
+            "status": "success",
+            "hourly_data": {
+                "labels": hourly_labels,
+                "temperature": hourly_temp_data,
+                "doors": hourly_door_data
+            },
+            "statistics": {
+                "avg_temperature": _round_preserve_sign(stats_result.avg_temperature) if stats_result else 0,
+                "max_temperature": _round_preserve_sign(stats_result.max_temperature) if stats_result else 0,
+                "min_temperature": _round_preserve_sign(stats_result.min_temperature) if stats_result else 0,
+                "avg_battery": round(float(stats_result.avg_battery) if stats_result and stats_result.avg_battery else 0, 2),
+                "avg_power_consumption": round(float(stats_result.avg_power) if stats_result and stats_result.avg_power else 0, 2),
+                "avg_compressor_time": round(float(stats_result.avg_compressor_time) if stats_result and stats_result.avg_compressor_time else 0, 2)
+            },
+            "door_periods": {
+                "morning": door_periods.get('morning', 0),
+                "afternoon": door_periods.get('afternoon', 0),
+                "night": door_periods.get('night', 0)
+            },
+            "temperature_status": {
+                "ok": temp_status_counts.get('ok', 0),
+                "above": temp_status_counts.get('above', 0),
+                "below": temp_status_counts.get('below', 0),
+                "temp_min": temp_min,
+                "temp_max": temp_max
+            }
+        })
+
+    except Exception as e:
+        print(f"[ERROR] Erro em get_asset_analytics: {str(e)}")
+        return jsonify({"error": "Erro ao buscar analytics", "details": str(e)}), 500
+    finally:
+        db_session.close()

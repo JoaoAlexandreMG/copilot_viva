@@ -1,7 +1,7 @@
 {% extends "portal/base.html" %}
 
 {% block title %}Dashboard{% endblock %}
-{% block page_title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard de Monitoramento{% endblock %}
 
 {% block breadcrumb %}
     <i class="fas fa-home"></i>
@@ -9,86 +9,1862 @@
 {% endblock %}
 
 {% block content %}
-<!-- Welcome Section -->
-<div class="card mb-xl">
-    <div class="card-body">
-        <h2 style="font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem;">Bem-vindo ao Portal de Gerenciamento</h2>
-        <p style="color: var(--color-gray-600); margin: 0;">Gerencie todos os recursos da sua organização em um único lugar.</p>
+
+<!-- Timezone Selector -->
+<div class="timezone-selector-container">
+    <label for="timezoneSelect" class="timezone-label">
+        <i class="fas fa-clock"></i> Fuso Horário:
+    </label>
+    <select id="timezoneSelect" class="timezone-select">
+        <option value="America/Sao_Paulo" selected>Brasil (UTC-3)</option>
+        <option value="UTC">UTC (UTC+0)</option>
+        <option value="America/New_York">New York (UTC-5/-4)</option>
+        <option value="Europe/London">London (UTC+0/+1)</option>
+        <option value="Europe/Madrid">Madrid (UTC+1/+2)</option>
+        <option value="Asia/Shanghai">Shanghai (UTC+8)</option>
+        <option value="Asia/Tokyo">Tokyo (UTC+9)</option>
+    </select>
+    <div id="timezoneIndicator" class="timezone-indicator">
+        Exibindo horários em: BRT
     </div>
 </div>
 
-<!-- Dashboard Cards -->
-<div class="dashboard-cards">
-    <!-- Rastreio Card -->
-    <a href="{{url_for('portal_tracking.render_tracking')}}" class="dashboard-card">
-        <div class="dashboard-card-icon info">
-            <i class="fas fa-location-dot"></i>
-        </div>
-        <h3 class="dashboard-card-title">Rastreio</h3>
-        <p class="dashboard-card-subtitle">Mapa de localização de dispositivos</p>
-    </a>
+<!-- Period Toggle Button -->
+<div class="period-selector-container">
+    <div class="period-toggle">
+        <button class="period-btn active" data-period="30">
+            <i class="fas fa-calendar"></i> 30 Dias
+        </button>
+        <button class="period-btn" data-period="7">
+            <i class="fas fa-calendar-week"></i> 7 Dias
+        </button>
+    </div>
+    <div class="period-indicator">
+        <span id="periodLabel">Últimos 30 dias</span>
+        <span id="periodDates" class="period-dates"></span>
+    </div>
+</div>
 
-    <!-- Users Card -->
-    <a href="{{url_for('portal_users.list_and_create_users')}}" class="dashboard-card">
-        <div class="dashboard-card-icon primary">
-            <i class="fas fa-users"></i>
-        </div>
-        <h3 class="dashboard-card-title">Usuários</h3>
-        <p class="dashboard-card-subtitle">Gerencie usuários e permissões</p>
-    </a>
-
-    <!-- Outlets Card -->
-    <a href="{{url_for('portal_outlets.get_outlets')}}" class="dashboard-card">
-        <div class="dashboard-card-icon success">
-            <i class="fas fa-store"></i>
-        </div>
-        <h3 class="dashboard-card-title">Outlets</h3>
-        <p class="dashboard-card-subtitle">Administre pontos de venda</p>
-    </a>
-
-    <!-- Assets Card -->
-    <a href="{{url_for('portal_assets.list_and_create_assets')}}" class="dashboard-card">
-        <div class="dashboard-card-icon warning">
+<!-- Top KPIs Cards (5 colunas) -->
+<div class="kpi-container">
+    <!-- Total Assets Card -->
+    <div class="kpi-card" style="border-top: 4px solid #667eea;">
+        <div class="kpi-icon" style="color: #667eea;">
             <i class="fas fa-boxes"></i>
         </div>
-        <h3 class="dashboard-card-title">Assets</h3>
-        <p class="dashboard-card-subtitle">Controle de ativos e equipamentos</p>
-    </a>
-
-    <!-- Smart Devices Card -->
-    <a href="{{url_for('portal_smartdevices.get_smart_devices')}}" class="dashboard-card">
-        <div class="dashboard-card-icon danger">
-            <i class="fas fa-mobile-alt"></i>
+        <div class="kpi-content">
+            <p class="kpi-label">Total de Ativos</p>
+            <h3 class="kpi-value">{{ stats.total_assets }}</h3>
         </div>
-        <h3 class="dashboard-card-title">Smart Devices</h3>
-        <p class="dashboard-card-subtitle">Dispositivos inteligentes conectados</p>
-    </a>
+    </div>
+
+    <!-- Ativos (24h) Card -->
+    <div class="kpi-card" style="border-top: 4px solid #48bb78;">
+        <div class="kpi-icon" style="color: #48bb78;">
+            <i class="fas fa-heartbeat"></i>
+        </div>
+        <div class="kpi-content">
+            <p class="kpi-label">Ativos (24h)</p>
+            <h3 class="kpi-value">{{ stats.assets_health_last_24h_count }}</h3>
+        </div>
+    </div>
+
+    <!-- Temperatura OK % Card -->
+    <div class="kpi-card" style="border-top: 4px solid #4299e1;">
+        <div class="kpi-icon" style="color: #4299e1;">
+            <i class="fas fa-thermometer-half"></i>
+        </div>
+        <div class="kpi-content">
+            <p class="kpi-label">Temperatura OK</p>
+            <h3 class="kpi-value" id="tempPercentage">0%</h3>
+        </div>
+    </div>
+
+    <!-- Bateria Boa % Card -->
+    <div class="kpi-card" style="border-top: 4px solid #48bb78;">
+        <div class="kpi-icon" style="color: #48bb78;">
+            <i class="fas fa-battery-full"></i>
+        </div>
+        <div class="kpi-content">
+            <p class="kpi-label">Bateria Boa (>50%)</p>
+            <h3 class="kpi-value" id="batteryPercentage">0%</h3>
+        </div>
+    </div>
+
+    <!-- Alertas Card -->
+    <div class="kpi-card" style="border-top: 4px solid #f56565;" data-alerts-card>
+        <div class="kpi-icon" style="color: #f56565;">
+            <i class="fas fa-bell"></i>
+        </div>
+        <div class="kpi-content">
+            <p class="kpi-label">Alertas (período)</p>
+            <h3 class="kpi-value">{{ stats.alerts_period_count }}</h3>
+        </div>
+    </div>
 </div>
 
-<!-- Quick Stats (Optional - can be implemented later with real data) -->
-<div class="card">
+<!-- KPIs de Consumo e Compressor -->
+<div class="kpi-container" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));">
+    <!-- Compressor ON % Card (only render if > 0) -->
+    {% if stats.avg_compressor_on_time and stats.avg_compressor_on_time > 0 %}
+    <div class="kpi-card" style="border-top: 4px solid #38B2AC;" data-compressor-card>
+        <div class="kpi-icon" style="color: #38B2AC;">
+            <i class="fas fa-cogs"></i>
+        </div>
+        <div class="kpi-content">
+            <p class="kpi-label">Compressor ON (Média {{ stats.period_days }}d)</p>
+            <h3 class="kpi-value">{{ stats.avg_compressor_on_time }}%</h3>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Consumo Médio Card (only render if > 0) -->
+    {% if stats.avg_power_consumption and stats.avg_power_consumption > 0 %}
+    <div class="kpi-card" style="border-top: 4px solid #ED8936;" data-consumption-card>
+        <div class="kpi-icon" style="color: #ED8936;">
+            <i class="fas fa-bolt"></i>
+        </div>
+        <div class="kpi-content">
+            <p class="kpi-label">Consumo Médio (Média {{ stats.period_days }}d)</p>
+            <h3 class="kpi-value">{{ stats.avg_power_consumption }} W</h3>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Import Section with Button -->
+<div class="import-section">
+    <div class="import-section-header">
+        <h3 class="import-section-title">
+            <i class="fas fa-upload"></i> Gerenciamento de Dados
+        </h3>
+        <p class="import-section-desc">Importe arquivos de dados para atualizar informações da plataforma</p>
+    </div>
+    <button id="openImportModal" class="btn-import-primary">
+        <i class="fas fa-upload"></i> Importar Arquivo
+    </button>
+</div>
+
+<!-- Import Modal -->
+<div id="importModal" class="import-modal" style="display:none;">
+    <div class="import-modal-overlay"></div>
+    <div class="import-modal-content">
+        <div class="import-modal-header">
+            <h2>Importar Arquivo de Dados</h2>
+            <button id="closeImportX" class="import-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="import-modal-body">
+            <div class="import-file-zone">
+                <div class="import-file-icon">
+                    <i class="fas fa-file-upload"></i>
+                </div>
+                <p class="import-file-title">Selecione um arquivo para importar</p>
+                <p class="import-file-desc">Arquivos suportados: CSV, XLSX</p>
+                <label for="importFileInput" class="import-file-input-label">
+                    <input type="file" id="importFileInput" accept=".csv,.xlsx" class="import-file-input" />
+                    <span class="import-file-input-text">Clique ou arraste um arquivo</span>
+                </label>
+                <p id="importFileName" class="import-file-name" style="display:none;"></p>
+            </div>
+
+            <div id="importFeedback" class="import-feedback" style="display:none;"></div>
+        </div>
+
+        <div class="import-modal-footer">
+            <button id="startImport" class="import-btn-start" disabled>
+                <i class="fas fa-play"></i> Iniciar Importação
+            </button>
+            <button id="closeImport" class="import-btn-cancel">
+                <i class="fas fa-times"></i> Fechar
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Section - 2x2 Grid -->
+<div class="charts-grid">
+    <!-- Temperatura por Hora (30d) - Line Chart -->
+    <div class="chart-card">
+        <div class="chart-header">
+            <h3>🌡️ Temperatura por Hora (30d)</h3>
+        </div>
+        <div class="chart-body">
+            <canvas id="tempLineChart" height="300"></canvas>
+        </div>
+    </div>
+
+    <!-- Aberturas de Porta (30d) - Line Chart -->
+    <div class="chart-card">
+        <div class="chart-header">
+            <h3>🚪 Aberturas de Porta (30d)</h3>
+        </div>
+        <div class="chart-body">
+            <canvas id="doorLineChart" height="300"></canvas>
+        </div>
+    </div>
+
+    <!-- Distribuição de Saúde de Bateria - Pie Chart -->
+    <div class="chart-card">
+        <div class="chart-header">
+            <h3>🔋 Distribuição de Saúde de Bateria</h3>
+        </div>
+        <div class="chart-body">
+            <canvas id="batteryChart" height="300"></canvas>
+        </div>
+    </div>
+
+    <!-- Status de Temperatura das Geladeiras - Pie Chart -->
+    <div class="chart-card">
+        <div class="chart-header">
+            <h3>❄️ Status de Temperatura das Geladeiras</h3>
+        </div>
+        <div class="chart-body">
+            <canvas id="temperatureChart" height="300"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Navigation Cards -->
+<div class="card" style="margin-top: 2rem;">
     <div class="card-header">
-        <h3 class="card-title">Estatísticas Rápidas</h3>
+        <h3 class="card-title">🔗 Acesso Rápido</h3>
     </div>
     <div class="card-body">
-        <div class="dashboard-cards" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
-            <div style="text-align: center; padding: 1rem;">
-            <div style="font-size: 2rem; font-weight: 700; color: var(--color-primary);">{{ stats.total_users }}</div>
-            <div style="font-size: 0.875rem; color: var(--color-gray-600); margin-top: 0.25rem;">Total de Usuários</div>
-            </div>
-            <div style="text-align: center; padding: 1rem;">
-            <div style="font-size: 2rem; font-weight: 700; color: var(--color-success);">{{ stats.active_outlets }}</div>
-            <div style="font-size: 0.875rem; color: var(--color-gray-600); margin-top: 0.25rem;">Outlets Ativos</div>
-            </div>
-            <div style="text-align: center; padding: 1rem;">
-            <div style="font-size: 2rem; font-weight: 700; color: var(--color-warning);">{{ stats.total_assets }}</div>
-            <div style="font-size: 0.875rem; color: var(--color-gray-600); margin-top: 0.25rem;">Assets Registrados</div>
-            </div>
-            <div style="text-align: center; padding: 1rem;">
-            <div style="font-size: 2rem; font-weight: 700; color: var(--color-danger);">{{ stats.online_smartdevices }}</div>
-            <div style="font-size: 0.875rem; color: var(--color-gray-600); margin-top: 0.25rem;">Dispositivos Online</div>
-            </div>
+        <div class="dashboard-cards" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
+            <!-- Users Card -->
+            <a href="{{url_for('portal_users.list_and_create_users')}}" class="dashboard-card">
+                <div class="dashboard-card-icon primary">
+                    <i class="fas fa-users"></i>
+                </div>
+                <h3 class="dashboard-card-title">Usuários</h3>
+                <p class="dashboard-card-subtitle">Gerencie usuários</p>
+            </a>
+
+            <!-- Outlets Card -->
+            <a href="{{url_for('portal_outlets.list_and_create_outlets')}}" class="dashboard-card">
+                <div class="dashboard-card-icon success">
+                    <i class="fas fa-store"></i>
+                </div>
+                <h3 class="dashboard-card-title">Outlets</h3>
+                <p class="dashboard-card-subtitle">Pontos de venda</p>
+            </a>
+
+            <!-- Assets Card -->
+            <a href="{{url_for('portal_assets.list_and_create_assets')}}" class="dashboard-card">
+                <div class="dashboard-card-icon warning">
+                    <i class="fas fa-boxes"></i>
+                </div>
+                <h3 class="dashboard-card-title">Assets</h3>
+                <p class="dashboard-card-subtitle">Controle de ativos</p>
+            </a>
+
+            <!-- Smart Devices Card -->
+            <a href="{{url_for('portal_smartdevices.get_smart_devices')}}" class="dashboard-card">
+                <div class="dashboard-card-icon danger">
+                    <i class="fas fa-mobile-alt"></i>
+                </div>
+                <h3 class="dashboard-card-title">Smart Devices</h3>
+                <p class="dashboard-card-subtitle">Dispositivos conectados</p>
+            </a>
+
+            <!-- Tracking Card -->
+            <a href="{{url_for('portal_tracking.render_tracking')}}" class="dashboard-card">
+                <div class="dashboard-card-icon info">
+                    <i class="fas fa-location-dot"></i>
+                </div>
+                <h3 class="dashboard-card-title">Rastreio</h3>
+                <p class="dashboard-card-subtitle">Localização em mapa</p>
+            </a>
         </div>
     </div>
 </div>
+
+<!-- Chart.js Library -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Import Modal Logic
+const importModal = document.getElementById('importModal');
+const importFileInput = document.getElementById('importFileInput');
+const importFileZone = document.querySelector('.import-file-zone');
+const importFileName = document.getElementById('importFileName');
+const startImportBtn = document.getElementById('startImport');
+const importFeedback = document.getElementById('importFeedback');
+
+// Open modal
+document.getElementById('openImportModal').addEventListener('click', () => {
+    importModal.style.display = 'flex';
+    importFileInput.value = '';
+    importFileName.style.display = 'none';
+    importFeedback.style.display = 'none';
+    startImportBtn.disabled = true;
+});
+
+// Close modal
+function closeImportModal() {
+    importModal.style.display = 'none';
+    importFileInput.value = '';
+    importFileName.style.display = 'none';
+    importFeedback.style.display = 'none';
+    startImportBtn.disabled = true;
+}
+
+document.getElementById('closeImport').addEventListener('click', closeImportModal);
+document.getElementById('closeImportX').addEventListener('click', closeImportModal);
+
+// Click overlay to close
+document.querySelector('.import-modal-overlay').addEventListener('click', closeImportModal);
+
+// File selection handler
+importFileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+        importFileName.textContent = `📄 ${file.name}`;
+        importFileName.style.display = 'block';
+        startImportBtn.disabled = false;
+    } else {
+        importFileName.style.display = 'none';
+        startImportBtn.disabled = true;
+    }
+});
+
+// Drag & drop support
+importFileZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    importFileZone.classList.add('dragover');
+});
+
+importFileZone.addEventListener('dragleave', () => {
+    importFileZone.classList.remove('dragover');
+});
+
+importFileZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    importFileZone.classList.remove('dragover');
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+        importFileInput.files = files;
+        const file = files[0];
+        importFileName.textContent = `📄 ${file.name}`;
+        importFileName.style.display = 'block';
+        startImportBtn.disabled = false;
+    }
+});
+
+// Import handler
+document.getElementById('startImport').addEventListener('click', async () => {
+    const file = importFileInput.files[0];
+    if (!file) {
+        importFeedback.innerHTML = '<div class="import-feedback-error">❌ Selecione um arquivo primeiro.</div>';
+        importFeedback.style.display = 'block';
+        return;
+    }
+
+    startImportBtn.disabled = true;
+    importFeedback.innerHTML = '<div class="import-feedback-loading">⏳ Processando importação...</div>';
+    importFeedback.style.display = 'block';
+
+    const form = new FormData();
+    form.append('file', file);
+
+    try {
+        const resp = await fetch('{{ url_for("dashboard.import_file") }}', {
+            method: 'POST',
+            body: form
+        });
+        const data = await resp.json();
+
+        if (resp.ok && data.status === 'ok') {
+            const { inserted, updated } = data.result || {};
+            const total = (inserted || 0) + (updated || 0);
+            const model = data.model || 'Modelo desconhecido';
+            
+            let htmlContent = '<div class="import-feedback-success">';
+            htmlContent += '<strong>✅ Importação Concluída com Sucesso!</strong><br>';
+            htmlContent += `<div class="import-stats">`;
+            htmlContent += `<p><span class="stat-label">Modelo:</span> <span class="stat-value">${model}</span></p>`;
+            htmlContent += `<p><span class="stat-label">Novos Registros:</span> <span class="stat-value">${inserted || 0}</span></p>`;
+            htmlContent += `<p><span class="stat-label">Registros Atualizados:</span> <span class="stat-value">${updated || 0}</span></p>`;
+            htmlContent += `<p><span class="stat-label">Total Processado:</span> <span class="stat-value">${total}</span></p>`;
+            htmlContent += `</div>`;
+            htmlContent += '</div>';
+            
+            importFeedback.innerHTML = htmlContent;
+            importFeedback.style.display = 'block';
+            startImportBtn.disabled = true;
+
+            // Auto close after 5 seconds
+            setTimeout(() => {
+                closeImportModal();
+            }, 5000);
+        } else {
+            const errorMsg = data.message || 'Erro ao importar arquivo';
+            importFeedback.innerHTML = `<div class="import-feedback-error">❌ Erro: ${errorMsg}</div>`;
+            importFeedback.style.display = 'block';
+            startImportBtn.disabled = false;
+        }
+    } catch (err) {
+        importFeedback.innerHTML = `<div class="import-feedback-error">❌ Erro: ${err.message}</div>`;
+        importFeedback.style.display = 'block';
+        startImportBtn.disabled = false;
+    }
+});
+</script>
+
+<script>
+    // Calculate percentages
+    const totalAssets = {{ stats.total_assets }};
+    const okTemp = {{ stats.ok_temperatures_count }};
+    const totalWithTemperature = {{ stats.total_with_temperature }};
+    const goodBattery = {{ stats.good_battery_assets_count }};
+    const lowBattery = {{ stats.low_battery_assets_count }};
+    const criticalBattery = {{ stats.critical_battery_assets_count }};
+    
+    // Temperature OK % = OK / (OK + Acima + Abaixo)
+    const tempPercentage = totalWithTemperature > 0 ? Math.round((okTemp / totalWithTemperature) * 100) : 0;
+    // Battery Good % = Good / (Good + Low + Critical)
+    const totalWithBattery = goodBattery + lowBattery + criticalBattery;
+    const batteryPercentage = totalWithBattery > 0 ? Math.round((goodBattery / totalWithBattery) * 100) : 0;
+    
+    document.getElementById('tempPercentage').textContent = tempPercentage + '%';
+    document.getElementById('batteryPercentage').textContent = batteryPercentage + '%';
+
+    // Temperature Line Chart
+    const tempLineCtx = document.getElementById('tempLineChart').getContext('2d');
+    const hourlyTempData = {{ stats.hourly_temp_chart.data | tojson }};
+    const numericTemps = hourlyTempData.filter(v => typeof v === 'number' && !isNaN(v));
+    const minTemp = numericTemps.length ? Math.min(...numericTemps) : 0;
+    window.hourlyTempChart = new Chart(tempLineCtx, {
+        type: 'line',
+        data: {
+            labels: {{ stats.hourly_temp_chart.labels | tojson }},
+            datasets: [{
+                label: 'Temperatura Média (°C)',
+                data: hourlyTempData,
+                borderColor: '#667eea',
+                backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4,
+                pointBackgroundColor: '#667eea',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                pointRadius: 5,
+                pointHoverRadius: 7
+            }]
+        },
+            options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    labels: {
+                        font: { size: 13, weight: 'bold' },
+                        color: '#333',
+                        padding: 15
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: minTemp >= 0,
+                    ticks: {
+                        color: '#666',
+                        font: { size: 12 }
+                    },
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    }
+                },
+                x: {
+                    ticks: {
+                        color: '#666',
+                        font: { size: 11 }
+                    },
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    }
+                }
+            }
+        }
+    });
+
+    // Door Openings Line Chart
+    const doorLineCtx = document.getElementById('doorLineChart').getContext('2d');
+    window.hourlyDoorChart = new Chart(doorLineCtx, {
+        type: 'line',
+        data: {
+            labels: {{ stats.hourly_door_chart.labels | tojson }},
+            datasets: [{
+                label: 'Média de Aberturas de Porta',
+                data: {{ stats.hourly_door_chart.data | tojson }},
+                borderColor: '#f6ad55',
+                backgroundColor: 'rgba(246, 173, 85, 0.1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4,
+                pointBackgroundColor: '#f6ad55',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                pointRadius: 5,
+                pointHoverRadius: 7
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    labels: {
+                        font: { size: 13, weight: 'bold' },
+                        color: '#333',
+                        padding: 15
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        color: '#666',
+                        font: { size: 12 }
+                    },
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    }
+                },
+                x: {
+                    ticks: {
+                        color: '#666',
+                        font: { size: 11 }
+                    },
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    }
+                }
+            }
+        }
+    });
+
+    // Battery Status Pie Chart
+    const batteryCtx = document.getElementById('batteryChart').getContext('2d');
+    new Chart(batteryCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Bateria Boa (>50%)', 'Bateria Baixa (25-50%)', 'Bateria Crítica (<25%)'],
+            datasets: [{
+                data: [{{ stats.good_battery_assets_count }}, {{ stats.low_battery_assets_count }}, {{ stats.critical_battery_assets_count }}],
+                backgroundColor: [
+                    '#48bb78', // Boa
+                    '#f6ad55', // Baixa
+                    '#f56565'  // Crítica
+                ],
+                borderColor: '#fff',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 20,
+                        font: { size: 13, weight: 'bold' },
+                        color: '#333'
+                    }
+                }
+            }
+        }
+    });
+
+    // Temperature Status Pie Chart
+    const tempCtx = document.getElementById('temperatureChart').getContext('2d');
+    new Chart(tempCtx, {
+        type: 'doughnut',
+        data: {
+            labels: {{ stats.temperature_status_chart.labels | tojson }},
+            datasets: [{
+                data: {{ stats.temperature_status_chart.data | tojson }},
+                backgroundColor: [
+                    '#48bb78',
+                    '#f56565',
+                    '#667eea'
+                ],
+                borderColor: '#fff',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 20,
+                        font: { size: 13, weight: 'bold' },
+                        color: '#333'
+                    }
+                }
+            }
+        }
+    });
+</script>
+
+<style>
+    /* * ===================================================================
+     * CORREÇÃO DOS KPIS (Cards de Estatística)
+     * Abordagem 'Mobile-first': 1 coluna em telas pequenas.
+     * ===================================================================
+    */
+    .kpi-container {
+        display: grid;
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    /* Layout Padrão para KPI Container (5 colunas em desktop) */
+    @media (min-width: 1200px) {
+        .kpi-container {
+            grid-template-columns: repeat(5, 1fr);
+        }
+    }
+
+    /* Layout para 3 colunas em tablets */
+    @media (min-width: 768px) and (max-width: 1199px) {
+        .kpi-container {
+            grid-template-columns: repeat(3, 1fr);
+        }
+    }
+
+    /* Layout para 1 coluna em mobile */
+    @media (max-width: 767px) {
+        .kpi-container {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* * ===================================================================
+     * IMPORT SECTION - Novo Design Profissional
+     * ===================================================================
+    */
+    .import-section {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 12px;
+        padding: 2rem;
+        margin: 2.5rem 0;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 2rem;
+        flex-wrap: wrap;
+    }
+
+    .import-section-header {
+        flex: 1;
+        min-width: 250px;
+        color: white;
+    }
+
+    .import-section-title {
+        margin: 0 0 0.5rem 0;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: white;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .import-section-desc {
+        margin: 0;
+        font-size: 0.95rem;
+        color: rgba(255, 255, 255, 0.9);
+        line-height: 1.5;
+    }
+
+    .btn-import-primary {
+        background: white;
+        color: #667eea;
+        border: none;
+        padding: 0.875rem 2rem;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        white-space: nowrap;
+    }
+
+    .btn-import-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        background: #f8f9ff;
+    }
+
+    .btn-import-primary:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    }
+
+    @media (max-width: 768px) {
+        .import-section {
+            flex-direction: column;
+            align-items: stretch;
+            text-align: center;
+        }
+
+        .btn-import-primary {
+            justify-content: center;
+            width: 100%;
+        }
+    }
+
+    /* * ===================================================================
+     * IMPORT MODAL - Novo Design Moderno
+     * ===================================================================
+    */
+    .import-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+    }
+
+    .import-modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(4px);
+        z-index: -1;
+    }
+
+    .import-modal-content {
+        background: white;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 600px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        display: flex;
+        flex-direction: column;
+        z-index: 10000;
+        animation: slideUp 0.3s ease;
+    }
+
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .import-modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1.5rem 2rem;
+        border-bottom: 1px solid #e2e8f0;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 12px 12px 0 0;
+    }
+
+    .import-modal-header h2 {
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: white;
+    }
+
+    .import-modal-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        color: white;
+        cursor: pointer;
+        padding: 0;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        transition: all 0.2s ease;
+    }
+
+    .import-modal-close:hover {
+        background: rgba(255, 255, 255, 0.2);
+    }
+
+    .import-modal-body {
+        padding: 2rem;
+        flex: 1;
+        overflow-y: auto;
+    }
+
+    .import-file-zone {
+        border: 2px dashed #667eea;
+        border-radius: 8px;
+        padding: 2.5rem;
+        text-align: center;
+        background: #f8f9ff;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .import-file-zone.dragover {
+        background: #e6ebff;
+        border-color: #764ba2;
+        transform: scale(1.02);
+    }
+
+    .import-file-icon {
+        font-size: 3rem;
+        color: #667eea;
+        margin-bottom: 1rem;
+    }
+
+    .import-file-title {
+        margin: 1rem 0 0.5rem 0;
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .import-file-desc {
+        margin: 0.5rem 0 1.5rem 0;
+        font-size: 0.9rem;
+        color: #666;
+    }
+
+    .import-file-input-label {
+        display: inline-block;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .import-file-input {
+        display: none;
+    }
+
+    .import-file-input-text {
+        display: inline-block;
+        padding: 0.75rem 2rem;
+        background: #667eea;
+        color: white;
+        border-radius: 6px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+
+    .import-file-input-label:hover .import-file-input-text {
+        background: #764ba2;
+        transform: translateY(-2px);
+    }
+
+    .import-file-name {
+        margin: 1.5rem 0 0 0;
+        padding: 0.75rem 1rem;
+        background: #e6ffed;
+        color: #0d6f3d;
+        border-radius: 6px;
+        border-left: 4px solid #48bb78;
+        font-size: 0.95rem;
+        font-weight: 500;
+    }
+
+    /* Feedback Messages */
+    .import-feedback {
+        margin-top: 1.5rem;
+    }
+
+    .import-feedback-loading,
+    .import-feedback-error,
+    .import-feedback-success {
+        padding: 1rem;
+        border-radius: 6px;
+        font-weight: 500;
+        animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+
+    .import-feedback-loading {
+        background: #e6f3ff;
+        color: #0047ab;
+        border-left: 4px solid #4299e1;
+    }
+
+    .import-feedback-error {
+        background: #ffe6e6;
+        color: #c00;
+        border-left: 4px solid #f56565;
+    }
+
+    .import-feedback-success {
+        background: #e6ffed;
+        color: #0d6f3d;
+        border-left: 4px solid #48bb78;
+    }
+
+    .import-feedback-success strong {
+        color: #0d6f3d;
+        font-size: 1.05rem;
+    }
+
+    .import-stats {
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid rgba(13, 111, 61, 0.2);
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+    }
+
+    .import-stats p {
+        margin: 0;
+        font-size: 0.9rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .stat-label {
+        font-weight: 500;
+        color: #333;
+    }
+
+    .stat-value {
+        background: rgba(13, 111, 61, 0.1);
+        padding: 0.25rem 0.75rem;
+        border-radius: 4px;
+        font-weight: 700;
+        color: #0d6f3d;
+        min-width: 60px;
+        text-align: center;
+    }
+
+    .import-modal-footer {
+        padding: 1.5rem 2rem;
+        border-top: 1px solid #e2e8f0;
+        display: flex;
+        gap: 1rem;
+        justify-content: flex-end;
+        background: #f8f9fa;
+        border-radius: 0 0 12px 12px;
+    }
+
+    .import-btn-start,
+    .import-btn-cancel {
+        padding: 0.75rem 1.75rem;
+        border: none;
+        border-radius: 6px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .import-btn-start {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+    }
+
+    .import-btn-start:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .import-btn-start:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .import-btn-cancel {
+        background: #e2e8f0;
+        color: #333;
+    }
+
+    .import-btn-cancel:hover {
+        background: #cbd5e0;
+    }
+
+    @media (max-width: 600px) {
+        .import-modal-content {
+            width: 95%;
+            max-width: 100%;
+        }
+
+        .import-modal-header {
+            padding: 1.25rem 1.5rem;
+        }
+
+        .import-modal-header h2 {
+            font-size: 1.25rem;
+        }
+
+        .import-modal-body {
+            padding: 1.5rem;
+        }
+
+        .import-file-zone {
+            padding: 2rem;
+        }
+
+        .import-file-icon {
+            font-size: 2.5rem;
+        }
+
+        .import-modal-footer {
+            padding: 1.25rem 1.5rem;
+            flex-direction: column-reverse;
+        }
+
+        .import-btn-start,
+        .import-btn-cancel {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .import-stats {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* * ===================================================================
+     * CORREÇÃO DOS GRÁFICOS (Charts Grid)
+     * 1 coluna em telas pequenas (celular).
+     * ===================================================================
+    */
+    .charts-grid {
+        display: grid;
+        grid-template-columns: 1fr; /* 1 coluna em mobile (padrão) */
+        gap: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    /* 2 colunas para tablets e desktops */
+    @media (min-width: 768px) {
+        .charts-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    /* * ===================================================================
+     * Estilos dos Cards de KPI (Seu código original, mantido)
+     * ===================================================================
+    */
+    .kpi-card {
+        background: white;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        padding: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+    }
+
+    .kpi-card:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        transform: translateY(-2px);
+    }
+
+    .kpi-icon {
+        font-size: 2.5rem;
+        opacity: 0.8;
+    }
+
+    .kpi-content {
+        flex: 1;
+    }
+
+    .kpi-label {
+        margin: 0;
+        font-size: 0.9rem;
+        color: #666;
+        font-weight: 500;
+    }
+
+    .kpi-value {
+        margin: 0.5rem 0 0 0;
+        font-size: 2rem;
+        font-weight: 700;
+        color: #333;
+    }
+
+    /* * ===================================================================
+     * Estilos dos Cards de Gráficos (Seu código original, mantido)
+     * ===================================================================
+    */
+    .chart-card {
+        background: white;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+    }
+
+    .chart-header {
+        padding: 1.5rem;
+        border-bottom: 1px solid #e2e8f0;
+        background: #f8f9fa;
+    }
+
+    .chart-header h3 {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .chart-body {
+        padding: 1.5rem;
+        position: relative;
+        height: 350px;
+    }
+
+    /* * ===================================================================
+     * Estilos dos Cards de Acesso Rápido (Seu código original, mantido)
+     * ===================================================================
+    */
+    .card {
+        background: white;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .card-header {
+        padding: 1.5rem;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .card-title {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .card-body {
+        padding: 1.5rem;
+    }
+
+    .dashboard-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .dashboard-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem;
+        text-decoration: none;
+        color: inherit;
+        transition: all 0.3s ease;
+        background: white;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+    }
+
+    .dashboard-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .dashboard-card-icon {
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
+        padding: 1rem;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .dashboard-card-icon.primary {
+        background: rgba(102, 126, 234, 0.1);
+        color: #667eea;
+    }
+
+    .dashboard-card-icon.success {
+        background: rgba(72, 187, 120, 0.1);
+        color: #48bb78;
+    }
+
+    .dashboard-card-icon.warning {
+        background: rgba(246, 173, 85, 0.1);
+        color: #f6ad55;
+    }
+
+    .dashboard-card-icon.danger {
+        background: rgba(245, 101, 101, 0.1);
+        color: #f56565;
+    }
+
+    .dashboard-card-icon.info {
+        background: rgba(66, 153, 225, 0.1);
+        color: #4299e1;
+    }
+
+    .dashboard-card-title {
+        margin: 0 0 0.25rem 0;
+        font-size: 1rem;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .dashboard-card-subtitle {
+        margin: 0;
+        font-size: 0.85rem;
+        color: #999;
+    }
+
+    /* Timezone Selector Styles */
+    .timezone-selector-container {
+        background: #fff;
+        padding: 15px 20px;
+        margin-bottom: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .timezone-label {
+        font-weight: 600;
+        color: #374151;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0;
+    }
+    
+    .timezone-select {
+        padding: 8px 12px;
+        border: 2px solid #e5e7eb;
+        border-radius: 6px;
+        font-size: 14px;
+        background: #fff;
+        color: #374151;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        min-width: 200px;
+    }
+    
+    .timezone-select:hover {
+        border-color: #667eea;
+    }
+    
+    .timezone-select:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    
+    .timezone-indicator {
+        background: #f3f4f6;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        color: #6b7280;
+        font-weight: 500;
+        border: 1px solid #e5e7eb;
+    }
+    
+    .timezone-updated {
+        animation: highlight 0.5s ease;
+    }
+    
+    @keyframes highlight {
+        0% { background-color: #fef3c7; }
+        100% { background-color: transparent; }
+    }
+
+    /* Period Selector Styles */
+    .period-selector-container {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 15px 20px;
+        margin-bottom: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+
+    .period-toggle {
+        display: flex;
+        gap: 8px;
+        background: rgba(255, 255, 255, 0.1);
+        padding: 4px;
+        border-radius: 6px;
+        backdrop-filter: blur(10px);
+    }
+
+    .period-btn {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 4px;
+        background: transparent;
+        color: white;
+        font-weight: 600;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
+    }
+
+    .period-btn:hover {
+        background: rgba(255, 255, 255, 0.2);
+        transform: translateY(-1px);
+    }
+
+    .period-btn.active {
+        background: white;
+        color: #667eea;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .period-btn.active:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    }
+
+    .period-indicator {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: white;
+        font-weight: 500;
+    }
+
+    #periodLabel {
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    .period-dates {
+        font-size: 12px;
+        opacity: 0.9;
+    }
+
+    @media (max-width: 768px) {
+        .period-selector-container {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .period-toggle {
+            width: 100%;
+            justify-content: space-between;
+        }
+
+        .period-btn {
+            flex: 1;
+            justify-content: center;
+        }
+
+        .period-indicator {
+            justify-content: center;
+        }
+    }
+
+    /* Loading Overlay Styles */
+    .loading-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 100;
+        border-radius: 8px;
+        backdrop-filter: blur(2px);
+    }
+
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #667eea;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
+
+<script>
+// ============================================================================
+// 📊 SISTEMA DE SELEÇÃO DE PERÍODO (7 dias vs 30 dias)
+// ============================================================================
+
+class PeriodSelector {
+    constructor() {
+        this.currentPeriod = 30;
+        this.periodButtons = document.querySelectorAll('.period-btn');
+        this.periodLabel = document.getElementById('periodLabel');
+        this.periodDates = document.getElementById('periodDates');
+        
+        this.init();
+    }
+    
+    init() {
+        this.periodButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                this.changePeriod(parseInt(e.target.closest('.period-btn').dataset.period));
+            });
+        });
+        
+        // Update period indicator
+        this.updatePeriodIndicator();
+    }
+    
+    changePeriod(days) {
+        
+        this.currentPeriod = days;
+        
+        // Update button states
+        this.periodButtons.forEach(btn => {
+            if (parseInt(btn.dataset.period) === days) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+        
+        // Update indicator
+        this.updatePeriodIndicator();
+        
+        // Fetch new stats
+        this.loadNewStats();
+        
+        // Show loading animation
+        this.showLoadingState();
+    }
+    
+    updatePeriodIndicator() {
+        const now = new Date();
+        const startDate = new Date(now);
+        startDate.setDate(startDate.getDate() - this.currentPeriod);
+        
+        if (this.currentPeriod === 7) {
+            this.periodLabel.textContent = 'Últimos 7 dias';
+        } else {
+            this.periodLabel.textContent = 'Últimos 30 dias';
+        }
+        
+        // Format date range
+        const formatter = new Intl.DateTimeFormat('pt-BR', {
+            month: 'short',
+            day: '2-digit'
+        });
+        
+        this.periodDates.textContent = `(${formatter.format(startDate)} - ${formatter.format(now)})`;
+    }
+    
+    loadNewStats() {
+        fetch(`{{ url_for('dashboard.get_dashboard_stats') }}?period=${this.currentPeriod}`)
+            .then(response => {
+                if (!response.ok) throw new Error('Network response was not ok');
+                return response.json();
+            })
+            .then(data => {
+                if (data.status === 'ok') {
+                    this.updateDashboard(data.data);
+                    this.hideLoadingState();
+                } else {
+                    console.error('Erro ao carregar dados:', data.message);
+                    this.hideLoadingState();
+                }
+            })
+            .catch(error => {
+                console.error('Erro na requisição:', error);
+                this.hideLoadingState();
+            });
+    }
+    
+    updateDashboard(stats) {
+        
+        // Update KPI values
+        const alertsCard = document.querySelector('[data-alerts-card]');
+        if (alertsCard) {
+            const alertValue = alertsCard.querySelector('.kpi-value');
+            if (alertValue) {
+                alertValue.textContent = stats.alerts_period_count;
+            }
+        }
+        
+        // Update Compressor Card
+        const compressorCard = document.querySelector('[data-compressor-card]');
+        if (compressorCard) {
+            const label = compressorCard.querySelector('.kpi-label');
+            const value = compressorCard.querySelector('.kpi-value');
+            if (label) {
+                label.textContent = `Compressor ON (Média ${stats.period_days}d)`;
+            }
+            if (value) {
+                value.textContent = stats.avg_compressor_on_time + '%';
+            }
+        }
+        
+        // Update Consumption Card
+        const consumptionCard = document.querySelector('[data-consumption-card]');
+        if (consumptionCard) {
+            const label = consumptionCard.querySelector('.kpi-label');
+            const value = consumptionCard.querySelector('.kpi-value');
+            if (label) {
+                label.textContent = `Consumo Médio (Média ${stats.period_days}d)`;
+            }
+            if (value) {
+                value.textContent = stats.avg_power_consumption + ' W';
+            }
+        }
+        
+        // Update Temperature Line Chart
+        if (window.hourlyTempChart && stats.hourly_temp_chart) {
+            window.hourlyTempChart.data.datasets[0].data = stats.hourly_temp_chart.data;
+            window.hourlyTempChart.data.labels = stats.hourly_temp_chart.labels;
+            window.hourlyTempChart.update('none'); // Update without animation
+            
+            // Update chart title to reflect period
+            const tempChartHeader = document.querySelector('.chart-card:nth-child(1) .chart-header h3');
+            if (tempChartHeader) {
+                tempChartHeader.textContent = `🌡️ Temperatura por Hora (${stats.period_days}d)`;
+            }
+        }
+        
+        // Update Door Openings Line Chart
+        if (window.hourlyDoorChart && stats.hourly_door_chart) {
+            window.hourlyDoorChart.data.datasets[0].data = stats.hourly_door_chart.data;
+            window.hourlyDoorChart.data.labels = stats.hourly_door_chart.labels;
+            window.hourlyDoorChart.update('none');
+            
+            // Update chart title
+            const doorChartHeader = document.querySelector('.chart-card:nth-child(2) .chart-header h3');
+            if (doorChartHeader) {
+                doorChartHeader.textContent = `🚪 Aberturas de Porta (${stats.period_days}d)`;
+            }
+        }
+        
+        // Update battery status chart if exists
+        if (window.batteryChart && stats) {
+            const batteryData = [
+                stats.good_battery_assets_count,
+                stats.low_battery_assets_count,
+                stats.critical_battery_assets_count
+            ];
+            window.batteryChart.data.datasets[0].data = batteryData;
+            window.batteryChart.update('none');
+        }
+        
+        // Update temperature status chart if exists
+        if (window.temperatureChart && stats) {
+            const tempData = stats.temperature_status_chart.data;
+            window.temperatureChart.data.datasets[0].data = tempData;
+            window.temperatureChart.update('none');
+        }
+        
+        // Recalculate percentages
+        this.updatePercentages(stats);
+    }
+    
+    updatePercentages(stats) {
+        // Temperature OK %
+        const totalWithTemperature = stats.total_with_temperature;
+        const tempPercentage = totalWithTemperature > 0 ? Math.round((stats.ok_temperatures_count / totalWithTemperature) * 100) : 0;
+        const tempPercentageEl = document.getElementById('tempPercentage');
+        if (tempPercentageEl) {
+            tempPercentageEl.textContent = tempPercentage + '%';
+        }
+        
+        // Battery Good %
+        const totalWithBattery = stats.good_battery_assets_count + stats.low_battery_assets_count + stats.critical_battery_assets_count;
+        const batteryPercentage = totalWithBattery > 0 ? Math.round((stats.good_battery_assets_count / totalWithBattery) * 100) : 0;
+        const batteryPercentageEl = document.getElementById('batteryPercentage');
+        if (batteryPercentageEl) {
+            batteryPercentageEl.textContent = batteryPercentage + '%';
+        }
+    }
+    
+    showLoadingState() {
+        // Add fade effect to charts
+        const charts = document.querySelectorAll('.chart-card');
+        charts.forEach(chart => {
+            chart.style.opacity = '0.6';
+            chart.style.pointerEvents = 'none';
+            chart.style.transition = 'opacity 0.3s ease';
+        });
+        
+        // Add loading indicator
+        const chartsGrid = document.querySelector('.charts-grid');
+        if (chartsGrid && !chartsGrid.querySelector('.loading-overlay')) {
+            const overlay = document.createElement('div');
+            overlay.className = 'loading-overlay';
+            overlay.innerHTML = '<div class="spinner"></div>';
+            chartsGrid.style.position = 'relative';
+            chartsGrid.appendChild(overlay);
+        }
+    }
+    
+    hideLoadingState() {
+        // Remove fade effect
+        const charts = document.querySelectorAll('.chart-card');
+        charts.forEach(chart => {
+            chart.style.opacity = '1';
+            chart.style.pointerEvents = 'auto';
+        });
+        
+        // Remove loading indicator
+        const overlay = document.querySelector('.loading-overlay');
+        if (overlay) {
+            overlay.remove();
+        }
+    }
+}
+
+// ============================================================================
+// 🕐 SISTEMA DE CONVERSÃO DE TIMEZONE
+// ============================================================================
+
+class TimezoneConverter {
+    constructor() {
+        this.currentTimezone = 'America/Sao_Paulo';
+        this.originalData = {}; // Store original UTC data
+        this.init();
+    }
+    
+    init() {
+        // Store original UTC data from backend
+        this.storeOriginalData();
+        
+        // Setup timezone selector
+        const selector = document.getElementById('timezoneSelect');
+        if (selector) {
+            selector.addEventListener('change', (e) => {
+                this.changeTimezone(e.target.value);
+            });
+        }
+        
+        // Initial conversion to default timezone
+        this.changeTimezone(this.currentTimezone);
+    }
+    
+    storeOriginalData() {
+        // Store original data for timezone conversion
+        this.originalData = {
+            hourly_temp_chart: {{ stats.hourly_temp_chart | tojson }},
+            hourly_door_chart: {{ stats.hourly_door_chart | tojson }}
+        };
+    }
+    
+    changeTimezone(timezone) {
+        this.currentTimezone = timezone;
+        
+        // Redistribute chart data based on new timezone
+        this.redistributeChartData();
+        
+        // Update any displayed timestamps
+        this.updateDisplayedTimestamps();
+        
+        // Refresh charts
+        this.refreshCharts();
+        
+        // Visual feedback
+        this.showTimezoneChangeAnimation();
+    }
+    
+    redistributeChartData() {
+        if (!this.originalData || !this.originalData.hourly_temp_chart || !this.originalData.hourly_temp_chart.raw_data) {
+            console.log('No raw data available for timezone conversion');
+            return;
+        }
+        
+        
+        // Calculate timezone offset
+        const now = new Date();
+        const utc1 = new Date(now.toLocaleString("en-US", {timeZone: "UTC"}));
+        const utc2 = new Date(now.toLocaleString("en-US", {timeZone: this.currentTimezone}));
+        const timezoneOffsetHours = Math.round((utc2.getTime() - utc1.getTime()) / (1000 * 60 * 60));
+        
+        
+        // Initialize new data arrays
+        const newTempData = new Array(24).fill(0);
+        const newDoorData = new Array(24).fill(0);
+        
+        // Redistribute data based on timezone offset
+        this.originalData.hourly_temp_chart.raw_data.forEach(item => {
+            const utcHour = item.hour;
+            let localHour = (utcHour + timezoneOffsetHours) % 24;
+            if (localHour < 0) localHour += 24;
+            
+            // Set values (not accumulate, since each UTC hour maps to one local hour)
+            newTempData[localHour] = item.temp || 0;
+            newDoorData[localHour] = item.door || 0;
+        });
+        
+        
+        // Update chart data
+        if (window.hourlyTempChart && window.hourlyTempChart.data) {
+            window.hourlyTempChart.data.datasets[0].data = newTempData;
+            window.hourlyTempChart.update();
+        }
+        if (window.hourlyDoorChart && window.hourlyDoorChart.data) {
+            window.hourlyDoorChart.data.datasets[0].data = newDoorData;
+            window.hourlyDoorChart.update();
+        }
+    }
+    
+    updateDisplayedTimestamps() {
+        // Find and update any displayed timestamps in the DOM
+        const timestampElements = document.querySelectorAll('[data-timestamp]');
+        
+        timestampElements.forEach(element => {
+            const utcTimestamp = element.getAttribute('data-timestamp');
+            try {
+                const utcDate = new Date(utcTimestamp);
+                const localizedTime = utcDate.toLocaleString('pt-BR', {
+                    timeZone: this.currentTimezone,
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                element.textContent = localizedTime;
+            } catch (e) {
+                console.warn('Error converting timestamp:', utcTimestamp, e);
+            }
+        });
+    }
+    
+    refreshCharts() {
+        // Update existing charts
+        if (window.hourlyTempChart) {
+            window.hourlyTempChart.update();
+        }
+        if (window.hourlyDoorChart) {
+            window.hourlyDoorChart.update();
+        }
+    }
+    
+    showTimezoneChangeAnimation() {
+        // Add visual feedback for timezone change
+        const kpiCards = document.querySelectorAll('.kpi-card');
+        kpiCards.forEach(card => {
+            card.classList.add('timezone-updated');
+            setTimeout(() => card.classList.remove('timezone-updated'), 500);
+        });
+        
+        // Update timezone indicator
+        const indicator = document.getElementById('timezoneIndicator');
+        if (indicator) {
+            const info = this.getCurrentTimezoneInfo();
+            indicator.textContent = `Exibindo horários em: ${info.abbreviation}`;
+            indicator.classList.add('timezone-updated');
+            setTimeout(() => indicator.classList.remove('timezone-updated'), 500);
+        }
+    }
+    
+    // Utility method to format time for a specific timezone
+    formatTimeForTimezone(utcDateString) {
+        try {
+            const utcDate = new Date(utcDateString);
+            return utcDate.toLocaleString('pt-BR', {
+                timeZone: this.currentTimezone,
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } catch (e) {
+            return utcDateString;
+        }
+    }
+    
+    // Get current timezone info for display
+    getCurrentTimezoneInfo() {
+        const now = new Date();
+        const formatter = new Intl.DateTimeFormat('pt-BR', {
+            timeZone: this.currentTimezone,
+            timeZoneName: 'short'
+        });
+        
+        const parts = formatter.formatToParts(now);
+        const timeZoneName = parts.find(part => part.type === 'timeZoneName')?.value || this.currentTimezone;
+        
+        return {
+            name: this.currentTimezone,
+            abbreviation: timeZoneName,
+            offset: now.toLocaleString('en-US', {
+                timeZone: this.currentTimezone,
+                timeZoneName: 'short'
+            }).split(' ').pop()
+        };
+    }
+}
+
+// Initialize timezone converter when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    window.timezoneConverter = new TimezoneConverter();
+    
+    // Initialize period selector
+    new PeriodSelector();
+});
+
+</script>
+
 {% endblock %}

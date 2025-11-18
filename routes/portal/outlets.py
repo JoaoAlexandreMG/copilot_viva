@@ -52,15 +52,6 @@ outlets_bp = Blueprint("portal_outlets", __name__, url_prefix="/portal_associaca
 
 @outlets_bp.route("/", methods=["GET"])
 @require_authentication
-def get_outlets():
-    """
-    List all outlets (alias for list_and_create_outlets)
-    """
-    return list_and_create_outlets()
-
-
-@outlets_bp.route("", methods=["GET"])
-@require_authentication
 def list_and_create_outlets():
     """
     List all outlets with pagination (filtered by user client)
@@ -104,7 +95,7 @@ def list_and_create_outlets():
         return redirect(url_for("dashboard.render_dashboard"))
 
 
-@outlets_bp.route("", methods=["POST"])
+@outlets_bp.route("/", methods=["POST"])
 @require_authentication
 def create_outlet():
     """
@@ -120,10 +111,22 @@ def create_outlet():
                 return default
             return str(value).lower() in {"1", "true", "on", "yes"}
 
+        # Validate code is provided
+        outlet_code = request.form.get("code", "").strip()
+        if not outlet_code:
+            flash("O campo 'code' é obrigatório.", "error")
+            return redirect(url_for("portal_outlets.list_and_create_outlets"))
+
+        # Check if code is unique
+        existing_outlet = db_session.query(Outlet).filter(Outlet.code == outlet_code).first()
+        if existing_outlet:
+            flash(f"Já existe um outlet com o código '{outlet_code}'.", "error")
+            return redirect(url_for("portal_outlets.list_and_create_outlets"))
+
         # Create new outlet
         new_outlet = Outlet(
             name=request.form.get("name", ""),
-            code=request.form.get("code", ""),
+            code=outlet_code,
             outlet_type=request.form.get("outlet_type"),
             country=request.form.get("country"),
             state=request.form.get("state"),
@@ -266,7 +269,6 @@ def delete_outlet(outlet_code):
     Delete outlet by code
     """
     try:
-        user = session.get("user")
         db_session = get_session()
         outlet = db_session.query(Outlet).filter(Outlet.code == outlet_code).first()
 

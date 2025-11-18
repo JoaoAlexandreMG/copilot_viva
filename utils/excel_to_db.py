@@ -6,7 +6,16 @@ from models.models import User, Outlet, Asset, SmartDevice, Movement, HealthEven
 from datetime import datetime
 from pytz import timezone
 import pandas as pd
+import numpy as np
 import time
+
+# Função helper para converter NaT para None
+def convert_nat_to_none(df):
+    """Converte pd.NaT para None em todas as colunas do DataFrame"""
+    df = df.copy()
+    # Usar replace do pandas para substituir NaT/NaN por None
+    df = df.replace({pd.NaT: None, np.nan: None})
+    return df
 
 # Mapeamento entre os cabeçalhos do Excel e os atributos do modelo User
 USER_COLUMN_MAPPING = {
@@ -589,6 +598,7 @@ def parse_datetime(value, verbose=False):
                     "BRST": "America/Sao_Paulo",      # Brasília Summer Time
                     "BRT": "America/Sao_Paulo",       # Brasília Time  
                     "ESAST": "Africa/Johannesburg",   # East South Africa Standard Time
+                    "SAST": "Africa/Johannesburg",    # South Africa Standard Time
                     "EST": "America/New_York",        # Eastern Standard Time
                     "EDT": "America/New_York",        # Eastern Daylight Time
                     "PST": "America/Los_Angeles",     # Pacific Standard Time
@@ -602,9 +612,15 @@ def parse_datetime(value, verbose=False):
             
             # Tentar múltiplos formatos de data
             formats = [
+                "%d/%m/%Y %H:%M:%S.%f",  # DD/MM/YYYY HH:MM:SS.sss
                 "%d/%m/%Y %H:%M:%S",  # DD/MM/YYYY HH:MM:SS (padrão brasileiro)
+                "%d/%m/%Y %H:%M:%S%z",
+                "%m/%d/%Y %H:%M:%S.%f",  # MM/DD/YYYY HH:MM:SS.sss (padrão americano)
                 "%m/%d/%Y %H:%M:%S",  # MM/DD/YYYY HH:MM:SS (padrão americano)
+                "%m/%d/%Y %H:%M:%S%z",
+                "%Y-%m-%d %H:%M:%S.%f",  # YYYY-MM-DD HH:MM:SS.sss (ISO)
                 "%Y-%m-%d %H:%M:%S",  # YYYY-MM-DD HH:MM:SS (ISO)
+                "%Y-%m-%d %H:%M:%S%z",
                 "%d/%m/%Y",           # DD/MM/YYYY (apenas data)
                 "%m/%d/%Y",           # MM/DD/YYYY (apenas data)
                 "%Y-%m-%d",           # YYYY-MM-DD (apenas data)
@@ -613,20 +629,29 @@ def parse_datetime(value, verbose=False):
             for fmt in formats:
                 try:
                     dt = datetime.strptime(dt_str, fmt)
+                    if verbose:
+                        print(f"✅ Data convertida: '{value}' -> {dt} usando formato {fmt}")
                     break
-                except ValueError:
+                except ValueError as format_error:
                     continue
             
             if dt is None:
                 if verbose:
-                    print(f"⚠️  Não foi possível converter a data: {value}")
+                    print(f"⚠️  Não foi possível converter a data: {value} | String processada: '{dt_str}'")
                 return None
             
             # Adicionar o fuso horário apropriado
+            # Se o dt já possui tzinfo, retorná-lo diretamente
+            if dt.tzinfo is not None:
+                return dt
+
             tz_name = detected_tz if detected_tz else "America/Sao_Paulo"
             try:
                 tz = timezone(tz_name)
-                return tz.localize(dt)
+                localized_dt = tz.localize(dt)
+                if verbose and detected_tz:
+                    print(f"✅ Fuso horário aplicado: {tz_name}")
+                return localized_dt
             except Exception as tz_error:
                 if verbose:
                     print(f"⚠️  Erro no fuso horário {tz_name}: {tz_error}. Usando América/São_Paulo")
@@ -645,8 +670,8 @@ def insert_or_update_users_from_excel(session, excel_file_path):
     start_time = time.time()
     print(f"🚀 PANDAS ULTRA (Users): {excel_file_path}")
     
-    # 1. Ler Excel
-    df = pd.read_excel(excel_file_path, engine='openpyxl')
+    # 1. Ler Excel - PRESERVAR NULL
+    df = pd.read_excel(excel_file_path, engine='openpyxl', keep_default_na=True, na_values=['', 'nan', 'NaN', 'N/A'])
     print(f"📁 Lido: {len(df)} registros em {time.time() - start_time:.2f}s")
     
     # 2. Renomear colunas conforme mapeamento
@@ -670,7 +695,11 @@ def insert_or_update_users_from_excel(session, excel_file_path):
     if 'is_active' in df.columns:
         df['is_active'] = df['is_active'].apply(lambda x: True if str(x).strip().lower() == 'yes' else False if pd.notna(x) else None)
     
-    df = df.where(pd.notnull(df), None)
+    # 6. PRESERVAR NULL - Não usar df.where() que pode converter NULL para 0 em colunas numéricas
+    for col in df.columns:
+        if df[col].dtype == 'object':
+            df[col] = df[col].apply(lambda x: None if pd.isna(x) or (isinstance(x, str) and x.strip() == '') else x)
+    
     print(f"🧹 Processado: {len(df)} registros")
     
     # 6. SÓ NOVOS (insert rápido)
@@ -678,6 +707,7 @@ def insert_or_update_users_from_excel(session, excel_file_path):
     df_insert = df[~df['upn'].isin(existing_upns)]
     
     if len(df_insert) > 0:
+        df_insert = convert_nat_to_none(df_insert)
         session.bulk_insert_mappings(User, df_insert.to_dict('records'))
         session.commit()
         print(f"📥 Inseridos: {len(df_insert)} registros")
@@ -694,8 +724,8 @@ def insert_or_update_outlets_from_excel(session, excel_file_path):
     start_time = time.time()
     print(f"🚀 PANDAS ULTRA (Outlets): {excel_file_path}")
     
-    # 1. Ler Excel
-    df = pd.read_excel(excel_file_path, engine='openpyxl')
+    # 1. Ler Excel - PRESERVAR NULL
+    df = pd.read_excel(excel_file_path, engine='openpyxl', keep_default_na=True, na_values=['', 'nan', 'NaN', 'N/A'])
     print(f"📁 Lido: {len(df)} registros em {time.time() - start_time:.2f}s")
     
     # 2. Renomear colunas conforme mapeamento
@@ -720,7 +750,11 @@ def insert_or_update_outlets_from_excel(session, excel_file_path):
         if col in df.columns:
             df[col] = df[col].apply(lambda x: True if str(x).strip().lower() == 'yes' else False if pd.notna(x) else None)
     
-    df = df.where(pd.notnull(df), None)
+    # 6. PRESERVAR NULL - Não usar df.where() que pode converter NULL para 0 em colunas numéricas
+    for col in df.columns:
+        if df[col].dtype == 'object':
+            df[col] = df[col].apply(lambda x: None if pd.isna(x) or (isinstance(x, str) and x.strip() == '') else x)
+    
     print(f"🧹 Processado: {len(df)} registros")
     
     # 6. SÓ NOVOS (insert rápido)
@@ -728,6 +762,7 @@ def insert_or_update_outlets_from_excel(session, excel_file_path):
     df_insert = df[~df['code'].isin(existing_codes)]
     
     if len(df_insert) > 0:
+        df_insert = convert_nat_to_none(df_insert)
         session.bulk_insert_mappings(Outlet, df_insert.to_dict('records'))
         session.commit()
         print(f"📥 Inseridos: {len(df_insert)} registros")
@@ -744,8 +779,8 @@ def insert_or_update_assets_from_excel(session, excel_file_path):
     start_time = time.time()
     print(f"🚀 PANDAS ULTRA (Assets): {excel_file_path}")
     
-    # 1. Ler Excel
-    df = pd.read_excel(excel_file_path, engine='openpyxl')
+    # 1. Ler Excel - PRESERVAR NULL
+    df = pd.read_excel(excel_file_path, engine='openpyxl', keep_default_na=True, na_values=['', 'nan', 'NaN', 'N/A'])
     print(f"📁 Lido: {len(df)} registros em {time.time() - start_time:.2f}s")
     
     # 2. Renomear colunas conforme mapeamento
@@ -777,7 +812,11 @@ def insert_or_update_assets_from_excel(session, excel_file_path):
         if col in df.columns:
             df[col] = df[col].apply(lambda x: True if str(x).strip().lower() == 'yes' else False if pd.notna(x) else None)
     
-    df = df.where(pd.notnull(df), None)
+    # 6. PRESERVAR NULL - Não usar df.where() que pode converter NULL para 0 em colunas numéricas
+    for col in df.columns:
+        if df[col].dtype == 'object':
+            df[col] = df[col].apply(lambda x: None if pd.isna(x) or (isinstance(x, str) and x.strip() == '') else x)
+    
     print(f"🧹 Processado: {len(df)} registros")
     
     # 6. SÓ NOVOS (insert rápido)
@@ -785,6 +824,7 @@ def insert_or_update_assets_from_excel(session, excel_file_path):
     df_insert = df[~df['oem_serial_number'].isin(existing_serials)]
     
     if len(df_insert) > 0:
+        df_insert = convert_nat_to_none(df_insert)
         session.bulk_insert_mappings(Asset, df_insert.to_dict('records'))
         session.commit()
         print(f"📥 Inseridos: {len(df_insert)} registros")
@@ -801,8 +841,8 @@ def insert_or_update_smartdevices_from_excel(session, excel_file_path):
     start_time = time.time()
     print(f"🚀 PANDAS ULTRA (SmartDevices): {excel_file_path}")
     
-    # 1. Ler Excel
-    df = pd.read_excel(excel_file_path, engine='openpyxl')
+    # 1. Ler Excel - PRESERVAR NULL
+    df = pd.read_excel(excel_file_path, engine='openpyxl', keep_default_na=True, na_values=['', 'nan', 'NaN', 'N/A'])
     print(f"📁 Lido: {len(df)} registros em {time.time() - start_time:.2f}s")
     
     # 2. Renomear colunas conforme mapeamento
@@ -832,7 +872,11 @@ def insert_or_update_smartdevices_from_excel(session, excel_file_path):
         if col in df.columns:
             df[col] = df[col].apply(lambda x: True if str(x).strip().lower() == 'yes' else False if pd.notna(x) else None)
     
-    df = df.where(pd.notnull(df), None)
+    # 6. PRESERVAR NULL - Não usar df.where() que pode converter NULL para 0 em colunas numéricas
+    for col in df.columns:
+        if df[col].dtype == 'object':
+            df[col] = df[col].apply(lambda x: None if pd.isna(x) or (isinstance(x, str) and x.strip() == '') else x)
+    
     print(f"🧹 Processado: {len(df)} registros")
     
     # 6. SÓ NOVOS (insert rápido)
@@ -840,6 +884,7 @@ def insert_or_update_smartdevices_from_excel(session, excel_file_path):
     df_insert = df[~df['mac_address'].isin(existing_macs)]
     
     if len(df_insert) > 0:
+        df_insert = convert_nat_to_none(df_insert)
         session.bulk_insert_mappings(SmartDevice, df_insert.to_dict('records'))
         session.commit()
         print(f"📥 Inseridos: {len(df_insert)} registros")
@@ -856,8 +901,8 @@ def insert_or_update_movements_from_excel(session, excel_file_path):
     start_time = time.time()
     print(f"🚀 PANDAS ULTRA (Movements): {excel_file_path}")
     
-    # 1. Ler Excel
-    df = pd.read_excel(excel_file_path, engine='openpyxl')
+    # 1. Ler Excel - PRESERVAR NULL
+    df = pd.read_excel(excel_file_path, engine='openpyxl', keep_default_na=True, na_values=['', 'nan', 'NaN', 'N/A'])
     print(f"📁 Lido: {len(df)} registros em {time.time() - start_time:.2f}s")
     
     # 2. Renomear colunas conforme mapeamento
@@ -871,31 +916,84 @@ def insert_or_update_movements_from_excel(session, excel_file_path):
         return
     
     df = df.dropna(subset=['id'])
-    df['id'] = df['id'].astype(str).str.strip()
+    def normalize_id(x):
+        if pd.isna(x):
+            return None
+        try:
+            if isinstance(x, float) and x.is_integer():
+                return str(int(x))
+        except Exception:
+            pass
+        return str(x).strip()
+    df['id'] = df['id'].apply(normalize_id)
     
     # 4. Processar datas
     for col in ['start_time', 'end_time', 'created_on']:
         if col in df.columns:
-            df[col] = df[col].apply(lambda x: parse_datetime(str(x).strip()) if pd.notna(x) else None)
+            print(f"🔄 Processando coluna '{col}'...")
+            invalid_count = 0
+            valid_count = 0
+            
+            def parse_and_count(x):
+                nonlocal invalid_count, valid_count
+                result = parse_datetime(str(x).strip(), verbose=False) if pd.notna(x) else None
+                if result is None and pd.notna(x):
+                    invalid_count += 1
+                elif result is not None:
+                    valid_count += 1
+                return result
+            
+            df[col] = df[col].apply(parse_and_count)
+            print(f"   ✅ Válidos: {valid_count} | ⚠️  Inválidos: {invalid_count}")
     
     # 5. Processar booleanos
     for col in ['door_open', 'is_smart']:
         if col in df.columns:
             df[col] = df[col].apply(lambda x: True if str(x).strip().lower() == 'yes' else False if pd.notna(x) else None)
     
-    df = df.where(pd.notnull(df), None)
-    print(f"🧹 Processado: {len(df)} registros")
+    # 6. PRESERVAR NULL - Não usar df.where() que pode converter NULL para 0 em colunas numéricas
+    for col in df.columns:
+        if df[col].dtype == 'object':
+            df[col] = df[col].apply(lambda x: None if pd.isna(x) or (isinstance(x, str) and x.strip() == '') else x)
     
-    # 6. SÓ NOVOS (insert rápido)
+    # 6. FILTRAR: Remover registros com start_time NULL (obrigatório!)
+    null_start_time_before = df[df['start_time'].isna()].shape[0]
+    df = df.dropna(subset=['start_time'])
+    null_start_time_after = df[df['start_time'].isna()].shape[0]
+    
+    if null_start_time_before > 0:
+        print(f"⚠️  REMOVIDOS: {null_start_time_before} registros com 'start_time' NULL")
+    
+    print(f"🧹 Processado: {len(df)} registros válidos")
+    
+    # 7. INSERT/UPDATE (upsert)
     existing_ids = {row.id for row in session.query(Movement.id).all()}
     df_insert = df[~df['id'].isin(existing_ids)]
-    
+    df_update = df[df['id'].isin(existing_ids)]
+
+    inserted = 0
+    updated = 0
     if len(df_insert) > 0:
+        df_insert = convert_nat_to_none(df_insert)
         session.bulk_insert_mappings(Movement, df_insert.to_dict('records'))
+        inserted = len(df_insert)
+
+    if len(df_update) > 0:
+        df_update = df_update[df_update['id'].notna()].copy()
+        df_update = convert_nat_to_none(df_update)
+        update_records = []
+        for rec in df_update.to_dict('records'):
+            record = {k: v for k, v in rec.items() if v is not None}
+            record['id'] = rec.get('id')
+            update_records.append(record)
+        if update_records:
+            session.bulk_update_mappings(Movement, update_records)
+            updated = len(update_records)
+
+    if inserted or updated:
         session.commit()
-        print(f"📥 Inseridos: {len(df_insert)} registros")
-    else:
-        print("📥 Nenhum registro novo")
+    print(f"📥 Inseridos: {inserted} | 🔁 Atualizados: {updated}")
+    return {"inserted": inserted, "updated": updated, "read": len(df)}
     
     total_time = time.time() - start_time
     speed = len(df) / total_time if total_time > 0 else 0
@@ -907,8 +1005,8 @@ def insert_or_update_health_events_from_excel(session, excel_file_path):
     start_time = time.time()
     print(f"🚀 PANDAS ULTRA (HealthEvents): {excel_file_path}")
     
-    # 1. Ler Excel
-    df = pd.read_excel(excel_file_path, engine='openpyxl')
+    # 1. Ler Excel - PRESERVAR NULL (não converter para 0)
+    df = pd.read_excel(excel_file_path, engine='openpyxl', keep_default_na=True, na_values=['', 'nan', 'NaN', 'N/A'])
     print(f"📁 Lido: {len(df)} registros em {time.time() - start_time:.2f}s")
     
     # 2. Renomear colunas conforme mapeamento
@@ -926,66 +1024,146 @@ def insert_or_update_health_events_from_excel(session, excel_file_path):
     # 4. Processar datas
     for col in ['created_on', 'event_time']:
         if col in df.columns:
-            df[col] = df[col].apply(lambda x: parse_datetime(str(x).strip()) if pd.notna(x) else None)
+            print(f"🔄 Processando coluna '{col}'...")
+            invalid_count = 0
+            valid_count = 0
+            
+            def parse_and_count(x):
+                nonlocal invalid_count, valid_count
+                result = parse_datetime(str(x).strip(), verbose=False) if pd.notna(x) else None
+                if result is None and pd.notna(x):
+                    invalid_count += 1
+                elif result is not None:
+                    valid_count += 1
+                return result
+            
+            df[col] = df[col].apply(parse_and_count)
+            print(f"   ✅ Válidos: {valid_count} | ⚠️  Inválidos: {invalid_count}")
     
     # 5. Processar booleanos
     if 'is_smart' in df.columns:
         df['is_smart'] = df['is_smart'].apply(lambda x: True if str(x).strip().lower() == 'yes' else False if pd.notna(x) else None)
     
-    df = df.where(pd.notnull(df), None)
+    # 6. PRESERVAR NULL - Não usar df.where() que pode converter NULL para 0 em colunas numéricas
+    # Converter apenas campos de texto vazios para None, mantendo NULL em colunas numéricas
+    for col in df.columns:
+        if df[col].dtype == 'object':  # Apenas colunas de texto
+            df[col] = df[col].apply(lambda x: None if pd.isna(x) or (isinstance(x, str) and x.strip() == '') else x)
+    
     print(f"🧹 Processado: {len(df)} registros")
     
-    # 6. SÓ NOVOS (insert rápido)
+    # 7. INSERT/UPDATE (upsert)
     existing_ids = {row.id for row in session.query(HealthEvent.id).all()}
     df_insert = df[~df['id'].isin(existing_ids)]
-    
+    df_update = df[df['id'].isin(existing_ids)]
+    inserted = 0
+    updated = 0
     if len(df_insert) > 0:
+        # Verificar registros com event_time NULL
+        null_event_time = df_insert[df_insert['event_time'].isna()].shape[0]
+        if null_event_time > 0:
+            print(f"⚠️  AVISO: {null_event_time} registros com 'event_time' NULL serão inseridos")
+        
+        # Verificar coluna battery para garantir NULL
+        if 'battery' in df_insert.columns:
+            null_battery = df_insert['battery'].isna().sum()
+            print(f"📊 Coluna 'battery': {null_battery} NULL, {len(df_insert) - null_battery} com valor")
+        
+        df_insert = convert_nat_to_none(df_insert)
         session.bulk_insert_mappings(HealthEvent, df_insert.to_dict('records'))
+        inserted = len(df_insert)
+
+    if len(df_update) > 0:
+        # ensure primary key present
+        df_update = df_update[df_update['id'].notna()].copy()
+        df_update = convert_nat_to_none(df_update)
+        # Build update records including only non-null columns to avoid overwriting existing values with None
+        update_records = []
+        for rec in df_update.to_dict('records'):
+            record = {k: v for k, v in rec.items() if v is not None}
+            record['id'] = rec.get('id')
+            update_records.append(record)
+        if update_records:
+            session.bulk_update_mappings(HealthEvent, update_records)
+            updated = len(update_records)
+
+    if inserted or updated:
         session.commit()
-        print(f"📥 Inseridos: {len(df_insert)} registros")
-    else:
-        print("📥 Nenhum registro novo")
+    print(f"📥 Inseridos: {inserted} | 🔁 Atualizados: {updated}")
+    return {"inserted": inserted, "updated": updated, "read": len(df)}
     
     total_time = time.time() - start_time
     speed = len(df) / total_time if total_time > 0 else 0
     print(f"🎉 {total_time:.2f}s | ⚡ {speed:.0f} reg/s")
 
-# VERSÃO SIMPLES QUE FUNCIONAVA EM 70,000 REG/S
+# VERSÃO OTIMIZADA PARA PROCESSAR TODAS AS COLUNAS COM TRATAMENTO DE EMPTY STRINGS
 def insert_or_update_door_events_from_csv(session, csv_file_path):
-    """VERSÃO SIMPLES - SÓ INSERT, SEM UPDATE LENTO"""
+    """VERSÃO OTIMIZADA COM PANDAS - SÓ INSERT, SEM UPDATE LENTO"""
     start_time = time.time()
-    print(f"🚀 PANDAS ULTRA: {csv_file_path}")
+    print(f"🚀 PANDAS ULTRA (DoorEvents CSV): {csv_file_path}")
     
-    # 1. Ler
-    df = pd.read_csv(csv_file_path, encoding='utf-16', skiprows=1, low_memory=False)
+    # 1. Ler CSV com quotechar e keep_default_na=False para não converter "" em NaN
+    # Usar na_values vazio para evitar conversão automática
+    df = pd.read_csv(csv_file_path, encoding='utf-16', skiprows=1, low_memory=False,
+                     quotechar='"', keep_default_na=False, na_values=[''])
     print(f"📁 Lido: {len(df)} registros em {time.time() - start_time:.2f}s")
     
-    # 2. Mapear apenas essenciais 
-    df = df.rename(columns={"Id": "id", "Open Event Time": "open_event_time", "Close Event Time": "close_event_time"})
-    df = df[['id', 'open_event_time', 'close_event_time']].dropna(subset=['id'])
+    # 2. Renomear colunas conforme mapeamento
+    df_columns = {col: DOOR_EVENT_COLUMN_MAPPING[col] for col in df.columns if col in DOOR_EVENT_COLUMN_MAPPING}
+    df = df.rename(columns=df_columns)
+    
+    # 3. Garantir coluna id
+    if 'id' not in df.columns:
+        print("❌ Coluna 'id' não encontrada")
+        return
+    
+    df = df.dropna(subset=['id'])
     df['id'] = df['id'].astype(str).str.strip()
     
-    # 3. Datas
-    for col in ['open_event_time', 'close_event_time']:
+    # 4. Processar datas
+    for col in ['open_event_time', 'close_event_time', 'created_on']:
         if col in df.columns:
-            df[col] = df[col].apply(lambda x: parse_datetime(str(x).strip()) if pd.notna(x) else None)
+            df[col] = df[col].apply(lambda x: parse_datetime(str(x).strip()) if pd.notna(x) and str(x).strip() else None)
     
-    df = df.where(pd.notnull(df), None)
+    # 5. Processar booleanos
+    if 'is_smart' in df.columns:
+        df['is_smart'] = df['is_smart'].apply(lambda x: True if str(x).strip().lower() == 'yes' else False if pd.notna(x) and str(x).strip() else None)
+    
+    # 6. Limpar valores vazios para None
+    df = df.where(pd.notnull(df) & (df != ''), None)
     print(f"🧹 Processado: {len(df)} registros")
     
-    # 4. SÓ NOVOS (insert rápido)
+    # 7. Mostrar estatísticas de NULL
+    print(f"\n📈 Estatísticas de NULL por coluna:")
+    null_stats = []
+    for col in df.columns:
+        null_count = df[col].isna().sum()
+        null_pct = (null_count / len(df)) * 100
+        if null_count > 0:
+            null_stats.append((col, null_count, null_pct))
+    
+    # Mostrar colunas com NULL
+    null_stats.sort(key=lambda x: x[1], reverse=True)
+    for col, null_count, null_pct in null_stats[:10]:  # Top 10
+        print(f"   {col}: {null_count} NULL ({null_pct:.1f}%)")
+    
+    if not null_stats:
+        print("   ✅ Nenhuma coluna com NULL!")
+    
+    # 8. SÓ NOVOS (insert rápido)
     existing_ids = {row.id for row in session.query(DoorEvent.id).all()}
     df_insert = df[~df['id'].isin(existing_ids)]
     
     if len(df_insert) > 0:
+        df_insert = convert_nat_to_none(df_insert)
         session.bulk_insert_mappings(DoorEvent, df_insert.to_dict('records'))
         session.commit()
-        print(f"📥 Inseridos: {len(df_insert)} registros")
+        print(f"\n📥 Inseridos: {len(df_insert)} registros")
     else:
-        print("📥 Nenhum registro novo")
+        print("\n📥 Nenhum registro novo")
     
     total_time = time.time() - start_time
-    speed = len(df) / total_time
+    speed = len(df) / total_time if total_time > 0 else 0
     print(f"🎉 {total_time:.2f}s | ⚡ {speed:.0f} reg/s")
 
 # Função para inserir ou atualizar health events a partir do CSV (UTF-16) - OTIMIZADO
@@ -994,8 +1172,8 @@ def insert_or_update_health_events_from_csv(session, csv_file_path):
     start_time = time.time()
     print(f"🚀 PANDAS ULTRA (HealthEvents CSV): {csv_file_path}")
     
-    # 1. Ler CSV
-    df = pd.read_csv(csv_file_path, encoding='utf-16', skiprows=1, low_memory=False)
+    # 1. Ler CSV - PRESERVAR NULL
+    df = pd.read_csv(csv_file_path, encoding='utf-16', skiprows=1, low_memory=False, keep_default_na=True, na_values=['', 'nan', 'NaN', 'N/A'])
     print(f"📁 Lido: {len(df)} registros em {time.time() - start_time:.2f}s")
     
     # 2. Renomear colunas conforme mapeamento
@@ -1019,23 +1197,144 @@ def insert_or_update_health_events_from_csv(session, csv_file_path):
     if 'is_smart' in df.columns:
         df['is_smart'] = df['is_smart'].apply(lambda x: True if str(x).strip().lower() == 'yes' else False if pd.notna(x) else None)
     
-    df = df.where(pd.notnull(df), None)
+    # 6. PRESERVAR NULL - Não usar df.where() que pode converter NULL para 0 em colunas numéricas
+    for col in df.columns:
+        if df[col].dtype == 'object':
+            df[col] = df[col].apply(lambda x: None if pd.isna(x) or (isinstance(x, str) and x.strip() == '') else x)
+    
     print(f"🧹 Processado: {len(df)} registros")
     
-    # 6. SÓ NOVOS (insert rápido)
+    # 7. INSERT/UPDATE (upsert)
     existing_ids = {row.id for row in session.query(HealthEvent.id).all()}
     df_insert = df[~df['id'].isin(existing_ids)]
+    df_update = df[df['id'].isin(existing_ids)]
     
+    inserted = 0
+    updated = 0
     if len(df_insert) > 0:
+        df_insert = convert_nat_to_none(df_insert)
         session.bulk_insert_mappings(HealthEvent, df_insert.to_dict('records'))
+        inserted = len(df_insert)
+
+    if len(df_update) > 0:
+        # prepare updates - ensure primary key 'id' is present for bulk_update_mappings
+        df_update = df_update[df_update['id'].notna()].copy()
+        df_update = convert_nat_to_none(df_update)
+        update_records = []
+        for rec in df_update.to_dict('records'):
+            record = {k: v for k, v in rec.items() if v is not None}
+            record['id'] = rec.get('id')
+            update_records.append(record)
+        if update_records:
+            session.bulk_update_mappings(HealthEvent, update_records)
+            updated = len(update_records)
+
+    if inserted or updated:
         session.commit()
-        print(f"📥 Inseridos: {len(df_insert)} registros")
-    else:
-        print("📥 Nenhum registro novo")
+    print(f"📥 Inseridos: {inserted} | 🔁 Atualizados: {updated}")
+    return {"inserted": inserted, "updated": updated, "read": len(df)}
     
     total_time = time.time() - start_time
     speed = len(df) / total_time if total_time > 0 else 0
     print(f"🎉 {total_time:.2f}s | ⚡ {speed:.0f} reg/s")
+
+
+def validate_health_events_import(session, csv_file_path, sample_limit=10):
+    """Validate that health_events from CSV were imported correctly.
+    For a sample of rows, assert that the 'id' matches and timestamps are identical (as datetime moments).
+    Prints a short report for the first `sample_limit` rows.
+    """
+    import math
+    print(f"🔍 Validando import de HealthEvents: {csv_file_path} (amostra: {sample_limit})")
+    df = pd.read_csv(csv_file_path, encoding='utf-16', skiprows=1, low_memory=False, keep_default_na=True, na_values=['', 'nan', 'NaN', 'N/A'])
+    df_columns = {col: HEALTH_EVENT_COLUMN_MAPPING[col] for col in df.columns if col in HEALTH_EVENT_COLUMN_MAPPING}
+    df = df.rename(columns=df_columns)
+    if 'id' not in df.columns:
+        print("❌ Coluna 'id' não encontrada no CSV")
+        return
+    df['id'] = df['id'].astype(str).str.strip()
+    # Prepare sample
+    sample = df.head(sample_limit)
+    failures = 0
+    for i, row in sample.iterrows():
+        csv_id = str(row['id']).strip()
+        db_row = session.query(HealthEvent).filter(HealthEvent.id == csv_id).first()
+        if not db_row:
+            print(f"❌ ID {csv_id} não encontrado no DB")
+            failures += 1
+            continue
+        # Compare event_time and created_on
+        for col in ['event_time', 'created_on']:
+            csv_val = row.get(col) if col in row.index else None
+            parsed_csv_dt = parse_datetime(str(csv_val).strip(), verbose=False) if pd.notna(csv_val) else None
+            db_dt = getattr(db_row, col)
+            # Compare by normalized epoch seconds (UTC) when possible to avoid tz name differences
+            if parsed_csv_dt is None and db_dt is None:
+                continue
+            if (parsed_csv_dt is None and db_dt is not None) or (parsed_csv_dt is not None and db_dt is None):
+                print(f"⚠️  Mismatch for ID {csv_id} column {col}: CSV -> {parsed_csv_dt}, DB -> {db_dt}")
+                failures += 1
+                continue
+            try:
+                # convert both to UTC timestamps
+                csv_ts = parsed_csv_dt.astimezone(timezone('UTC')).timestamp()
+                db_ts = db_dt.astimezone(timezone('UTC')).timestamp() if db_dt.tzinfo else db_dt.replace(tzinfo=timezone('UTC')).timestamp()
+                if math.isclose(csv_ts, db_ts, rel_tol=0, abs_tol=1e-3):
+                    print(f"✅ ID {csv_id} {col} OK: {parsed_csv_dt.isoformat()} == {db_dt.isoformat()}")
+                else:
+                    print(f"❌ ID {csv_id} {col} DIFFER: CSV -> {parsed_csv_dt.isoformat()}, DB -> {db_dt.isoformat()}")
+                    failures += 1
+            except Exception as e:
+                print(f"⚠️  Erro ao comparar datetime para ID {csv_id} coluna {col}: {e}")
+                failures += 1
+    print(f"🔎 Validação concluída: {len(sample)} amostras verificadas, {failures} falhas detectadas")
+
+
+def validate_movements_import(session, excel_file_path, sample_limit=10):
+    """Validate that movements from Excel were imported correctly.
+    For a sample of rows, assert that the 'id' matches and timestamps (start_time, end_time, created_on) are identical.
+    Prints a short report for the first `sample_limit` rows.
+    """
+    import math
+    print(f"🔍 Validando import de Movements: {excel_file_path} (amostra: {sample_limit})")
+    df = pd.read_excel(excel_file_path, engine='openpyxl', keep_default_na=True, na_values=['', 'nan', 'NaN', 'N/A'])
+    df_columns = {col: MOVEMENT_COLUMN_MAPPING[col] for col in df.columns if col in MOVEMENT_COLUMN_MAPPING}
+    df = df.rename(columns=df_columns)
+    if 'id' not in df.columns:
+        print("❌ Coluna 'id' não encontrada no Excel")
+        return
+    df['id'] = df['id'].astype(str).str.strip()
+    sample = df.head(sample_limit)
+    failures = 0
+    for i, row in sample.iterrows():
+        csv_id = str(row['id']).strip()
+        db_row = session.query(Movement).filter(Movement.id == csv_id).first()
+        if not db_row:
+            print(f"❌ ID {csv_id} não encontrado no DB")
+            failures += 1
+            continue
+        for col in ['start_time', 'end_time', 'created_on']:
+            csv_val = row.get(col) if col in row.index else None
+            parsed_csv_dt = parse_datetime(str(csv_val).strip(), verbose=False) if pd.notna(csv_val) else None
+            db_dt = getattr(db_row, col)
+            if parsed_csv_dt is None and db_dt is None:
+                continue
+            if (parsed_csv_dt is None and db_dt is not None) or (parsed_csv_dt is not None and db_dt is None):
+                print(f"⚠️  Mismatch for ID {csv_id} column {col}: CSV -> {parsed_csv_dt}, DB -> {db_dt}")
+                failures += 1
+                continue
+            try:
+                csv_ts = parsed_csv_dt.astimezone(timezone('UTC')).timestamp()
+                db_ts = db_dt.astimezone(timezone('UTC')).timestamp() if db_dt.tzinfo else db_dt.replace(tzinfo=timezone('UTC')).timestamp()
+                if math.isclose(csv_ts, db_ts, rel_tol=0, abs_tol=1e-3):
+                    print(f"✅ ID {csv_id} {col} OK: {parsed_csv_dt.isoformat()} == {db_dt.isoformat()}")
+                else:
+                    print(f"❌ ID {csv_id} {col} DIFFER: CSV -> {parsed_csv_dt.isoformat()}, DB -> {db_dt.isoformat()}")
+                    failures += 1
+            except Exception as e:
+                print(f"⚠️  Erro ao comparar datetime para ID {csv_id} coluna {col}: {e}")
+                failures += 1
+    print(f"🔎 Validação concluída: {len(sample)} amostras verificadas, {failures} falhas detectadas")
     
 # Função para inserir ou atualizar alerts a partir do CSV (UTF-16) - OTIMIZADO
 def insert_or_update_alerts_from_csv(session, csv_file_path):
@@ -1043,8 +1342,8 @@ def insert_or_update_alerts_from_csv(session, csv_file_path):
     start_time = time.time()
     print(f"🚀 PANDAS ULTRA (Alerts): {csv_file_path}")
     
-    # 1. Ler CSV
-    df = pd.read_csv(csv_file_path, encoding='utf-16', skiprows=1, low_memory=False)
+    # 1. Ler CSV - PRESERVAR NULL
+    df = pd.read_csv(csv_file_path, encoding='utf-16', skiprows=1, low_memory=False, keep_default_na=True, na_values=['', 'nan', 'NaN', 'N/A'])
     print(f"📁 Lido: {len(df)} registros em {time.time() - start_time:.2f}s")
     
     # 2. Renomear colunas conforme mapeamento
@@ -1069,7 +1368,11 @@ def insert_or_update_alerts_from_csv(session, csv_file_path):
         if col in df.columns:
             df[col] = df[col].apply(lambda x: True if str(x).strip().lower() == 'yes' else False if pd.notna(x) else None)
     
-    df = df.where(pd.notnull(df), None)
+    # 6. PRESERVAR NULL - Não usar df.where() que pode converter NULL para 0 em colunas numéricas
+    for col in df.columns:
+        if df[col].dtype == 'object':
+            df[col] = df[col].apply(lambda x: None if pd.isna(x) or (isinstance(x, str) and x.strip() == '') else x)
+    
     print(f"🧹 Processado: {len(df)} registros")
     
     # 6. SÓ NOVOS (insert rápido)
@@ -1077,6 +1380,63 @@ def insert_or_update_alerts_from_csv(session, csv_file_path):
     df_insert = df[~df['id'].isin(existing_ids)]
     
     if len(df_insert) > 0:
+        df_insert = convert_nat_to_none(df_insert)
+        session.bulk_insert_mappings(Alert, df_insert.to_dict('records'))
+        session.commit()
+        print(f"📥 Inseridos: {len(df_insert)} registros")
+    else:
+        print("📥 Nenhum registro novo")
+    
+    total_time = time.time() - start_time
+    speed = len(df) / total_time if total_time > 0 else 0
+    print(f"🎉 {total_time:.2f}s | ⚡ {speed:.0f} reg/s")
+
+
+# Função para inserir ou atualizar alerts a partir do Excel - OTIMIZADO
+def insert_or_update_alerts_from_excel(session, excel_file_path):
+    """VERSÃO OTIMIZADA COM PANDAS - SÓ INSERT, SEM UPDATE LENTO"""
+    start_time = time.time()
+    print(f"🚀 PANDAS ULTRA (Alerts Excel): {excel_file_path}")
+    
+    # 1. Ler Excel - PRESERVAR NULL
+    df = pd.read_excel(excel_file_path, engine='openpyxl', keep_default_na=True, na_values=['', 'nan', 'NaN', 'N/A'])
+    print(f"📁 Lido: {len(df)} registros em {time.time() - start_time:.2f}s")
+    
+    # 2. Renomear colunas conforme mapeamento
+    df_columns = {col: ALERT_COLUMN_MAPPING[col] for col in df.columns if col in ALERT_COLUMN_MAPPING}
+    df = df.rename(columns=df_columns)
+    
+    # 3. Garantir coluna id
+    if 'id' not in df.columns:
+        print("❌ Coluna 'id' não encontrada")
+        return
+    
+    df = df.dropna(subset=['id'])
+    df['id'] = df['id'].astype(str).str.strip()
+    
+    # 4. Processar datas
+    for col in ['alert_at', 'status_changed_on', 'last_update', 'created_on']:
+        if col in df.columns:
+            df[col] = df[col].apply(lambda x: parse_datetime(str(x).strip()) if pd.notna(x) else None)
+    
+    # 5. Processar booleanos
+    for col in ['is_smart', 'is_system_alert']:
+        if col in df.columns:
+            df[col] = df[col].apply(lambda x: True if str(x).strip().lower() == 'yes' else False if pd.notna(x) else None)
+    
+    # 6. PRESERVAR NULL - Não usar df.where() que pode converter NULL para 0 em colunas numéricas
+    for col in df.columns:
+        if df[col].dtype == 'object':
+            df[col] = df[col].apply(lambda x: None if pd.isna(x) or (isinstance(x, str) and x.strip() == '') else x)
+    
+    print(f"🧹 Processado: {len(df)} registros")
+    
+    # 6. SÓ NOVOS (insert rápido)
+    existing_ids = {row.id for row in session.query(Alert.id).all()}
+    df_insert = df[~df['id'].isin(existing_ids)]
+    
+    if len(df_insert) > 0:
+        df_insert = convert_nat_to_none(df_insert)
         session.bulk_insert_mappings(Alert, df_insert.to_dict('records'))
         session.commit()
         print(f"📥 Inseridos: {len(df_insert)} registros")
@@ -1093,8 +1453,8 @@ def insert_or_update_clients_from_csv(session, csv_file_path):
     start_time = time.time()
     print(f"🚀 PANDAS ULTRA (Clients): {csv_file_path}")
     
-    # 1. Ler CSV
-    df = pd.read_csv(csv_file_path, encoding='utf-16', skiprows=1, low_memory=False)
+    # 1. Ler CSV - PRESERVAR NULL
+    df = pd.read_csv(csv_file_path, encoding='utf-16', skiprows=1, low_memory=False, keep_default_na=True, na_values=['', 'nan', 'NaN', 'N/A'])
     print(f"📁 Lido: {len(df)} registros em {time.time() - start_time:.2f}s")
     
     # 2. Renomear colunas conforme mapeamento
@@ -1136,7 +1496,11 @@ def insert_or_update_clients_from_csv(session, csv_file_path):
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors='coerce').astype('Int64')
     
-    df = df.where(pd.notnull(df), None)
+    # 8. PRESERVAR NULL - Não usar df.where() que pode converter NULL para 0 em colunas numéricas
+    for col in df.columns:
+        if df[col].dtype == 'object':
+            df[col] = df[col].apply(lambda x: None if pd.isna(x) or (isinstance(x, str) and x.strip() == '') else x)
+    
     print(f"🧹 Processado: {len(df)} registros")
     
     # 8. SÓ NOVOS (insert rápido)
@@ -1144,6 +1508,80 @@ def insert_or_update_clients_from_csv(session, csv_file_path):
     df_insert = df[~df['id'].isin(existing_ids)]
     
     if len(df_insert) > 0:
+        df_insert = convert_nat_to_none(df_insert)
+        session.bulk_insert_mappings(Client, df_insert.to_dict('records'))
+        session.commit()
+        print(f"📥 Inseridos: {len(df_insert)} registros")
+    else:
+        print("📥 Nenhum registro novo")
+    
+    total_time = time.time() - start_time
+    speed = len(df) / total_time if total_time > 0 else 0
+    print(f"🎉 {total_time:.2f}s | ⚡ {speed:.0f} reg/s")
+
+
+# Função para inserir ou atualizar clients a partir do Excel - OTIMIZADO
+def insert_or_update_clients_from_excel(session, excel_file_path):
+    """VERSÃO OTIMIZADA COM PANDAS - SÓ INSERT, SEM UPDATE LENTO"""
+    start_time = time.time()
+    print(f"🚀 PANDAS ULTRA (Clients Excel): {excel_file_path}")
+    
+    # 1. Ler Excel - PRESERVAR NULL
+    df = pd.read_excel(excel_file_path, engine='openpyxl', keep_default_na=True, na_values=['', 'nan', 'NaN', 'N/A'])
+    print(f"📁 Lido: {len(df)} registros em {time.time() - start_time:.2f}s")
+    
+    # 2. Renomear colunas conforme mapeamento
+    df_columns = {col: CLIENT_COLUMN_MAPPING[col] for col in df.columns if col in CLIENT_COLUMN_MAPPING}
+    df = df.rename(columns=df_columns)
+    
+    # 3. Garantir coluna id
+    if 'id' not in df.columns:
+        print("❌ Coluna 'id' não encontrada")
+        return
+    
+    df = df.dropna(subset=['id'])
+    df['id'] = df['id'].astype(str).str.strip()
+    
+    # 4. Processar datas
+    for col in ['created_on', 'modified_on']:
+        if col in df.columns:
+            df[col] = df[col].apply(lambda x: parse_datetime(str(x).strip()) if pd.notna(x) else None)
+    
+    # 5. Processar booleanos
+    bool_cols = ['is_feedback_enabled', 'vh_enabled', 'manual_processing_mode', 'is_visit_from_ping', 
+                 'limit_location_distance', 'enable_pic_to_pog', 'disable_geo_data_collection']
+    for col in bool_cols:
+        if col in df.columns:
+            df[col] = df[col].apply(lambda x: True if str(x).strip().lower() == 'yes' else False if pd.notna(x) else None)
+    
+    # 6. Processar floats
+    float_cols = ['vision_image_interval_hours', 'temperature_min', 'temperature_max', 
+                  'cooler_tracking_displacement_threshold_mtr']
+    for col in float_cols:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+    
+    # 7. Processar integers
+    int_cols = ['vision_image_interval_door_open', 'out_of_stock_sku', 'power_off_duration', 'light_min', 
+                'light_max', 'door_count', 'health_intervals_hours', 'cooler_tracking_threshold_days', 
+                'fallen_magnet_threshold', 'distance_in_meter', 'threshold_in_minutes', 'survey_distance']
+    for col in int_cols:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce').astype('Int64')
+    
+    # 8. PRESERVAR NULL - Não usar df.where() que pode converter NULL para 0 em colunas numéricas
+    for col in df.columns:
+        if df[col].dtype == 'object':
+            df[col] = df[col].apply(lambda x: None if pd.isna(x) or (isinstance(x, str) and x.strip() == '') else x)
+    
+    print(f"🧹 Processado: {len(df)} registros")
+    
+    # 8. SÓ NOVOS (insert rápido)
+    existing_ids = {row.id for row in session.query(Client.id).all()}
+    df_insert = df[~df['id'].isin(existing_ids)]
+    
+    if len(df_insert) > 0:
+        df_insert = convert_nat_to_none(df_insert)
         session.bulk_insert_mappings(Client, df_insert.to_dict('records'))
         session.commit()
         print(f"📥 Inseridos: {len(df_insert)} registros")
@@ -1160,8 +1598,8 @@ def insert_or_update_subclients_from_csv(session, csv_file_path):
     start_time = time.time()
     print(f"🚀 PANDAS ULTRA (SubClients): {csv_file_path}")
     
-    # 1. Ler CSV
-    df = pd.read_csv(csv_file_path, encoding='utf-16', skiprows=1, low_memory=False)
+    # 1. Ler CSV - PRESERVAR NULL
+    df = pd.read_csv(csv_file_path, encoding='utf-16', skiprows=1, low_memory=False, keep_default_na=True, na_values=['', 'nan', 'NaN', 'N/A'])
     print(f"📁 Lido: {len(df)} registros em {time.time() - start_time:.2f}s")
     
     # 2. Renomear colunas conforme mapeamento
@@ -1183,7 +1621,9 @@ def insert_or_update_subclients_from_csv(session, csv_file_path):
         if df[col].dtype == 'object':
             df[col] = df[col].apply(lambda x: str(x).strip() if pd.notna(x) else None)
     
-    df = df.where(pd.notnull(df), None)
+    # 6. PRESERVAR NULL - Não usar df.where() que pode converter NULL para 0 em colunas numéricas
+    # Já feito acima no loop de limpeza de strings
+    
     print(f"🧹 Processado: {len(df)} registros")
     
     # 6. SÓ NOVOS (insert rápido)
@@ -1191,6 +1631,7 @@ def insert_or_update_subclients_from_csv(session, csv_file_path):
     df_insert = df[~df['id'].isin(existing_ids)]
     
     if len(df_insert) > 0:
+        df_insert = convert_nat_to_none(df_insert)
         session.bulk_insert_mappings(SubClient, df_insert.to_dict('records'))
         session.commit()
         print(f"📥 Inseridos: {len(df_insert)} registros")
@@ -1311,9 +1752,9 @@ def insert_or_update_alerts(session, file_path):
     if is_csv_file(file_path):
         return insert_or_update_alerts_from_csv(session, file_path)
     elif is_excel_file(file_path):
+        # Support Excel format as well (with warning about IDs)
         print(f"⚠️  Excel format for Alerts may lose large IDs. CSV (UTF-16) is recommended.")
-        # Could implement Excel support here if needed
-        return None
+        return insert_or_update_alerts_from_excel(session, file_path)
     else:
         print(f"❌ Unsupported file format: {file_path}")
         return None
@@ -1327,8 +1768,7 @@ def insert_or_update_clients(session, file_path):
         return insert_or_update_clients_from_csv(session, file_path)
     elif is_excel_file(file_path):
         print(f"⚠️  Excel format for Clients may lose large data. CSV (UTF-16) is recommended.")
-        # Could implement Excel support here if needed
-        return None
+        return insert_or_update_clients_from_excel(session, file_path)
     else:
         print(f"❌ Unsupported file format: {file_path}")
         return None
@@ -1355,8 +1795,8 @@ def insert_or_update_alerts_definition_from_excel(session, excel_file_path):
     start_time = time.time()
     print(f"🚀 PANDAS ULTRA (AlertsDefinition): {excel_file_path}")
     
-    # 1. Ler Excel
-    df = pd.read_excel(excel_file_path, engine='openpyxl')
+    # 1. Ler Excel - PRESERVAR NULL
+    df = pd.read_excel(excel_file_path, engine='openpyxl', keep_default_na=True, na_values=['', 'nan', 'NaN', 'N/A'])
     print(f"📁 Lido: {len(df)} registros em {time.time() - start_time:.2f}s")
     
     # 2. Renomear colunas conforme mapeamento
@@ -1388,7 +1828,11 @@ def insert_or_update_alerts_definition_from_excel(session, excel_file_path):
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors='coerce').astype('Int64')
     
-    df = df.where(pd.notnull(df), None)
+    # 6. PRESERVAR NULL - Não usar df.where() que pode converter NULL para 0 em colunas numéricas
+    for col in df.columns:
+        if df[col].dtype == 'object':
+            df[col] = df[col].apply(lambda x: None if pd.isna(x) or (isinstance(x, str) and x.strip() == '') else x)
+    
     print(f"🧹 Processado: {len(df)} registros")
     
     # 6. SÓ NOVOS (insert rápido)
@@ -1396,6 +1840,70 @@ def insert_or_update_alerts_definition_from_excel(session, excel_file_path):
     df_insert = df[~df['name'].isin(existing_names)]
     
     if len(df_insert) > 0:
+        df_insert = convert_nat_to_none(df_insert)
+        session.bulk_insert_mappings(AlertsDefinition, df_insert.to_dict('records'))
+        session.commit()
+        print(f"📥 Inseridos: {len(df_insert)} registros")
+    else:
+        print("📥 Nenhum registro novo")
+    
+    total_time = time.time() - start_time
+    speed = len(df) / total_time if total_time > 0 else 0
+    print(f"🎉 {total_time:.2f}s | ⚡ {speed:.0f} reg/s")
+
+
+# Função para inserir ou atualizar alerts definition a partir do CSV (UTF-16) - OTIMIZADO
+def insert_or_update_alerts_definition_from_csv(session, csv_file_path):
+    """VERSÃO OTIMIZADA COM PANDAS - SÓ INSERT, SEM UPDATE LENTO"""
+    start_time = time.time()
+    print(f"🚀 PANDAS ULTRA (AlertsDefinition CSV): {csv_file_path}")
+    
+    # 1. Ler CSV - PRESERVAR NULL
+    df = pd.read_csv(csv_file_path, encoding='utf-16', skiprows=1, low_memory=False, keep_default_na=True, na_values=['', 'nan', 'NaN', 'N/A'])
+    print(f"📁 Lido: {len(df)} registros em {time.time() - start_time:.2f}s")
+    
+    # 2. Renomear colunas conforme mapeamento
+    df_columns = {col: ALERTS_DEFINITION_COLUMN_MAPPING[col] for col in df.columns if col in ALERTS_DEFINITION_COLUMN_MAPPING}
+    df = df.rename(columns=df_columns)
+    
+    # 3. Garantir coluna name
+    if 'name' not in df.columns:
+        print("❌ Coluna 'name' não encontrada")
+        return
+    
+    df = df.dropna(subset=['name'])
+    df['name'] = df['name'].astype(str).str.strip()
+    
+    # 4. Processar datas
+    for col in ['created_on', 'modified_on']:
+        if col in df.columns:
+            df[col] = df[col].apply(lambda x: parse_datetime(str(x).strip()) if pd.notna(x) else None)
+    
+    # 5. Processar integers
+    int_cols = ['open_alert', 'updated_alert', 'movement_detected', 'power_off_duration', 
+                'temperature_below', 'temperature_above', 'offline_alert_time', 'online_alert_time',
+                'missing_faulty_time', 'cooler_disconnect_threshold', 'alert_age_threshold',
+                'prolonged_irregularity_min', 'no_data_threshold', 'battery_open_threshold',
+                'battery_close_threshold', 'stock_threshold', 'purity_threshold', 'planogram_threshold',
+                'gps_displacement_threshold', 'motion_available_time', 'par_displacement_meter',
+                'colas_threshold', 'flavours_threshold', 'colas_flavours', 'lane_threshold', 'min_stock']
+    for col in int_cols:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce').astype('Int64')
+    
+    # 6. PRESERVAR NULL - Não usar df.where() que pode converter NULL para 0 em colunas numéricas
+    for col in df.columns:
+        if df[col].dtype == 'object':
+            df[col] = df[col].apply(lambda x: None if pd.isna(x) or (isinstance(x, str) and x.strip() == '') else x)
+    
+    print(f"🧹 Processado: {len(df)} registros")
+    
+    # 6. SÓ NOVOS (insert rápido)
+    existing_names = {row.name for row in session.query(AlertsDefinition.name).all()}
+    df_insert = df[~df['name'].isin(existing_names)]
+    
+    if len(df_insert) > 0:
+        df_insert = convert_nat_to_none(df_insert)
         session.bulk_insert_mappings(AlertsDefinition, df_insert.to_dict('records'))
         session.commit()
         print(f"📥 Inseridos: {len(df_insert)} registros")
@@ -1412,6 +1920,8 @@ def insert_or_update_alerts_definition(session, file_path):
     """
     if is_excel_file(file_path):
         return insert_or_update_alerts_definition_from_excel(session, file_path)
+    elif is_csv_file(file_path):
+        return insert_or_update_alerts_definition_from_csv(session, file_path)
     else:
         print(f"❌ Unsupported file format for alerts definition: {file_path}")
         return None
@@ -1453,21 +1963,31 @@ def import_all_from_directory(session, directory_path, verbose=True):
         ('health_events', insert_or_update_health_events),
         ('door_events', insert_or_update_door_events),
         ('alerts_definition', insert_or_update_alerts_definition),
+        ('alert_definition', insert_or_update_alerts_definition),
         ('alerts', insert_or_update_alerts),
         ('clients', insert_or_update_clients),
         ('subclients', insert_or_update_subclients),
     ]
     
+    import re
     for file_name in sorted(os.listdir(directory_path)):
         if file_name.startswith('.'):
             continue
             
         file_path = os.path.join(directory_path, file_name)
         file_base = Path(file_name).stem.lower()
+        # Normalize filename: create two variants
+        # - sanitized_base: underscores for readability
+        sanitized_base = re.sub(r'[^a-z0-9]+', '_', file_base)
+        # - normalized_base: remove all non-alphanumeric chars so 'smart_devices' and 'smartdevices' match
+        normalized_base = re.sub(r'[^a-z0-9]+', '', file_base)
         
         # Find matching import function
         for pattern, import_func in file_mappings:
-            if pattern in file_base:
+            # Normalize pattern as well to support patterns with underscores
+            pattern_sanitized = re.sub(r'[^a-z0-9]+', '_', pattern)
+            pattern_normalized = re.sub(r'[^a-z0-9]+', '', pattern)
+            if pattern in file_base or pattern in sanitized_base or pattern_sanitized in sanitized_base or pattern_normalized in normalized_base:
                 if is_excel_file(file_path) or is_csv_file(file_path):
                     try:
                         if verbose:

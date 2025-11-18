@@ -1,9 +1,9 @@
 from flask import Blueprint, jsonify, render_template, request, session, redirect, url_for
 import requests
-from models.models import Asset, HealthEvent, Movement, Outlet, Client, SubClient
+from models.models import Asset, HealthEvent, Movement, SubClient
 from db.database import get_session
-from utils.location import correlate_asset_temperature_with_location, haversine_distance, get_location_info, filter_outlets_by_location
-from sqlalchemy import func, text
+from utils.location import correlate_asset_temperature_with_location, haversine_distance
+from sqlalchemy import func
 import logging
 import math
 import re
@@ -60,7 +60,7 @@ def require_authentication():
     """
     user = session.get("user")
     if not user:
-        return redirect(url_for("users.login"))
+        return redirect(url_for("index"))
     return user
 
 def get_user_location():
@@ -100,18 +100,22 @@ def calculate_asset_distance(asset, user_lat, user_lon):
 @assets_bp.route("/", methods=["GET"])
 def list_assets():
     """
-    LIST ASSETS - Main assets listing page with filtering and sorting
+    LIST ASSETS - Main assets listing page with filtering, sorting and pagination
     
     Query Parameters:
     - user_lat, user_lon: User location coordinates
     - sub_client: Optional subclient filter
+    - search: Text search (serial, outlet, address)
+    - page: Page number (default: 1)
+    - per_page: Items per page (default: 5)
     
     Features:
     - Authentication required
     - Uses MATERIALIZED VIEW (mv_client_assets_report) for optimal performance
-    - Distance-based sorting (closest assets first)
+    - Distance-based sorting (closest assets first) in real-time with user location
     - Subclient filtering
-    - Same data display as portal tracking
+    - Text search filtering
+    - Pagination (5 per page)
     """
     try:
         # Authentication check
@@ -123,33 +127,52 @@ def list_assets():
         user_lat = request.args.get("user_lat", type=float)
         user_lon = request.args.get("user_lon", type=float)
 
-        # Persist coordinates in session
+        # Persist coordinates in session for real-time location updates
         if user_lat is not None and user_lon is not None:
             session["user_location"] = {"lat": user_lat, "lon": user_lon}
         else:
             user_lat, user_lon = get_user_location()
         
-        # Get subclient filter
+        # Get filters from query parameters
         sub_client = request.args.get("sub_client")
+        page = request.args.get("page", 1, type=int)
+        per_page = 5  # Fixed: 5 items per page
+        
+        if page < 1:
+            page = 1
 
         db_session = get_session()
         client_code = user["client"]
 
-        # Build query using MATERIALIZED VIEW for performance
-        where_clauses = ["client = :client"]
+        # Build query using MATERIALIZED VIEW + health data for comprehensive information
+        where_clauses = ["mar.client = :client"]
         params = {'client': client_code}
         
         # Apply subclient filter if provided
         if sub_client:
-            where_clauses.append("sub_client = :sub_client")
+            where_clauses.append("mar.sub_client = :sub_client")
             params['sub_client'] = sub_client
         
         # Build the WHERE clause
         where_sql = " AND ".join(where_clauses)
         
-        # Query from MATERIALIZED VIEW
+        # Query from MATERIALIZED VIEW with health data join
+        # Note: mv_client_assets_report already has latest_cabinet_temperature_c
+        # assets_health_latest_event_24h_view has battery (not battery_level)
         from sqlalchemy import text as sql_text
-        sql_query = sql_text(f"SELECT * FROM mv_client_assets_report WHERE {where_sql}")
+        sql_query = sql_text(f"""
+            SELECT 
+                mar.*,
+                ahv.battery as battery_level,
+                ahv.event_time as latest_event_time,
+                ahv.cooler_voltage_v as latest_voltage,
+                ahv.avg_power_consumption_watt as latest_power_consumption,
+                ahv.total_compressor_on_time_percent as compressor_time_total
+            FROM mv_client_assets_report mar
+            LEFT JOIN assets_health_latest_event_24h_view ahv 
+                ON mar.oem_serial_number = ahv.asset_serial_number
+            WHERE {where_sql}
+        """)
         result = db_session.execute(sql_query, params)
         
         # Convert rows to dictionaries
@@ -165,9 +188,26 @@ def list_assets():
             asset_data['longitude'] = lon
             asset_data['has_location'] = bool(lat and lon)
             
+            # Map latest_cabinet_temperature_c to latest_temperature_c for consistency
+            if 'latest_cabinet_temperature_c' in asset_data:
+                asset_data['latest_temperature_c'] = asset_data['latest_cabinet_temperature_c']
+            
+            # Ensure numeric fields are properly typed
+            if asset_data.get('battery_level') is not None:
+                try:
+                    asset_data['battery_level'] = int(float(asset_data['battery_level']))
+                except (TypeError, ValueError):
+                    asset_data['battery_level'] = None
+            
+            if asset_data.get('latest_temperature_c') is not None:
+                try:
+                    asset_data['latest_temperature_c'] = float(asset_data['latest_temperature_c'])
+                except (TypeError, ValueError):
+                    asset_data['latest_temperature_c'] = None
+            
             all_assets.append(asset_data)
         
-        # Calculate distances and sort by proximity
+        # Calculate distances and sort by proximity (in real-time with user location)
         assets_with_distance = []
         for asset in all_assets:
             distance = None
@@ -189,48 +229,95 @@ def list_assets():
                 'distance': distance if distance is not None else float('inf')
             })
         
-        # Sort by distance (closest first)
+        # Sort by distance (closest first) - REAL-TIME based on current user location
         assets_with_distance.sort(key=lambda x: x['distance'])
         
         # Extract sorted assets and add distance attribute
-        filtered_assets = []
+        sorted_assets = []
         for item in assets_with_distance:
             asset = item['asset']
             distance_value = item['distance']
             asset['distance_km'] = distance_value if math.isfinite(distance_value) else None
-            filtered_assets.append(asset)
+            sorted_assets.append(asset)
+        
+        # Apply pagination
+        total_assets = len(sorted_assets)
+        total_pages = (total_assets + per_page - 1) // per_page if total_assets > 0 else 1
+        
+        if page > total_pages and total_pages > 0:
+            page = total_pages
+        
+        start_idx = (page - 1) * per_page
+        end_idx = start_idx + per_page
+        paginated_assets = sorted_assets[start_idx:end_idx]
         
         # Get available subclients for dropdown
         available_subclients = db_session.query(SubClient).filter(
             SubClient.client == client_code
         ).all()
         
+        # Calculate KPIs from all filtered assets (not just paginated)
+        low_battery_count = 0
+        high_temp_count = 0
+        online_count = 0
+        missing_count = 0
+        
+        for asset in sorted_assets:
+            # Low battery: < 30%
+            battery = asset.get('battery_level')
+            if battery is not None and battery < 30:
+                low_battery_count += 1
+            
+            # High temperature: >= 40°C
+            temp = asset.get('latest_temperature_c')
+            if temp is not None and temp >= 40:
+                high_temp_count += 1
+            
+            # Online status
+            if asset.get('is_online'):
+                online_count += 1
+            
+            # Missing status
+            if asset.get('is_missing'):
+                missing_count += 1
+        
         return render_template(
             "app/assets.html",
-            assets=filtered_assets,
-            total=len(filtered_assets),
+            assets=paginated_assets,
+            total=total_assets,
+            page=page,
+            per_page=per_page,
+            total_pages=total_pages,
             user=user,
             selected_sub_client=sub_client,
-            available_subclients=available_subclients
+            available_subclients=available_subclients,
+            user_lat=user_lat,
+            user_lon=user_lon,
+            low_battery_count=low_battery_count,
+            high_temp_count=high_temp_count,
+            online_count=online_count,
+            missing_count=missing_count
         )
 
     except Exception as e:
         print(f"[ERROR] Error in list_assets: {str(e)}")
         import traceback
         traceback.print_exc()
-        return render_template("app/assets.html", assets=[], total=0, user={})
+        return render_template("app/assets.html", assets=[], total=0, page=1, per_page=5, total_pages=0, user={})
 
 @assets_bp.route("/location", methods=["POST"])
 def store_user_location():
     """
     STORE LOCATION - Store user location in session for reuse
-    
+
     Request Body (JSON):
     {
         "latitude": float,
-        "longitude": float
+        "longitude": float,
+        "country": string (optional),
+        "country_code": string (optional)
     }
-    
+
     Response:
     {
         "status": "stored"
@@ -238,9 +325,17 @@ def store_user_location():
     """
     try:
         payload = request.get_json(silent=True) or {}
+
+        # Store country and country code if provided
+        country = payload.get("country")
+        country_code = payload.get("country_code")
+        if country and country_code:
+            session["user_location"] = {"country": country, "country_code": country_code}
+            return jsonify({"status": "stored"}), 200
+
+        # Validate latitude and longitude
         latitude = payload.get("latitude")
         longitude = payload.get("longitude")
-
         if latitude is None or longitude is None:
             return jsonify({"error": "latitude and longitude required"}), 400
 
@@ -250,11 +345,12 @@ def store_user_location():
         except (TypeError, ValueError):
             return jsonify({"error": "invalid coordinate values"}), 400
 
+        # Store coordinates in session
         session["user_location"] = {"lat": latitude, "lon": longitude}
         return jsonify({"status": "stored"}), 200
-        
+
     except Exception as e:
-        print(f"[ERROR] Error in store_user_location: {str(e)}")
+        logger.error(f"Error in store_user_location: {str(e)}")
         return jsonify({"error": "failed to store location"}), 500
 
 @assets_bp.route("/api/search", methods=["GET"])
@@ -536,13 +632,76 @@ def asset_detail(asset_serial_number):
             Movement.asset_serial_number == asset_serial_number
         ).order_by(Movement.start_time.desc()).first()
 
-        # Get historical data for charts
+        # Get comprehensive health data from assets_health_latest_event_24h_view
+        health_view_query = sql_text("""
+            SELECT * FROM assets_health_latest_event_24h_view 
+            WHERE asset_serial_number = :serial 
+            ORDER BY event_time DESC 
+            LIMIT 1
+        """)
+        health_view_result = db_session.execute(health_view_query, {'serial': asset_serial_number})
+        health_view_data = health_view_result.first()
+        
+        if health_view_data:
+            health_view_dict = dict(health_view_data._mapping)
+            # Add battery and voltage data to asset_dict
+            asset_dict['battery_level'] = health_view_dict.get('battery')
+            asset_dict['latest_voltage'] = health_view_dict.get('cooler_voltage_v')
+            asset_dict['latest_power_consumption'] = health_view_dict.get('avg_power_consumption_watt')
+            asset_dict['compressor_time'] = health_view_dict.get('total_compressor_on_time_percent')
+        
+        # Fallback: Get battery from mv_dashboard_stats_main if not found
+        if not asset_dict.get('battery_level'):
+            dashboard_stats_query = sql_text("""
+                SELECT latest_battery, latest_temperature_c, has_recent_movement_24h
+                FROM mv_dashboard_stats_main
+                WHERE client = :client AND oem_serial_number = :serial
+            """)
+            dashboard_stats_result = db_session.execute(dashboard_stats_query, {
+                'client': client_code,
+                'serial': asset_serial_number
+            })
+            dashboard_stats_data = dashboard_stats_result.first()
+            
+            if dashboard_stats_data:
+                dashboard_stats_dict = dict(dashboard_stats_data._mapping)
+                asset_dict['battery_level'] = dashboard_stats_dict.get('latest_battery')
+                if not asset_dict.get('latest_temperature_c'):
+                    asset_dict['latest_temperature_c'] = dashboard_stats_dict.get('latest_temperature_c')
+
+        # Get historical data for charts (last 30 days)
         temperature_history = db_session.query(HealthEvent).filter(
             HealthEvent.asset_serial_number == asset_serial_number,
             HealthEvent.event_type == "Cabinet Temperature",
             HealthEvent.temperature_c.isnot(None)
         ).order_by(HealthEvent.event_time.desc()).limit(30).all()
 
+        # Get door events from door table (last 7 days for chart)
+        from datetime import datetime, timedelta
+        seven_days_ago = datetime.utcnow() - timedelta(days=7)
+        
+        door_events_query = sql_text("""
+            SELECT 
+                open_event_time,
+                close_event_time,
+                door_open_duration_sec,
+                time_of_day,
+                door_count,
+                door_open_temperature,
+                door_close_temperature
+            FROM door 
+            WHERE asset_serial_number = :serial 
+                AND open_event_time >= :seven_days_ago
+            ORDER BY open_event_time DESC 
+            LIMIT 100
+        """)
+        door_events_result = db_session.execute(door_events_query, {
+            'serial': asset_serial_number,
+            'seven_days_ago': seven_days_ago
+        })
+        door_events = door_events_result.fetchall()
+
+        # Get movement history
         movement_history = db_session.query(Movement).filter(
             Movement.asset_serial_number == asset_serial_number
         ).order_by(Movement.start_time.desc()).limit(20).all()
@@ -563,10 +722,11 @@ def asset_detail(asset_serial_number):
             except (TypeError, ValueError):
                 distance_km = None
 
-        # Prepare chart data
+        # Prepare comprehensive chart data
         chart_data = {
             "temperature": [],
-            "movements": []
+            "movements": [],
+            "door_events": []
         }
 
         # Temperature chart data (reverse for chronological order)
@@ -578,14 +738,36 @@ def asset_detail(asset_serial_number):
                     "battery": event.battery if event.battery else None
                 })
 
+        # Door events chart data (reverse for chronological order)
+        for door_event in reversed(door_events):
+            door_dict = dict(door_event._mapping)
+            if door_dict.get('open_event_time'):
+                chart_data["door_events"].append({
+                    "time": door_dict['open_event_time'].isoformat(),
+                    "duration": door_dict.get('door_open_duration_sec', 0),
+                    "time_of_day": door_dict.get('time_of_day'),
+                    "door_count": door_dict.get('door_count', 0),
+                    "open_temp": door_dict.get('door_open_temperature'),
+                    "close_temp": door_dict.get('door_close_temperature')
+                })
+
         # Movement chart data (reverse for chronological order)
+        # Only include movements with door_open flag for door activity chart
         for movement in reversed(movement_history):
-            if movement.start_time:
+            if movement.start_time and movement.door_open and movement.duration:
                 chart_data["movements"].append({
                     "time": movement.start_time.isoformat(),
                     "door_open": movement.door_open,
-                    "duration": movement.duration if movement.duration else 0
+                    "duration": movement.duration
                 })
+        
+        # Debug: Log chart data counts
+        print(f"[DEBUG] Asset {asset_serial_number} - Chart data counts:")
+        print(f"  - Temperature: {len(chart_data['temperature'])} events")
+        print(f"  - Door events: {len(chart_data['door_events'])} events")
+        print(f"  - Movements (door related): {len(chart_data['movements'])} events")
+        if chart_data["movements"]:
+            print(f"  - Sample movement: {chart_data['movements'][0] if chart_data['movements'] else 'None'}")
 
         return render_template(
             "/app/asset_detail.html",

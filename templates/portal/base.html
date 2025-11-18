@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}?v={{ range(1, 9999) | random }}">
 
     {% block extra_css %}{% endblock %}
 </head>
@@ -53,11 +53,11 @@
 
                 <div class="sidebar-nav-section">
                     <div class="sidebar-nav-title">Gerenciamento</div>
-                    <a href="{{ url_for('portal_users.render_users') }}" class="sidebar-nav-link {% if request.path.startswith('/portal_associacao/users') %}active{% endif %}">
+                    <a href="{{ url_for('portal_users.list_and_create_users') }}" class="sidebar-nav-link {% if request.path.startswith('/portal_associacao/users') %}active{% endif %}">
                         <i class="fas fa-users"></i>
                         <span>Usuários</span>
                     </a>
-                    <a href="{{ url_for('portal_outlets.get_outlets') }}" class="sidebar-nav-link {% if request.path.startswith('/portal_associacao/outlets') %}active{% endif %}">
+                    <a href="{{ url_for('portal_outlets.list_and_create_outlets') }}" class="sidebar-nav-link {% if request.path.startswith('/portal_associacao/outlets') %}active{% endif %}">
                         <i class="fas fa-store"></i>
                         <span>Outlets</span>
                     </a>
@@ -70,18 +70,6 @@
                         <span>Smart Devices</span>
                     </a>
                 </div>
-
-                <!-- <div class="sidebar-nav-section">
-                    <div class="sidebar-nav-title">Sistema</div>
-                    <a href="#" class="sidebar-nav-link">
-                        <i class="fas fa-cog"></i>
-                        <span>Configurações</span>
-                    </a>
-                    <a href="#" class="sidebar-nav-link">
-                        <i class="fas fa-file-alt"></i>
-                        <span>Relatórios</span>
-                    </a>
-                </div> -->
             </nav>
 
             <!-- User Info -->
@@ -95,9 +83,12 @@
                         <span class="sidebar-user-role">{{ user_email or '' }}</span>
                     </div>
                 </div>
-                <a href="/portal_associacao/auth/logout" class="sidebar-logout" title="Sair">
-                    <i class="fas fa-sign-out-alt"></i>
-                </a>
+                <form action="{{ url_for('logout') }}" method="post" style="margin: 0;">
+                    <button type="submit" class="btn-logout" title="Sair do sistema">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Sair</span>
+                    </button>
+                </form>
             </div>
         </aside>
 
