@@ -123,17 +123,6 @@
             color: #333;
         }
 
-        .buttons-container {
-            display: flex;
-            gap: 1rem;
-            margin-top: 1.5rem;
-            flex-direction: column;
-        }
-
-        .buttons-container.hidden {
-            display: none;
-        }
-
         .destination-btn {
             flex: 1;
             padding: 0.875rem;
@@ -149,45 +138,6 @@
             align-items: center;
             justify-content: center;
             gap: 0.5rem;
-        }
-
-        .destination-btn:hover:not(:disabled) {
-            border-color: #667eea;
-            background: #f8f9ff;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
-        }
-
-        .destination-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .destination-btn.assets {
-            border-color: #667eea;
-            color: #667eea;
-        }
-
-        .destination-btn.assets:hover:not(:disabled) {
-            background: #f8f9ff;
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
-        }
-
-        .destination-btn.portal {
-            border-color: #764ba2;
-            color: #764ba2;
-        }
-
-        .destination-btn.portal:hover:not(:disabled) {
-            background: #f8f5ff;
-            box-shadow: 0 4px 12px rgba(118, 75, 162, 0.2);
-        }
-
-        .destination-hint {
-            text-align: center;
-            font-size: 0.85rem;
-            color: #999;
-            margin-top: 1rem;
         }
 
         .location-status {
@@ -290,16 +240,6 @@
                 🔄 Verificando usuário...
             </div>
 
-            <div class="buttons-container hidden" id="destinationButtons">
-                <div class="destination-hint">Escolha para onde deseja ir:</div>
-                <button type="button" class="destination-btn assets" id="assetsBtn">
-                    📦 Ir para App
-                </button>
-                <button type="button" class="destination-btn portal" id="portalBtn">
-                    🏢 Ir para Portal
-                </button>
-            </div>
-
             <input type="hidden" name="destination" id="destination" value="">
         </form>
 
@@ -335,7 +275,6 @@
             // Determinar se é mobile (incluindo tablets como mobile para nossa lógica)
             const isMobile = isMobileUA || isTabletUA || isMobileScreen || 
                             (isTouchDevice && width <= 1024);
-            
             return {
                 isMobile: isMobile,
                 isDesktop: !isMobile,
@@ -365,12 +304,9 @@
                     (position) => {
                         const gpsData = {
                             latitude: position.coords.latitude,
-                            longitude: position.coords.longitude,
-                            accuracy: position.coords.accuracy
+                            longitude: position.coords.longitude
                         };
                         
-                        console.log('GPS obtido:', gpsData);
-                        // showLocationStatus('success', '✅', `GPS: ${gpsData.latitude.toFixed(4)}, ${gpsData.longitude.toFixed(4)}`);
                         resolve(gpsData);
                     },
                     (error) => {
@@ -406,36 +342,16 @@
                     
                     // Se for mobile, tentar obter GPS também
                     if (deviceInfo && deviceInfo.isMobile) {
-                        // showLocationStatus('requesting', '📍', 'Obtendo GPS para mobile...');
                         
                         getUserGPSLocation()
                             .then(gpsData => {
                                 // Adicionar dados GPS aos dados de localização
                                 userLocation.latitude = gpsData.latitude;
                                 userLocation.longitude = gpsData.longitude;
-                                userLocation.accuracy = gpsData.accuracy;
-                                
-                                console.log('Localização completa (IP + GPS):', userLocation);
-                                // showLocationStatus('success', '✅', `País: ${userLocation.country} + GPS`);
-                                
-                                // Armazenar no backend
-                                storeLocationInBackend();
                             })
-                            .catch(error => {
-                                console.log('GPS não disponível, usando apenas IP');
-                                // showLocationStatus('success', '✅', `País: ${userLocation.country} (sem GPS)`);
-                                
-                                // Armazenar no backend apenas com dados IP
-                                storeLocationInBackend();
-                            });
-                    } else {
-                        // Desktop - apenas país via IP
-                        console.log('Desktop detectado - não capturando GPS');
-                        // showLocationStatus('success', '✅', `País: ${userLocation.country}`);
-                        
-                        // Armazenar no backend
-                        storeLocationInBackend();
-                    }
+                    }     
+                    storeLocationInBackend();
+                
                 })
                 .catch(error => {
                     console.error('Erro ao detectar país por IP:', error);
@@ -445,21 +361,16 @@
 
         // Função para armazenar localização no backend
         function storeLocationInBackend() {
-            fetch('/assets/location', {
+            fetch('{{ url_for("assets.store_user_location") }}', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(userLocation)
-            }).then(response => {
-                if (response.ok) {
-                    console.log('[DEBUG] Localização armazenada no backend');
-                }
             }).catch(e => {
                 console.error('[ERROR] Erro ao armazenar localização:', e);
             });
 
             // Marcar localização como pronta
             locationReady = true;
-            console.log('[DEBUG] Location ready flag set to true');
 
             // Esconder status após 3 segundos
             setTimeout(() => {
@@ -499,7 +410,6 @@
             
             const btn = document.getElementById('loginBtn');
             const loading = document.getElementById('loading');
-            const destinationButtons = document.getElementById('destinationButtons');
 
             // Se é mobile e localização ainda não está pronta, aguardar
             if (deviceInfo.isMobile && !locationReady) {
@@ -535,15 +445,11 @@
             function proceedWithLogin() {
                 btn.disabled = true;
                 loading.style.display = 'block';
-                destinationButtons.classList.add('hidden');
                 isAuthenticating = true;
 
                 // Mostrar feedback baseado no dispositivo
                 const destinationText = deviceInfo.isMobile ? 'Aplicativo Mobile' : 'Portal Web';
                 btn.textContent = `Verificando acesso ao ${destinationText}...`;
-
-                console.log('[DEBUG] Iniciando verificação de login');
-                console.log('[DEBUG] User location:', userLocation);
 
                 // Usar AJAX para verificar o usuário
                 fetch('/', {
@@ -596,7 +502,6 @@
                         
                         // Adicionar localização se disponível
                         if (userLocation) {
-                            console.log('[DEBUG] Adding location data to form:', userLocation);
                             
                             const countryInput = document.createElement('input');
                             countryInput.type = 'hidden';
@@ -677,7 +582,6 @@
             
             // Detectar dispositivo e mostrar info para o usuário
             deviceInfo = getDeviceInfo();
-            console.log('[DEBUG] Dispositivo detectado:', deviceInfo.isMobile ? 'Mobile' : 'Desktop');
             
             // Mostrar informação do dispositivo
             const deviceInfoDiv = document.getElementById('deviceInfo');

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Assets">
     <meta name="theme-color" content="#0066FF">
@@ -668,19 +668,19 @@
             <div class="kpi-grid">
                 <div class="kpi-card">
                     <div class="kpi-label"><span class="kpi-icon">📦</span>Total</div>
-                    <div class="kpi-value" id="kpi-total">{{ total }}</div>
+                    <div class="kpi-value">{{ total }}</div>
                 </div>
                 <div class="kpi-card">
-                    <div class="kpi-label"><span class="kpi-icon">🏢</span>Client</div>
-                    <div class="kpi-value">{{ user.client[:6] if user else 'N/A' }}</div>
+                    <div class="kpi-label"><span class="kpi-icon">🟢</span>Online</div>
+                    <div class="kpi-value">{{ online_count }}</div>
                 </div>
                 <div class="kpi-card">
-                    <div class="kpi-label"><span class="kpi-icon">⚡</span>Bateria Baixa</div>
-                    <div class="kpi-value" id="low-battery-count">0</div>
+                    <div class="kpi-label"><span class="kpi-icon">⚡</span>Bat. Baixa</div>
+                    <div class="kpi-value">{{ low_battery_count }}</div>
                 </div>
                 <div class="kpi-card">
                     <div class="kpi-label"><span class="kpi-icon">🔥</span>Temp. Alta</div>
-                    <div class="kpi-value" id="high-temp-count">0</div>
+                    <div class="kpi-value">{{ high_temp_count }}</div>
                 </div>
             </div>
         </header>
@@ -703,13 +703,7 @@
             </div>
             {% endif %}
 
-            <!-- TOP SECTION (SEARCH) -->
-            <div class="content-top">
-                <div class="search-bar">
-                    <span class="search-bar-icon">🔍</span>
-                    <input type="text" id="search-input" placeholder="Buscar por serial, outlet, endereço..." onkeyup="filterAssets()">
-                </div>
-            </div>
+
 
             <!-- SCROLLABLE SECTION (ASSETS) -->
             <div class="content-scrollable">
@@ -734,7 +728,12 @@
                             <div class="card-asset-name">
                                 <span class="asset-serial">{{ asset.get('bottler_equipment_number', asset.get('oem_serial_number')) }}</span>
                                 <span class="asset-location">
-                                    📍 {{ asset.get('street', '-') }}, {{ asset.get('city', '-') }}
+                                    {% if asset.get('city') or asset.get('state') or asset.get('country') %}
+                                        📍 
+                                        {{ asset.get('city', '') if asset.get('city') else '' }}{% if asset.get('city') and (asset.get('state') or asset.get('country')) %}, {% endif %}
+                                        {{ asset.get('state', '') if asset.get('state') else '' }}{% if asset.get('state') and asset.get('country') %}, {% endif %}
+                                        {{ asset.get('country', '') if asset.get('country') else '' }}
+                                    {% endif %}
                                     {% if asset.get('distance_km') is not none %}
                                         <span class="distance-badge">🎯 {{ asset['distance_km'] }}km</span>
                                     {% endif %}
@@ -743,16 +742,16 @@
                             <div class="card-status-badges">
                                 {% if asset.get('is_online') is not none %}
                                     {% if asset.get('is_online') %}
-                                        <span class="status-badge on">� Online</span>
+                                        <span class="status-badge on">🟢 Online</span>
                                     {% else %}
-                                        <span class="status-badge off">� Offline</span>
+                                        <span class="status-badge off">🔴 Offline</span>
                                     {% endif %}
                                 {% endif %}
                                 {% if asset.get('is_missing') is not none %}
                                     {% if asset.get('is_missing') %}
                                         <span class="status-badge open">❌ Perdido</span>
                                     {% else %}
-                                        <span class="status-badge closed">✅ Presente</span>
+                                        <span class="status-badge closed">✅ No local</span>
                                     {% endif %}
                                 {% endif %}
                             </div>
@@ -761,41 +760,82 @@
                         <!-- Card Body with Metrics -->
                         <div class="card-body">
                             <!-- Outlet -->
+                            {% if asset.get('outlet') and asset.get('outlet') != '-' and asset.get('outlet') %}
                             <div class="metric">
                                 <span class="metric-label"><span class="metric-icon">🏪</span>Outlet</span>
-                                <span class="metric-value">{{ asset.get('outlet', '-') }}</span>
+                                <span class="metric-value">{{ asset.get('outlet') }}</span>
                             </div>
-
-                            <!-- Sub Trade Channel -->
-                            <div class="metric">
-                                <span class="metric-label"><span class="metric-icon">🏷️</span>Canal</span>
-                                <span class="metric-value">{{ asset.get('sub_trade_channel', '-') }}</span>
-                            </div>
+                            {% endif %}
 
                             <!-- Temperature -->
+                            {% if asset.get('latest_temperature_c') is not none and asset.get('latest_temperature_c') != 0 %}
                             <div class="metric">
-                                <span class="metric-label"><span class="metric-icon">🌡</span>Temperatura</span>
-                                {% if asset.get('latest_temperature_c') is not none %}
-                                    <span class="metric-value">{{ asset.get('latest_temperature_c')|float }}°C</span>
-                                {% else %}
-                                    <span class="metric-value" style="color: var(--text-secondary);">—</span>
-                                {% endif %}
+                                <span class="metric-label"><span class="metric-icon">🌡️</span>Temperatura</span>
+                                <span class="metric-value" style="color: {% if asset.get('latest_temperature_c')|float >= 40 %}#e74c3c{% else %}#56ab2f{% endif %};">{{ asset.get('latest_temperature_c')|float }}°C</span>
                             </div>
-
-                            <!-- Sub Client -->
-                            <div class="metric">
-                                <span class="metric-label"><span class="metric-icon">🏢</span>SubClient</span>
-                                <span class="metric-value">{{ asset.get('sub_client', '-') }}</span>
-                            </div>
+                            {% endif %}
 
                             <!-- Battery -->
+                            {% if asset.get('battery_level') is not none and asset.get('battery_level') != '-' %}
+                            <div class="metric">
+                                <span class="metric-label"><span class="metric-icon">⚡</span>Bateria</span>
+                                <span class="metric-value" style="color: {% if asset.get('battery_level')|int < 20 %}#e74c3c{% elif asset.get('battery_level')|int < 50 %}#f5a623{% else %}#56ab2f{% endif %};">{{ asset.get('battery_level') }}%</span>
+                            </div>
+                            {% endif %}
+
+                            <!-- Canal / Sub Trade Channel -->
+                            {% if asset.get('sub_trade_channel') and asset.get('sub_trade_channel') != '-' and asset.get('sub_trade_channel') %}
+                            <div class="metric">
+                                <span class="metric-label"><span class="metric-icon">🏷️</span>Canal</span>
+                                <span class="metric-value">{{ asset.get('sub_trade_channel') }}</span>
+                            </div>
+                            {% endif %}
+
+                            <!-- Sub Client -->
+                            {% if asset.get('sub_client') and asset.get('sub_client') != '-' and asset.get('sub_client') %}
+                            <div class="metric">
+                                <span class="metric-label"><span class="metric-icon">🏢</span>SubClient</span>
+                                <span class="metric-value">{{ asset.get('sub_client') }}</span>
+                            </div>
+                            {% endif %}
+
+                            <!-- Battery Bar -->
+                            {% if asset.get('battery_level') is not none and asset.get('battery_level') != '-' %}
                             <div class="battery-container">
-                                <span class="battery-label"><span class="metric-icon">⚡</span>Bateria</span>
+                                <span class="battery-label"><span class="metric-icon">⚡</span>Nível Bateria</span>
                                 <div class="battery-bar">
                                     <div class="battery-fill" data-battery="{{ asset.get('battery_level', 0) }}"></div>
                                 </div>
-                                <span class="battery-percent" id="batt-{{ asset['oem_serial_number'] }}">{{ asset.get('battery_level', '-') }}%</span>
+                                <span class="battery-percent">{{ asset.get('battery_level', '-') }}%</span>
                             </div>
+                            {% endif %}
+
+                            <!-- Door Events Statistics -->
+                            {% if asset.get('door_event_average_morning') or asset.get('door_event_average_afternoon') or asset.get('door_event_average_night') %}
+                            <div style="grid-column: 1 / -1; background: #f8f9fa; padding: 12px; border-radius: 8px; border-left: 3px solid #667eea;">
+                                <div style="font-size: 0.75rem; color: #667eea; font-weight: 600; margin-bottom: 8px;">🚪 Aberturas de Porta (Médias)</div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; font-size: 0.85rem;">
+                                    {% if asset.get('door_event_average_morning') %}
+                                    <div style="text-align: center;">
+                                        <div style="color: #999; font-size: 0.7rem; margin-bottom: 2px;">Manhã</div>
+                                        <div style="font-weight: 600; color: #333;">{{ (asset.get('door_event_average_morning')|float)|round(1) }}</div>
+                                    </div>
+                                    {% endif %}
+                                    {% if asset.get('door_event_average_afternoon') %}
+                                    <div style="text-align: center;">
+                                        <div style="color: #999; font-size: 0.7rem; margin-bottom: 2px;">Tarde</div>
+                                        <div style="font-weight: 600; color: #333;">{{ (asset.get('door_event_average_afternoon')|float)|round(1) }}</div>
+                                    </div>
+                                    {% endif %}
+                                    {% if asset.get('door_event_average_night') %}
+                                    <div style="text-align: center;">
+                                        <div style="color: #999; font-size: 0.7rem; margin-bottom: 2px;">Noite</div>
+                                        <div style="font-weight: 600; color: #333;">{{ (asset.get('door_event_average_night')|float)|round(1) }}</div>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endif %}
                         </div>
 
                         <!-- Alerts Section -->
@@ -821,10 +861,16 @@
                         </div>
 
                         <!-- Additional Info & Links -->
+                        {% if asset.get('asset_type') and asset.get('asset_type') != '-' or (asset.get('city') and asset.get('city') != '-') or (asset.get('state') and asset.get('state') != '-') %}
                         <div style="margin-top: var(--spacing-md); padding-top: var(--spacing-md); border-top: 1px solid var(--border); display: flex; gap: 0.75rem; flex-wrap: wrap; font-size: 0.8rem; color: var(--text-secondary);">
+                            {% if asset.get('asset_type') and asset.get('asset_type') != '-' %}
                             <span>🔧 {{ asset.get('asset_type', '-') }}</span>
-                            <span>📍 {{ asset.get('city', '-') }}, {{ asset.get('state', '-') }}</span>
+                            {% endif %}
+                            {% if (asset.get('city') and asset.get('city') != '-') or (asset.get('state') and asset.get('state') != '-') %}
+                            <span>📍 {{ asset.get('city', '') }}{% if asset.get('state') and asset.get('state') != '-' %}, {{ asset.get('state', '') }}{% endif %}</span>
+                            {% endif %}
                         </div>
+                        {% endif %}
 
                         <!-- Map Link & Temperature History -->
                         <div style="margin-top: var(--spacing-md); padding-top: var(--spacing-md); border-top: 1px solid var(--border); display: flex; gap: 0.75rem; flex-wrap: wrap;">
@@ -852,6 +898,37 @@
                     <p class="empty-text">Parece que não há assets para exibir no momento.</p>
                 </div>
                 {% endif %}
+
+                <!-- PAGINATION -->
+                {% if assets and total_pages > 1 %}
+                <div style="display: flex; justify-content: center; align-items: center; gap: 0.75rem; padding: 1.5rem 1rem; margin-top: 1.5rem; margin-bottom: 1rem; flex-wrap: nowrap; overflow-x: auto;">
+                    {% if page > 1 %}
+                        <a href="?page=1{% if selected_sub_client %}&sub_client={{ selected_sub_client }}{% endif %}{% if user_lat %}&user_lat={{ user_lat }}{% endif %}{% if user_lon %}&user_lon={{ user_lon }}{% endif %}" 
+                           style="padding: 0.85rem 1.1rem; background: var(--primary); color: white; border-radius: 8px; text-decoration: none; font-size: 0.95rem; white-space: nowrap; flex-shrink: 0; font-weight: 600; box-shadow: 0 2px 4px rgba(0,102,255,0.3); min-height: 44px; display: flex; align-items: center; justify-content: center;">
+                            ⏮️ Primeira
+                        </a>
+                        <a href="?page={{ page - 1 }}{% if selected_sub_client %}&sub_client={{ selected_sub_client }}{% endif %}{% if user_lat %}&user_lat={{ user_lat }}{% endif %}{% if user_lon %}&user_lon={{ user_lon }}{% endif %}" 
+                           style="padding: 0.85rem 1.1rem; background: var(--primary); color: white; border-radius: 8px; text-decoration: none; font-size: 0.95rem; white-space: nowrap; flex-shrink: 0; font-weight: 600; box-shadow: 0 2px 4px rgba(0,102,255,0.3); min-height: 44px; display: flex; align-items: center; justify-content: center;">
+                            ◀️ Anterior
+                        </a>
+                    {% endif %}
+                    
+                    <span style="font-size: 1rem; font-weight: 700; color: var(--text); white-space: nowrap; flex-shrink: 0; padding: 0.85rem 1.1rem; background: var(--light); border-radius: 8px; min-height: 44px; display: flex; align-items: center; justify-content: center;">
+                        {{ page }} de {{ total_pages }}
+                    </span>
+                    
+                    {% if page < total_pages %}
+                        <a href="?page={{ page + 1 }}{% if selected_sub_client %}&sub_client={{ selected_sub_client }}{% endif %}{% if user_lat %}&user_lat={{ user_lat }}{% endif %}{% if user_lon %}&user_lon={{ user_lon }}{% endif %}" 
+                           style="padding: 0.85rem 1.1rem; background: var(--primary); color: white; border-radius: 8px; text-decoration: none; font-size: 0.95rem; white-space: nowrap; flex-shrink: 0; font-weight: 600; box-shadow: 0 2px 4px rgba(0,102,255,0.3); min-height: 44px; display: flex; align-items: center; justify-content: center;">
+                            Próximo ▶️
+                        </a>
+                        <a href="?page={{ total_pages }}{% if selected_sub_client %}&sub_client={{ selected_sub_client }}{% endif %}{% if user_lat %}&user_lat={{ user_lat }}{% endif %}{% if user_lon %}&user_lon={{ user_lon }}{% endif %}" 
+                           style="padding: 0.85rem 1.1rem; background: var(--primary); color: white; border-radius: 8px; text-decoration: none; font-size: 0.95rem; white-space: nowrap; flex-shrink: 0; font-weight: 600; box-shadow: 0 2px 4px rgba(0,102,255,0.3); min-height: 44px; display: flex; align-items: center; justify-content: center;">
+                            Última ⏭️
+                        </a>
+                    {% endif %}
+                </div>
+                {% endif %}
             </div>
         </main>
     </div>
@@ -873,50 +950,6 @@
                     bar.classList.add('warning');
                 }
             });
-        }
-
-        // Simple search functionality
-        function filterAssets() {
-            const searchInput = document.getElementById('search-input').value.toLowerCase();
-            const assetCards = document.querySelectorAll('.asset-card');
-
-            assetCards.forEach(card => {
-                const assetData = card.getAttribute('data-search').toLowerCase();
-                
-                if (assetData.includes(searchInput)) {
-                    card.style.display = '';
-                } else {
-                    card.style.display = 'none';
-                }
-            });
-
-            // Update stats
-            updateAssetStats();
-        }
-
-        function updateAssetStats() {
-            let lowBatteryCount = 0;
-            let highTempCount = 0;
-
-            const assetCards = document.querySelectorAll('.asset-card');
-            
-            assetCards.forEach(card => {
-                if (card.style.display !== 'none') {
-                    const batteryPercent = parseInt(card.querySelector('.battery-percent')?.textContent) || 0;
-                    if (batteryPercent > 0 && batteryPercent < 30) {
-                        lowBatteryCount++;
-                    }
-
-                    if (card.querySelector('.alert-item.danger') && 
-                        card.querySelector('.alert-item.danger').textContent.includes('Temperatura')) {
-                        highTempCount++;
-                    }
-                }
-            });
-
-            // Update KPI cards
-            document.getElementById('low-battery-count').textContent = lowBatteryCount;
-            document.getElementById('high-temp-count').textContent = highTempCount;
         }
 
         function viewTemperatureHistory(assetSerialNumber) {
@@ -1048,7 +1081,7 @@
             const select = document.getElementById('subclient-select');
             const selectedValue = select.value;
             
-            // Get current URL params
+            // Build URL with params
             const urlParams = new URLSearchParams(window.location.search);
             
             if (selectedValue) {
@@ -1057,7 +1090,7 @@
                 urlParams.delete('sub_client');
             }
             
-            // Redirect with new params
+            // Keep search and location params
             window.location.href = window.location.pathname + '?' + urlParams.toString();
         }
 
@@ -1082,7 +1115,6 @@
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
             initializeBatteryBars();
-            updateAssetStats();
             
             // Request location if not already provided
             const urlParams = new URLSearchParams(window.location.search);

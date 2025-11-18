@@ -1,7 +1,7 @@
 import os
 from flask import Flask, render_template, redirect, url_for, request, session
 from db.database import get_session, init_db
-from models.models import Asset, Outlet, SmartDevice, User
+from models.models import User
 from datetime import datetime
 from routes.app.users import users_bp
 from routes.app.outlet import outlets_bp
@@ -14,10 +14,8 @@ from routes.portal.outlets import outlets_bp as portal_outlets_bp
 from routes.portal.assets import assets_bp as portal_assets_bp
 from routes.portal.smartdevices import smartdevices_bp as portal_smartdevices_bp
 from routes.portal.tracking import tracking_bp as portal_tracking_bp
-from routes.portal.auth import auth_bp as portal_auth_bp
 from utils.google_accounts import create_google_accounts_for_all_clients
-from utils.excel_to_db import insert_or_update_users_from_excel, insert_or_update_outlets_from_excel, insert_or_update_assets_from_excel, insert_or_update_smartdevices_from_excel, insert_or_update_health_events_from_excel
-from sqlalchemy import func
+from swagger import register_swagger
 
 app = Flask(__name__, template_folder="templates", static_folder="static", static_url_path="/static")
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-secret-key")
@@ -61,7 +59,9 @@ app.register_blueprint(portal_outlets_bp)
 app.register_blueprint(portal_assets_bp)
 app.register_blueprint(portal_smartdevices_bp)
 app.register_blueprint(portal_tracking_bp)
-app.register_blueprint(portal_auth_bp)
+
+# Register Swagger documentation
+register_swagger(app)
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -72,17 +72,11 @@ def index():
         user_country = request.form.get("country", "").strip().lower()
         check_only = request.form.get("check_only") == "true"
         destination = request.form.get("destination", "assets")
-        
-        # Capturar dados de localização (quando disponíveis - mobile)
+    
         latitude = request.form.get("latitude")
         longitude = request.form.get("longitude")
-        gps_accuracy = request.form.get("gps_accuracy")
         country_code = request.form.get("country_code")
         user_ip = request.form.get("user_ip")
-        device_info = request.form.get("device_info")
-
-        print(f"[DEBUG] Login attempt - UPN: {upn}, Country: '{user_country}', Check: {check_only}, Dest: {destination}")
-        print(f"[DEBUG] Location data - GPS: {latitude},{longitude}, Country: {country_code}, IP: {user_ip}")
 
         db_session = get_session()
 
@@ -129,10 +123,9 @@ def index():
             session_data.update({
                 "latitude": float(latitude),
                 "longitude": float(longitude),
-                "gps_accuracy": float(gps_accuracy) if gps_accuracy else None,
                 "has_gps": True
             })
-            print(f"[INFO] GPS captured for {upn}: {latitude}, {longitude} (accuracy: {gps_accuracy}m)")
+            print(f"[INFO] GPS captured for {upn}: {latitude}, {longitude}")
         else:
             session_data["has_gps"] = False
             print(f"[INFO] No GPS for {upn} (desktop or GPS denied)")
@@ -142,12 +135,6 @@ def index():
             session_data["country_code"] = country_code
         if user_ip:
             session_data["user_ip"] = user_ip
-        if device_info:
-            try:
-                import json
-                session_data["device_info"] = json.loads(device_info)
-            except:
-                pass
 
         session["user"] = session_data
 
@@ -155,16 +142,10 @@ def index():
         user.last_login_on = datetime.now()
         db_session.commit()
 
-        print(f"[DEBUG] Session created successfully for {upn}")
-        print(f"[DEBUG] Redirecting to destination: {destination}")
-
         # Redirect based on destination
         if destination == "portal":
-            print(f"[DEBUG] Redirecting to portal dashboard")
             return redirect(url_for("dashboard.render_dashboard"))
         else:
-            # Default to assets
-            print(f"[DEBUG] Redirecting to assets")
             return redirect(url_for("assets.list_assets"))
 
     except Exception as e:

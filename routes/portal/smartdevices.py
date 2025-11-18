@@ -51,15 +51,6 @@ smartdevices_bp = Blueprint("portal_smartdevices", __name__, url_prefix="/portal
 
 @smartdevices_bp.route("/", methods=["GET"])
 @require_authentication
-def get_smart_devices():
-    """
-    List all smart devices (alias for list_and_create_smartdevices)
-    """
-    return list_and_create_smartdevices()
-
-
-@smartdevices_bp.route("", methods=["GET"])
-@require_authentication
 def list_and_create_smartdevices():
     """
     List all smart devices with pagination (filtered by user client)
@@ -103,7 +94,7 @@ def list_and_create_smartdevices():
         return redirect(url_for("dashboard.render_dashboard"))
 
 
-@smartdevices_bp.route("", methods=["POST"])
+@smartdevices_bp.route("/", methods=["POST"])
 @require_authentication
 def create_smartdevice():
     """
@@ -119,10 +110,22 @@ def create_smartdevice():
                 return default
             return str(value).lower() in {"1", "true", "on", "yes"}
 
+        # Validate mac_address
+        mac_address = request.form.get("mac_address")
+        if not mac_address:
+            flash("O campo 'MAC Address' é obrigatório.", "error")
+            return redirect(url_for("portal_smartdevices.list_and_create_smartdevices"))
+
+        # Check if mac_address is unique
+        existing_device = db_session.query(SmartDevice).filter(SmartDevice.mac_address == mac_address).first()
+        if existing_device:
+            flash("Já existe um dispositivo com este 'MAC Address'.", "error")
+            return redirect(url_for("portal_smartdevices.list_and_create_smartdevices"))
+
         # Create new smart device
         new_device = SmartDevice(
             serial_number=request.form.get("serial_number", ""),
-            mac_address=request.form.get("mac_address"),
+            mac_address=mac_address,
             linked_with_asset=request.form.get("linked_with_asset"),
             outlet=request.form.get("outlet"),
             city=request.form.get("city"),
@@ -266,7 +269,6 @@ def delete_smartdevice(mac_address):
     Delete smart device by MAC address
     """
     try:
-        user = session.get("user")
         db_session = get_session()
         device = db_session.query(SmartDevice).filter(SmartDevice.mac_address == mac_address).first()
 

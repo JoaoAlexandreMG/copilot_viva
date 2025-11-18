@@ -2,6 +2,6 @@
 Models package - imports all model definitions
 This ensures all models are registered with SQLAlchemy's metadata
 """
-from models.models import Base, User, Outlet, Asset, SmartDevice, Movement, HealthEvent, DoorEvent, Alert, Client, GoogleAccount, SubClient
+from models.models import Base, User, Outlet, Asset, SmartDevice, Movement, HealthEvent, DoorEvent, Alert, Client, GoogleAccount, SubClient, AlertsDefinition
 
-__all__ = ['Base', 'User', 'Outlet', 'Asset', 'SmartDevice', 'Movement', 'HealthEvent', 'DoorEvent', 'Alert', 'Client', 'GoogleAccount', 'SubClient']
+__all__ = ['Base', 'User', 'Outlet', 'Asset', 'SmartDevice', 'Movement', 'HealthEvent', 'DoorEvent', 'Alert', 'AlertsDefinition', 'Client', 'GoogleAccount', 'SubClient']

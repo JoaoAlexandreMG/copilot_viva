@@ -49,7 +49,7 @@ class Pagination:
                 last = num
 
 
-@assets_bp.route("", methods=["GET"])
+@assets_bp.route("/", methods=["GET"])
 @require_authentication
 def list_and_create_assets():
     """
@@ -94,7 +94,7 @@ def list_and_create_assets():
         return redirect(url_for("dashboard.render_dashboard"))
 
 
-@assets_bp.route("", methods=["POST"])
+@assets_bp.route("/", methods=["POST"])
 @require_authentication
 def create_asset():
     """
@@ -104,11 +104,23 @@ def create_asset():
         user = session.get("user")
         db_session = get_session()
 
+        # Validate required field
+        oem_serial_number = request.form.get("oem_serial_number")
+        if not oem_serial_number:
+            flash("O campo 'OEM Serial Number' é obrigatório.", "error")
+            return redirect(url_for("portal_assets.list_and_create_assets"))
+
+        # Check for duplicate OEM serial number
+        existing_asset = db_session.query(Asset).filter(Asset.oem_serial_number == oem_serial_number).first()
+        if existing_asset:
+            flash(f"Já existe um asset com o OEM Serial Number '{oem_serial_number}'.", "error")
+            return redirect(url_for("portal_assets.list_and_create_assets"))
+
         # Create new asset
         new_asset = Asset(
             bottler_equipment_number=request.form.get("bottler_equipment_number", ""),
             asset_type=request.form.get("asset_type"),
-            oem_serial_number=request.form.get("oem_serial_number"),
+            oem_serial_number=oem_serial_number,
             outlet=request.form.get("outlet"),
             is_smart=request.form.get("is_smart") == "on",
             created_on=datetime.now(),
@@ -230,7 +242,6 @@ def delete_asset(oem_serial):
     Delete asset by OEM serial
     """
     try:
-        user = session.get("user")
         db_session = get_session()
         asset = db_session.query(Asset).filter(Asset.oem_serial_number == oem_serial).first()
 

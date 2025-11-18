@@ -53,17 +53,7 @@ class Pagination:
 
 users_bp = Blueprint("portal_users", __name__, url_prefix="/portal_associacao/users")
 
-
 @users_bp.route("/", methods=["GET"])
-@require_authentication
-def render_users():
-    """
-    Render users list page (alias for list_and_create_users)
-    """
-    return list_and_create_users()
-
-
-@users_bp.route("", methods=["GET"])
 @require_authentication
 def list_and_create_users():
     """
@@ -110,7 +100,7 @@ def list_and_create_users():
         return redirect(url_for("dashboard.render_dashboard"))
 
 
-@users_bp.route("", methods=["POST"])
+@users_bp.route("/", methods=["POST"])
 @require_authentication
 def create_user():
     """
@@ -120,13 +110,25 @@ def create_user():
         user = session.get("user")
         db_session = get_session()
 
+        # Ensure UPN is provided
+        upn = request.form.get("upn", "").strip()
+        if not upn:
+            flash("O campo UPN é obrigatório.", "error")
+            return redirect(url_for("portal_users.list_and_create_users"))
+
+        # Check if UPN already exists
+        existing_user = db_session.query(User).filter(User.upn == upn).first()
+        if existing_user:
+            flash("Já existe um usuário com este UPN.", "error")
+            return redirect(url_for("portal_users.list_and_create_users"))
+
         # Create new user
         new_user = User(
             first_name=request.form.get("first_name", ""),
             last_name=request.form.get("last_name", ""),
             user_name=request.form.get("user_name", ""),
             email=request.form.get("email", ""),
-            upn=request.form.get("upn", ""),
+            upn=upn,
             phone=request.form.get("phone"),
             role=request.form.get("role"),
             reporting_manager=request.form.get("reporting_manager"),
@@ -164,7 +166,6 @@ def create_user():
         print(f"[ERROR] Error creating user: {str(e)}")
         flash(f"Erro ao criar usuário: {str(e)}", "error")
         return redirect(url_for("portal_users.list_and_create_users"))
-
 
 @users_bp.route("/<string:upn>", methods=["GET"])
 @require_authentication
@@ -251,7 +252,6 @@ def delete_user(upn):
     Delete user by ID
     """
     try:
-        user = session.get("user")
         db_session = get_session()
         user_obj = db_session.query(User).filter(User.upn == upn).first()
 
