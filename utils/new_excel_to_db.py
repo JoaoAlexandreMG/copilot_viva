@@ -1611,53 +1611,45 @@ def importar_dados_generico(db_session, model_name: str, file_path: str):
 
         elif file_ext == '.csv':
 
-            # Tenta ler como UTF-8 e depois como UTF-16
-
-            encoding_to_try = ['utf-8', 'utf-16']
-
-           
-
-            for encoding in encoding_to_try:
-
+            # Tenta UTF-16 primeiro (mais comum nos arquivos do portal), depois UTF-8
+            encodings_to_try = ['utf-16', 'utf-8', 'latin-1']
+            records_raw = None
+            headers = None
+            
+            for enc in encodings_to_try:
                 try:
-
-                    with open(file_path, 'r', newline='', encoding=encoding) as f:
-
-                        reader = csv.reader(f)
-
-                        # --- NOVO: LÓGICA PARA PULAR LINHAS ---
-
-                        # A primeira chamada (next) consome a linha incorreta (ex: ['Door Statuses'])
-
-                        _ = next(reader)
-
-                       
-
-                        # A segunda chamada (next) consome a linha real de cabeçalho
-
-                        headers = next(reader)
-
-                       
-
-                        # O restante é o registro de dados
-
-                        records_raw = list(reader)
-
-
-
-                        break
-
-                except UnicodeDecodeError:
-
-                    if encoding == 'utf-16': # Se falhou utf-16, levanta erro final.
-
-                         raise
-
-                except Exception:
-
-                    raise
-
-           
+                    with open(file_path, 'r', newline='', encoding=enc) as f:
+                        reader = csv.DictReader(f)
+                        headers_orig = list(reader.fieldnames) if reader.fieldnames else []
+                        
+                        if not headers_orig:
+                            continue
+                        
+                        # Se primeiro header é um título único, pula e relê
+                        if len(headers_orig) == 1:
+                            with open(file_path, 'r', newline='', encoding=enc) as f:
+                                f.readline()  # Pula linha 1
+                                reader = csv.DictReader(f)
+                                headers = list(reader.fieldnames) if reader.fieldnames else []
+                                records_raw_dicts = list(reader)
+                        else:
+                            headers = headers_orig
+                            records_raw_dicts = list(reader)
+                        
+                        # Converte de dicts para listas na ordem dos headers
+                        records_raw = []
+                        for row_dict in records_raw_dicts:
+                            row = [row_dict.get(h) for h in headers]
+                            records_raw.append(row)
+                        break  # Sucesso, sai do loop
+                        
+                except (UnicodeDecodeError, Exception):
+                    if enc == encodings_to_try[-1]:  # Última tentativa falhou
+                        raise
+                    continue  # Tenta próximo encoding
+            
+            if records_raw is None:
+                raise ValueError(f"Não foi possível ler o arquivo CSV: {file_path}")
 
             # Sanitiza dados do CSV (strings vazias para None)
 
@@ -1744,6 +1736,23 @@ def importar_dados_generico(db_session, model_name: str, file_path: str):
             records_to_process.append(data)
 
     print(f"✅ Processados {len(records_to_process)} registros válidos")
+
+    # 🚀 DEDUPLICAÇÃO: Remove duplicatas dentro do arquivo pela chave primária
+    print(f"🔄 Deduplicando registros por chave primária...")
+    deduplicated = {}
+    for data in records_to_process:
+        if isinstance(key_col, list):
+            key_tuple = tuple(data.get(col) for col in key_col)
+            if all(v is not None for v in key_tuple):
+                deduplicated[key_tuple] = data
+        else:
+            key = data.get(key_col)
+            if key is not None:
+                deduplicated[key] = data
+    
+    records_to_process = list(deduplicated.values())
+    print(f"📊 Após deduplicação: {len(records_to_process)} registros únicos")
+
 
 
 

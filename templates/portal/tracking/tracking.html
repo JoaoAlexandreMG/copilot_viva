@@ -282,6 +282,22 @@
                         <option value="false">✅ Normal</option>
                     </select>
                 </div>
+                <div class="device-filter">
+                    <label style="font-size: 12px; font-weight: 600; color: #333; display: block; margin-bottom: 5px;">Status Ativo</label>
+                    <select id="filterIsActive" style="width: 100%; padding: 8px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 13px;">
+                        <option value="">Todos</option>
+                        <option value="false">⚠️ Inativo (24hrs)</option>
+                        <option value="true">✅ Ativo (24hrs)</option>
+                    </select>
+                </div>
+                <div class="device-filter">
+                    <label style="font-size: 12px; font-weight: 600; color: #333; display: block; margin-bottom: 5px;">Temperatura</label>
+                    <select id="filterTempIsOk" style="width: 100%; padding: 8px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 13px;">
+                        <option value="">Todos</option>
+                        <option value="true">🟢 OK</option>
+                        <option value="false">🔴 Fora do Padrão</option>
+                    </select>
+                </div>
                 <button onclick="clearAdvancedFilters()" style="
                     width: 100%;
                     padding: 8px;
@@ -392,6 +408,8 @@
         country: '{{ filters.country }}',
         is_online: '{{ filters.is_online }}',
         is_missing: '{{ filters.is_missing }}',
+        is_active: '{{ filters.is_active }}',
+        temp_is_ok: '{{ filters.temp_is_ok }}',
         subclient: '{{ filters.subclient }}'
     };
 
@@ -423,7 +441,9 @@
                 state: document.getElementById('filterState')?.value?.trim() || '',
                 country: document.getElementById('filterCountry')?.value?.trim() || '',
                 is_online: document.getElementById('filterIsOnline')?.value?.trim() || '',
-                is_missing: document.getElementById('filterIsMissing')?.value?.trim() || ''
+                is_missing: document.getElementById('filterIsMissing')?.value?.trim() || '',
+                is_active: document.getElementById('filterIsActive')?.value?.trim() || '',
+                temp_is_ok: document.getElementById('filterTempIsOk')?.value?.trim() || ''
             };
             
             // CORREÇÃO: A lógica 'useOptimized' deve ser baseada no estado *atual*
@@ -481,6 +501,12 @@
                 }
                 if (advancedFilters.is_missing) {
                     params.append('is_missing', advancedFilters.is_missing);
+                }
+                if (advancedFilters.is_active) {
+                    params.append('is_active', advancedFilters.is_active);
+                }
+                if (advancedFilters.temp_is_ok) {
+                    params.append('temp_is_ok', advancedFilters.temp_is_ok);
                 }
                 
                 url = `/portal_associacao/tracking/devices?${params.toString()}`;
@@ -625,7 +651,7 @@
             let temperatureStatus = '';
             if (device.latest_cabinet_temperature_c !== null && device.latest_cabinet_temperature_c !== undefined) {
                 const temp = parseFloat(device.latest_cabinet_temperature_c);
-                const tempColor = temp <= 5 ? '#56ab2f' : temp <= 10 ? '#f5576c' : '#e74c3c';
+                const tempColor = temp < 0 ? '#5dade2' : temp <= 7 ? '#56ab2f' : '#e74c3c';
                 temperatureStatus = `<div class="device-info" style="color: ${tempColor};">🌡️ Temperatura: ${temp.toFixed(1)}°C</div>`;
             }
 
@@ -657,6 +683,13 @@
                 missingStatus = `<div class="device-info" style="color: #e74c3c;">⚠️ Perdido</div>`;
             } else {
                 missingStatus = `<div class="device-info" style="color: #56ab2f;">✅ Normal</div>`;
+            }
+            
+            let activeStatus = '';
+            if (device.is_active) {
+                activeStatus = `<div class="device-info" style="color: #e74c3c;">⚠️ Inativo</div>`;
+            } else {
+                activeStatus = `<div class="device-info" style="color: #56ab2f;">✅ Ativo</div>`;
             }
 
             return `
@@ -730,9 +763,6 @@
                 return;
             }
 
-            // Escolher cor do marcador baseado no status
-            // (CORRIGIDO: Adicionadas verificações de 'undefined' para campos que
-            // podem não existir na materialized view)
             let markerColor = '#56ab2f'; // Verde padrão
             
             if (device.is_missing) {
@@ -1084,7 +1114,7 @@
         const analyticsPanel = document.getElementById('analyticsPanel');
         if (!analyticsPanel) return;
 
-        const temp_min = analytics.temperature_status.temp_min;
+        const temp_min = analytics.tempSerature_status.temp_min;
         const temp_max = analytics.temperature_status.temp_max;
         const stats = analytics.statistics;
         const hourly = analytics.hourly_data;
@@ -1365,6 +1395,7 @@
         
         const statusOnline = device.is_online ? '🟢 Online' : '🔴 Offline';
         const statusMissing = device.is_missing ? '⚠️ Perdido' : '✅ Normal';
+        const statusActive = device.is_active ? '✅ Ativo' : '⚠️ Inativo';
         
         // Temperaturas com validação
         const tempColor = (device.latest_cabinet_temperature_c && (device.latest_cabinet_temperature_c > 20 || device.latest_cabinet_temperature_c < 1)) ? '#e74c3c' : '#56ab2f';
@@ -1621,6 +1652,7 @@
         
         const statusOnline = device.is_online ? '🟢 Online' : '🔴 Offline';
         const statusMissing = device.is_missing ? '⚠️ Perdido' : '✅ Normal';
+        const statusActive = device.is_active ? '✅ Ativo' : '⚠️ Inativo';
         
         const tempColor = (device.latest_cabinet_temperature_c > 20 || device.latest_cabinet_temperature_c < 1) ? '#e74c3c' : '#56ab2f';
         
@@ -1799,6 +1831,8 @@
         document.getElementById('filterCountry').value = '';
         document.getElementById('filterIsOnline').value = '';
         document.getElementById('filterIsMissing').value = '';
+        document.getElementById('filterIsActive').value = '';
+        document.getElementById('filterTempIsOk').value = '';
         
         // Limpar também o subclient
         document.getElementById('subclientFilter').value = '';
@@ -1825,7 +1859,9 @@
             'filterState',
             'filterCountry',
             'filterIsOnline',
-            'filterIsMissing'
+            'filterIsMissing',
+            'filterIsActive',
+            'filterTempIsOk'
         ];
         
         advancedFilterInputs.forEach(inputId => {
@@ -1903,19 +1939,27 @@
             document.getElementById('filterIsMissing').value = initialFilters.is_missing;
             hasUrlFilters = true;
         }
+        if (initialFilters.is_active) {
+            document.getElementById('filterIsActive').value = initialFilters.is_active;
+            hasUrlFilters = true;
+        }
+        if (initialFilters.temp_is_ok) {
+            document.getElementById('filterTempIsOk').value = initialFilters.temp_is_ok;
+            hasUrlFilters = true;
+        }
         if (initialFilters.subclient) {
             // O subclient será preenchido após carregar a lista
             currentSubclient = initialFilters.subclient;
             hasUrlFilters = true;
         }
         
-        // Se houver filtros na URL, abrir o painel de filtros avançados
+        // Se houver filtros na URL, abrir o painel de filtros avançados e carregar com os filtros
         if (hasUrlFilters) {
             const panel = document.getElementById('advancedFiltersPanel');
             const icon = document.getElementById('filterToggleIcon');
             panel.style.display = 'block';
             icon.textContent = '▲';
-            console.log('🔍 Filtros aplicados da URL');
+            console.log('🔍 Filtros aplicados da URL, carregando dados...');
         }
 
         // // Event listener para busca por texto
@@ -1950,8 +1994,26 @@
         // Configurar listeners para filtros avançados
         setupAdvancedFilterListeners();
         
+        // Inicializar mapa e carregar dispositivos
+        // console.log('🗺️ Inicializando mapa...');
+        initMap();
+        
+        // console.log('📥 Carregando assets iniciais...');
+        // Se houver filtros na URL, carregar com esses filtros; caso contrário, usar a view otimizada
+        if (hasUrlFilters) {
+            loadDevices(1, currentSearchTerm, currentSubclient, false); // Com filtros, não usar otimizado
+        } else {
+            loadDevices(1, '', '', true); // Carga inicial sempre otimizada
+        }
+        
         // console.log('✅ Event listeners inicializados');
     });
+
+    // Recarregar dispositivos a cada 60 segundos (mantém na página atual)
+    setInterval(() => {
+        const isFiltering = (currentSearchTerm.trim() !== '' || currentSubclient.trim() !== '');
+        loadDevices(currentPage, currentSearchTerm, currentSubclient, !isFiltering);
+    }, 60000);
 
     // Função para atualizar a URL com os filtros atuais
     function updateUrlWithFilters() {
@@ -1967,6 +2029,8 @@
             country: document.getElementById('filterCountry')?.value?.trim() || '',
             is_online: document.getElementById('filterIsOnline')?.value?.trim() || '',
             is_missing: document.getElementById('filterIsMissing')?.value?.trim() || '',
+            is_active: document.getElementById('filterIsActive')?.value?.trim() || '',
+            temp_is_ok: document.getElementById('filterTempIsOk')?.value?.trim() || '',
             subclient: currentSubclient
         };
         
@@ -1982,20 +2046,11 @@
         window.history.replaceState({}, '', newUrl);
     }
 
-    // Inicializar
-    // console.log('🗺️ Inicializando mapa...');
-    initMap();
-    
-    // console.log('📥 Carregando assets iniciais...');
-    loadDevices(1, '', '', true); // Carga inicial sempre otimizada
-    
-    // console.log('✅ Sistema de rastreio inicializado');
-
     // Recarregar dispositivos a cada 60 segundos (mantém na página atual)
-    // Descomente se quiser auto-refresh:
-    // setInterval(() => {
-    //     const isFiltering = (currentSearchTerm.trim() !== '' || currentSubclient.trim() !== '');
-    //     loadDevices(currentPage, currentSearchTerm, currentSubclient, !isFiltering);
-    // }, 60000);
+    // Auto-refresh ativo:
+    setInterval(() => {
+        const isFiltering = (currentSearchTerm.trim() !== '' || currentSubclient.trim() !== '');
+        loadDevices(currentPage, currentSearchTerm, currentSubclient, !isFiltering);
+    }, 60000);
 </script>
 {% endblock %}

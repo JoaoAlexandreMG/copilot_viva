@@ -636,6 +636,10 @@ def asset_detail(asset_serial_number):
         health_view_query = sql_text("""
             SELECT * FROM assets_health_latest_event_24h_view 
             WHERE asset_serial_number = :serial 
+                AND (temperature_c IS NULL OR temperature_c BETWEEN -30 AND 20)
+                AND (evaporator_temperature_c IS NULL OR evaporator_temperature_c BETWEEN -30 AND 20) 
+                AND (condensor_temperature_c IS NULL OR condensor_temperature_c BETWEEN -30 AND 20)
+                AND (ambient_temperature_c IS NULL OR ambient_temperature_c BETWEEN -30 AND 20)
             ORDER BY event_time DESC 
             LIMIT 1
         """)
@@ -669,11 +673,13 @@ def asset_detail(asset_serial_number):
                 if not asset_dict.get('latest_temperature_c'):
                     asset_dict['latest_temperature_c'] = dashboard_stats_dict.get('latest_temperature_c')
 
-        # Get historical data for charts (last 30 days)
+        # Get historical data for charts (last 30 days) - filtrar temperaturas anômalas
         temperature_history = db_session.query(HealthEvent).filter(
             HealthEvent.asset_serial_number == asset_serial_number,
             HealthEvent.event_type == "Cabinet Temperature",
-            HealthEvent.temperature_c.isnot(None)
+            HealthEvent.temperature_c.isnot(None),
+            HealthEvent.temperature_c >= -30,
+            HealthEvent.temperature_c <= 20
         ).order_by(HealthEvent.event_time.desc()).limit(30).all()
 
         # Get door events from door table (last 7 days for chart)

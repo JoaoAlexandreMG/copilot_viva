@@ -29,9 +29,8 @@ def stats_for_dashboard(days=30):
     if not client:
         return {}
     
-    # Parâmetros de tempo (para as queries dinâmicas que não estão na MV)
+    # Parâmetros de tempo (para as queries que precisam de filtro temporal)
     now = datetime.now(timezone.utc)
-    one_day_before = now - timedelta(hours=24)
     period_start = now - timedelta(days=days)
 
     # 2. Obter Definições Dinâmicas de Alerta
@@ -44,50 +43,34 @@ def stats_for_dashboard(days=30):
     temp_min = temp_alert_definition.temperature_below if temp_alert_definition and temp_alert_definition.temperature_below is not None else 0
     temp_max = temp_alert_definition.temperature_above if temp_alert_definition and temp_alert_definition.temperature_above is not None else 7
 
-    # 3. Query 1: Status Dinâmicos e Contagens (Bateria, Temperatura, Movimento 24h, Totais)
-    # A lógica complexa é encapsulada em um CTE para extrair o último status de saúde (igual à MV, mas filtrado por cliente)
+    # 3. Query 1: Status Dinâmicos e Contagens usando MVs otimizadas
+    # Usar mv_dashboard_stats_main para dados de bateria e mv_client_assets_report para temperatura
     status_and_counts_sql = text(f"""
-        WITH LatestHealthStatus AS (
-            SELECT he.asset_serial_number, he.battery, he.temperature_c,
-                    ROW_NUMBER() OVER (
-                        PARTITION BY he.asset_serial_number
-                        ORDER BY he.event_time DESC
-                    ) AS rn
-            FROM health_events he
-            WHERE he.client = :client
-                AND he.event_time >= :period_start
-                AND (he.battery IS NOT NULL OR he.temperature_c IS NOT NULL)
-        )
         SELECT 
             -- Totais
-            (SELECT COUNT(oem_serial_number) FROM assets WHERE client = :client) AS total_assets,
+            (SELECT COUNT(*) FROM assets WHERE client = :client) AS total_assets,
             (SELECT COUNT(id) FROM alerts WHERE client = :client AND alert_at >= :period_start) AS alerts_period_count,
-            (SELECT COUNT(DISTINCT(asset_serial_number)) FROM movements WHERE client = :client AND start_time > :one_day_before) AS assets_health_last_24h_count,
+            (SELECT COUNT(*) FROM mv_client_assets_report WHERE client = :client AND is_active = true) AS assets_health_last_24h_count,
         
-            -- Status de Bateria (Regras: >50% Boa, 25-50% Baixa, <25% Crítica)
-            SUM(CASE WHEN l.battery > 50 THEN 1 ELSE 0 END) AS good_battery_assets_count,
-            SUM(CASE WHEN l.battery >= 25 AND l.battery <= 50 THEN 1 ELSE 0 END) AS low_battery_assets_count,
-            SUM(CASE WHEN l.battery < 25 AND l.battery IS NOT NULL THEN 1 ELSE 0 END) AS critical_battery_assets_count,
+            -- Status de Bateria usando mv_dashboard_stats_main
+            (SELECT COUNT(*) FROM mv_dashboard_stats_main WHERE client = :client AND latest_battery > 50) AS good_battery_assets_count,
+            (SELECT COUNT(*) FROM mv_dashboard_stats_main WHERE client = :client AND latest_battery >= 25 AND latest_battery <= 50) AS low_battery_assets_count,
+            (SELECT COUNT(*) FROM mv_dashboard_stats_main WHERE client = :client AND latest_battery < 25 AND latest_battery IS NOT NULL) AS critical_battery_assets_count,
 
-            -- Status de Temperatura (Regras de Alerta Dinâmicas)
-            SUM(CASE WHEN l.temperature_c BETWEEN :temp_min AND :temp_max THEN 1 ELSE 0 END) AS ok_temperatures_count,
-            SUM(CASE WHEN l.temperature_c > :temp_max THEN 1 ELSE 0 END) AS above_temperatures_count,
-            SUM(CASE WHEN l.temperature_c < :temp_min AND l.temperature_c IS NOT NULL THEN 1 ELSE 0 END) AS below_temperatures_count,
+            -- Status de Temperatura usando dados filtrados para excluir valores impossíveis (-30°C a 20°C)
+            (SELECT COUNT(*) FROM mv_client_assets_report WHERE client = :client AND latest_cabinet_temperature_c BETWEEN :temp_min AND :temp_max AND latest_cabinet_temperature_c BETWEEN -30 AND 20 AND latest_cabinet_temperature_c IS NOT NULL) AS ok_temperatures_count,
+            (SELECT COUNT(*) FROM mv_client_assets_report WHERE client = :client AND latest_cabinet_temperature_c > :temp_max AND latest_cabinet_temperature_c BETWEEN -30 AND 20 AND latest_cabinet_temperature_c IS NOT NULL) AS above_temperatures_count,
+            (SELECT COUNT(*) FROM mv_client_assets_report WHERE client = :client AND latest_cabinet_temperature_c < :temp_min AND latest_cabinet_temperature_c BETWEEN -30 AND 20 AND latest_cabinet_temperature_c IS NOT NULL) AS below_temperatures_count,
 
-            -- Novas estatísticas de consumo e compressor (médias apenas de registros > 0)
-            (SELECT AVG(he.total_compressor_on_time_percent) FROM health_events he WHERE he.event_time >= :period_start AND he.client = :client AND he.total_compressor_on_time_percent > 0) AS avg_compressor_on_time,
-            (SELECT AVG(he.avg_power_consumption_watt) FROM health_events he WHERE he.event_time >= :period_start AND he.client = :client AND he.avg_power_consumption_watt > 0) AS avg_power_consumption
-        FROM
-            LatestHealthStatus l
-        WHERE
-            l.rn = 1;
+            -- Estatísticas de consumo e compressor (usando health_events para dados mais recentes, com filtro de temperatura)
+            (SELECT AVG(total_compressor_on_time_percent) FROM health_events WHERE client = :client AND event_time >= :period_start AND total_compressor_on_time_percent > 0) AS avg_compressor_on_time,
+            (SELECT AVG(avg_power_consumption_watt) FROM health_events WHERE client = :client AND event_time >= :period_start AND avg_power_consumption_watt > 0) AS avg_power_consumption;
     """)
     
     status_results = db_session.execute(
         status_and_counts_sql, 
         {
             "client": client, 
-            "one_day_before": one_day_before,
             "period_start": period_start, 
             "temp_min": temp_min, 
             "temp_max": temp_max
@@ -97,49 +80,67 @@ def stats_for_dashboard(days=30):
     if not status_results:
         # Retorna um dicionário vazio ou com zeros se o cliente não tiver dados
         return {
-            "total_assets": db_session.query(Asset).filter(Asset.client == client).count(),
+            "total_assets": db_session.execute(text("SELECT COUNT(*) FROM mv_client_assets_report WHERE client = :client"), {"client": client}).scalar() or 0,
             "assets_health_last_24h_count": 0,
             "alerts_period_count": 0,
-            "ok_temperatures_count": 0, "total_with_temperature": 0,
+            "ok_temperatures_count": 0, "not_ok_temperatures_count": 0, "total_with_temperature": 0,
+            "temp_ok_percentage": 0, "temp_not_ok_percentage": 0,
             "good_battery_assets_count": 0, "low_battery_assets_count": 0, "critical_battery_assets_count": 0,
             "avg_compressor_on_time": 0,
             "avg_power_consumption": 0,
             "hourly_temp_chart": {"labels": [f"{h:02d}:00" for h in range(24)], "data": [0] * 24},
             "hourly_door_chart": {"labels": [f"{h:02d}:00" for h in range(24)], "data": [0] * 24},
-            "temperature_status_chart": {"labels": [f'OK ({temp_min}°C-{temp_max}°C)', f'Acima ({temp_max}°C+)', f'Abaixo (<{temp_min}°C)'], "data": [0, 0, 0]},
+            "temperature_status_chart": {"labels": [f'OK ({temp_min}°C-{temp_max}°C)', f'Acima (>{temp_max}°C)', f'Abaixo (<{temp_min}°C)'], "data": [0, 0, 0]},
         }
 
-    # 4. Query 2: Dados Horários (Consultando a MV)
-    # Usar colunas de 7 dias se period=7, senão usar 30 dias
+    # 4. Query 2: Dados Horários (Consultando diretamente health_events já que MV não existe)
+    # Usar filtro de período baseado nos dias solicitados
     if days == 7:
-        hourly_data_sql = text("""
-            SELECT
-                hour_label,
-                hourly_avg_temp_7d AS hourly_avg_temp,
-                hourly_avg_door_7d AS hourly_avg_door
-            FROM
-                mv_dashboard_hourly_metrics
-            WHERE
-                client = :client
-        """)
+        period_filter = "event_time >= NOW() - INTERVAL '7 days'"
     else:
-        hourly_data_sql = text("""
-            SELECT
-                hour_label,
-                hourly_avg_temp,
-                hourly_avg_door
-            FROM
-                mv_dashboard_hourly_metrics
-            WHERE
-                client = :client
-        """)
+        period_filter = "event_time >= NOW() - INTERVAL '30 days'"
+    
+    hourly_data_sql = text(f"""
+        SELECT
+            EXTRACT(HOUR FROM event_time)::integer AS hour_num,
+            AVG(temperature_c) AS hourly_avg_temp
+        FROM
+            health_events
+        WHERE
+            client = :client
+            AND {period_filter}
+            AND temperature_c IS NOT NULL
+            AND temperature_c BETWEEN -30 AND 20
+        GROUP BY
+            EXTRACT(HOUR FROM event_time)
+        ORDER BY
+            EXTRACT(HOUR FROM event_time)
+    """)
     hourly_data = db_session.execute(hourly_data_sql, {"client": client}).fetchall()
+
+    # Query separada para dados de porta
+    door_data_sql = text(f"""
+        SELECT
+            EXTRACT(HOUR FROM open_event_time)::integer AS hour_num,
+            COUNT(*) AS hourly_door_count
+        FROM
+            door
+        WHERE
+            client = :client
+            AND {period_filter.replace('event_time', 'open_event_time')}
+            AND open_event_time IS NOT NULL
+        GROUP BY
+            EXTRACT(HOUR FROM open_event_time)
+        ORDER BY
+            EXTRACT(HOUR FROM open_event_time)
+    """)
+    door_data = db_session.execute(door_data_sql, {"client": client}).fetchall()
 
     # 5. Processamento Python (Preenchimento e Formatação)
     
     # Mapeamento e Preenchimento de Horas
-    temp_by_hour = {row.hour_label: row.hourly_avg_temp for row in hourly_data}
-    door_by_hour = {row.hour_label: row.hourly_avg_door for row in hourly_data}
+    temp_by_hour = {f"{row.hour_num:02d}:00": row.hourly_avg_temp for row in hourly_data}
+    door_by_hour = {f"{row.hour_num:02d}:00": row.hourly_door_count for row in door_data}
     
     # Criar labels simples para o eixo X (fixos)
     hourly_labels = [f"{h:02d}:00" for h in range(24)]
@@ -165,10 +166,12 @@ def stats_for_dashboard(days=30):
     # Processar dados para valores iniciais (UTC)
     for i in range(24):
         label = f"{i:02d}:00"
-        # Temperatura:
+        # Temperatura: aplicar filtro de sanidade aqui também
         avg_temp = temp_by_hour.get(label)
-        if avg_temp is not None:
+        if avg_temp is not None and -30 <= avg_temp <= 20:  # Filtro de sanidade (-30°C a 20°C)
             hourly_temp_data[i] = float(avg_temp)
+        else:
+            hourly_temp_data[i] = 0  # Valor padrão para dados inválidos
 
         # Porta:
         avg_doors = door_by_hour.get(label)
@@ -176,14 +179,26 @@ def stats_for_dashboard(days=30):
             hourly_door_data[i] = float(avg_doors)
 
     # Status de Temperatura para Gráfico
-    # Coerce possible NULLs (from SQL SUM) to integers
+    # Usar contagem direta da MV para Not OK (que já considera apenas com temperatura)
     ok_temperatures_count = int(status_results.ok_temperatures_count or 0)
     above_temperatures_count = int(status_results.above_temperatures_count or 0)
     below_temperatures_count = int(status_results.below_temperatures_count or 0)
+    not_ok_temperatures_count = above_temperatures_count + below_temperatures_count
+    
+    # Total de ativos COM temperatura (OK + Not OK direto da MV)
+    total_with_temperature = ok_temperatures_count + not_ok_temperatures_count
+    
+    # Calcular percentuais corretos
+    temp_ok_percentage = round((ok_temperatures_count / total_with_temperature) * 100) if total_with_temperature > 0 else 0
+    temp_not_ok_percentage = round((not_ok_temperatures_count / total_with_temperature) * 100) if total_with_temperature > 0 else 0
+    
+    # Ajustar para somar 100% exatamente
+    if temp_ok_percentage + temp_not_ok_percentage != 100 and total_with_temperature > 0:
+        temp_not_ok_percentage = 100 - temp_ok_percentage
     
     temp_status_labels = [
         f'OK ({temp_min}°C-{temp_max}°C)', 
-        f'Acima ({temp_max}°C+)', 
+        f'Acima (>{temp_max}°C)', 
         f'Abaixo (<{temp_min}°C)'
     ]
     temp_status_data = [
@@ -202,9 +217,12 @@ def stats_for_dashboard(days=30):
         "assets_health_last_24h_count": int(status_results.assets_health_last_24h_count or 0),
         "alerts_period_count": int(status_results.alerts_period_count or 0),
         
-        # Métricas de Temperatura (Contagens)
+        # Métricas de Temperatura (Contagens e Percentuais)
         "ok_temperatures_count": ok_temperatures_count,
-        "total_with_temperature": sum(temp_status_data), # OK + Acima + Abaixo
+        "not_ok_temperatures_count": not_ok_temperatures_count,
+        "total_with_temperature": total_with_temperature,
+        "temp_ok_percentage": temp_ok_percentage,
+        "temp_not_ok_percentage": temp_not_ok_percentage,
         
         # Métricas de Bateria (Contagens)
         "good_battery_assets_count": int(status_results.good_battery_assets_count or 0),
@@ -312,7 +330,7 @@ def import_file():
         file_patterns = {
             'HealthEvent': ['health'],
             'Movement': ['movements'],
-            'SmartDevice': ['smart'],
+            'SmartDevice': ['smart', 'devices'],
             'User': ['users'],
             'Client': ['client'],
             'Asset': ['assets'],

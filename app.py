@@ -7,14 +7,13 @@ from routes.app.users import users_bp
 from routes.app.outlet import outlets_bp
 from routes.app.assets import assets_bp
 from routes.app.smartdevices import smart_devices_bp
-from routes.app.google_accounts import google_accounts_bp
 from routes.portal.dashboard import dashboard_bp
 from routes.portal.users import users_bp as portal_users_bp
 from routes.portal.outlets import outlets_bp as portal_outlets_bp
 from routes.portal.assets import assets_bp as portal_assets_bp
 from routes.portal.smartdevices import smartdevices_bp as portal_smartdevices_bp
 from routes.portal.tracking import tracking_bp as portal_tracking_bp
-from utils.google_accounts import create_google_accounts_for_all_clients
+from utils.vision_accounts import create_accounts_for_all_clients
 from swagger import register_swagger
 
 app = Flask(__name__, template_folder="templates", static_folder="static", static_url_path="/static")
@@ -50,7 +49,6 @@ app.register_blueprint(users_bp)
 app.register_blueprint(outlets_bp)
 app.register_blueprint(assets_bp)
 app.register_blueprint(smart_devices_bp)
-app.register_blueprint(google_accounts_bp)
 
 # Portal blueprints (new portal routes)
 app.register_blueprint(dashboard_bp)
@@ -62,6 +60,12 @@ app.register_blueprint(portal_tracking_bp)
 
 # Register Swagger documentation
 register_swagger(app)
+
+# Initialize database and create accounts when app starts
+init_db()
+db_session = get_session()
+created, total = create_accounts_for_all_clients(db_session)
+print(f"[INFO] Database initialized. Created {created} accounts out of {total} total.")
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -167,5 +171,5 @@ def logout():
 if __name__ == "__main__":
     init_db()
     db_session = get_session()
-    created, total = create_google_accounts_for_all_clients(db_session)
+    created, total = create_accounts_for_all_clients(db_session)
     app.run(debug=True, host='0.0.0.0', port=5000)

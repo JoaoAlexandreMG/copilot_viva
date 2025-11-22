@@ -403,33 +403,6 @@ class AppSmartDeviceDetail(Resource):
         '''Obter detalhes de um smart device'''
         return {'mac_address': smart_device_mac_address}, 200
 
-# =============================================================================
-# APP GOOGLE ACCOUNTS ENDPOINTS
-# =============================================================================
-
-@ns_app_google.route('/list')
-class AppGoogleAccountsList(Resource):
-    @ns_app_google.doc('list_google_accounts', security='session')
-    @ns_app_google.response(200, 'Lista de contas Google retornada')
-    def get(self):
-        '''Listar todas as contas Google'''
-        return {'data': []}, 200
-
-@ns_app_google.route('/client/<client_id>')
-class AppGoogleAccountsByClient(Resource):
-    @ns_app_google.doc('get_google_accounts_by_client', security='session')
-    @ns_app_google.response(200, 'Contas Google do cliente retornadas')
-    def get(self, client_id):
-        '''Obter contas Google de um cliente específico'''
-        return {'data': []}, 200
-
-@ns_app_google.route('/export')
-class AppGoogleAccountsExport(Resource):
-    @ns_app_google.doc('export_google_accounts', security='session')
-    @ns_app_google.response(200, 'Arquivo Excel gerado')
-    def get(self):
-        '''Exportar contas Google para Excel'''
-        return {'message': 'Download iniciado'}, 200
 
 # =============================================================================
 # PORTAL DASHBOARD ENDPOINTS
