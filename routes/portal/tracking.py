@@ -143,6 +143,8 @@ def render_tracking():
     - country: País
     - is_online: Status online (true/false)
     - is_missing: Status perdido (true/false)
+    - is_active: Status ativo (true/false) - Inativo se sem movimento por 24h
+    - temp_is_ok: Status de temperatura (true/false)
     - subclient: Código do subclient
     """
     try:
@@ -155,9 +157,14 @@ def render_tracking():
             'city': request.args.get('city', ''),
             'state': request.args.get('state', ''),
             'country': request.args.get('country', ''),
+            'subclient': request.args.get('subclient', ''),
             'is_online': request.args.get('is_online', ''),
             'is_missing': request.args.get('is_missing', ''),
-            'subclient': request.args.get('subclient', '')
+            'is_active' : request.args.get('is_active', ''),
+            'temp_is_ok': request.args.get('temp_is_ok', ''),
+            'battery_is_ok': request.args.get('battery_is_ok', '')
+            
+
         }
         
         return render_template("portal/tracking/tracking.html", filters=filters)
@@ -181,6 +188,7 @@ def get_assets_optimized():
     - country: País
     - is_online: Status online (true/false)
     - is_missing: Status perdido (true/false)
+    - is_active: Status ativo (true/false) - Inativo se sem movimento por 24h
     - load_all: Se true, carrega TODOS os assets (sem paginação) para o mapa
     """
     db_session = get_session()
@@ -200,7 +208,9 @@ def get_assets_optimized():
         state = request.args.get('state', '').strip()
         country = request.args.get('country', '').strip()
         is_online = request.args.get('is_online', '').strip().lower()
+        is_active = request.args.get('is_active', '').strip().lower()
         is_missing = request.args.get('is_missing', '').strip().lower()
+        temp_is_ok = request.args.get('temp_is_ok', '').strip().lower()
         load_all = request.args.get('load_all', 'false').strip().lower() == 'true'
         
         # Adicionar filtros de string (case-insensitive)
@@ -242,6 +252,18 @@ def get_assets_optimized():
             where_clauses.append("is_missing = true")
         elif is_missing in ('false', '0', 'no'):
             where_clauses.append("is_missing = false")
+
+        if is_active in ('true', '1', 'yes'):
+            where_clauses.append("is_active = true")
+        elif is_active in ('false', '0', 'no'):
+            where_clauses.append("is_active = false")
+        
+        if temp_is_ok in ('true', '1', 'yes'):
+            where_clauses.append("temp_is_ok = true")
+        elif temp_is_ok in ('false', '0', 'no'):
+            # CORREÇÃO: Só mostrar devices com temperatura RUIM, não os sem temperatura
+            where_clauses.append("(temp_is_ok = false AND latest_cabinet_temperature_c IS NOT NULL)")
+        
         
         # Construir a query WHERE
         where_sql = " AND ".join(where_clauses)
@@ -313,7 +335,8 @@ def get_assets_optimized():
             'state': state,
             'country': country,
             'is_online': is_online,
-            'is_missing': is_missing
+            'is_missing': is_missing,
+            'is_active': is_active
         }
         active_filters = {k: v for k, v in active_filters.items() if v}
         
@@ -370,6 +393,7 @@ def get_asset_details(serial_number):
                 latest_cabinet_temperature_c,
                 is_online,
                 is_missing,
+                temp_is_ok,
                 latest_latitude,
                 latest_longitude,
                 door_event_average_morning,
@@ -408,6 +432,10 @@ def get_asset_details(serial_number):
                 outlet_type
             FROM assets_health_latest_event_24h_view
             WHERE client = :client AND asset_serial_number = :serial
+                AND (temperature_c IS NULL OR temperature_c BETWEEN -30 AND 20)
+                AND (evaporator_temperature_c IS NULL OR evaporator_temperature_c BETWEEN -30 AND 20) 
+                AND (condensor_temperature_c IS NULL OR condensor_temperature_c BETWEEN -30 AND 20)
+                AND (ambient_temperature_c IS NULL OR ambient_temperature_c BETWEEN -30 AND 20)
             ORDER BY event_time DESC
             LIMIT 1
         """)
@@ -561,6 +589,7 @@ def get_asset_analytics(serial_number):
                 WHERE client = :client 
                     AND asset_serial_number = :serial
                     AND event_time >= :thirty_days_ago
+                    AND (temperature_c IS NULL OR temperature_c BETWEEN -30 AND 20)
             )
             SELECT
                 AVG(CAST(temperature_c as FLOAT)) as avg_temperature,

@@ -523,12 +523,12 @@ class Client(Base):
     default_recognition_mode = Column(String(50))
     disable_geo_data_collection = Column(Boolean)
 
-class GoogleAccount(Base):
-    __tablename__ = 'google_accounts'
+class VisionAccount(Base):
+    __tablename__ = 'vision_accounts'
 
     id = Column(String(50), primary_key=True)
     client_id = Column(String(50))
-    email = Column(String(100))
+    username = Column(String(100))
     password = Column(String(255))
     created_on = Column(DateTime(timezone=True))
     created_by = Column(String(100))

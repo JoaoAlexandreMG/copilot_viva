@@ -91,13 +91,13 @@ def _parse_datetime(value):
     return None
 
 
-def logar():
+def logar(username, password):
     # Criar uma sessão para manter cookies
     session = requests.Session()
 
     url = "https://portal.visioniot.net/login.aspx?ReturnUrl=%2fdefault.aspx"
 
-    print("Passo 1: Fazendo GET inicial para estabelecer sessao...")
+    print(f"Passo 1: Fazendo GET inicial para estabelecer sessao para {username}...")
     # Fazer GET primeiro para obter cookies de sessão
     response_get = session.get(url)
     print(f"GET Status: {response_get.status_code}")
@@ -112,10 +112,10 @@ def logar():
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0'
     }
 
-    # Payload simples como no navegador
+    # Payload com credenciais fornecidas
     payload_login = {
-        'Username': 'PBI_VIVA',
-        'Password': '#Ab01020304',
+        'Username': username,
+        'Password': password,
         'timezone': 'Brasilia Standard Time'
     }
 
@@ -155,8 +155,8 @@ def logar():
 
         payload_terminate = {
             'action': 'AllowLoginAndTerminateExistingSession',
-            'Username': 'PBI_VIVA',
-            'Password': '#Ab01020304'
+            'Username': username,
+            'Password': password
         }
 
 
@@ -219,8 +219,9 @@ def buscar_registros_saude(session, start_date: Optional[datetime] = None, end_d
     import json
     import urllib.parse
 
-    fim = datetime.now() if end_date is None else _ensure_datetime(end_date, "data final")
-    inicio = fim - timedelta(days=2) if start_date is None else _ensure_datetime(start_date, "data inicial")
+    # Data final = amanhã, Data inicial = 2 dias atrás
+    fim = (datetime.now() + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0) if end_date is None else _ensure_datetime(end_date, "data final")
+    inicio = (datetime.now() - timedelta(days=2)).replace(hour=0, minute=0, second=0, microsecond=0) if start_date is None else _ensure_datetime(start_date, "data inicial")
     if inicio > fim:
         raise ValueError("Data inicial nao pode ser maior que a data final")
 
@@ -270,10 +271,8 @@ def buscar_registros_saude(session, start_date: Optional[datetime] = None, end_d
         "offSet": 0
     }
 
-    # Payload com o params como string JSON
-    payload = {
-        'params': json.dumps(params_obj)
-    }
+    # Payload com parâmetros diretos (não encapsulados em 'params')
+    payload = params_obj
 
     # Headers para requisição de exportação
     headers = {
@@ -290,15 +289,19 @@ def buscar_registros_saude(session, start_date: Optional[datetime] = None, end_d
     }
 
     try:
-        response = session.post(url, data=payload, headers=headers)
+        print(f"Enviando requisição para: {url}")
+        print(f"Tamanho do payload: {len(str(payload))} caracteres")
+        response = session.post(url, data=payload, headers=headers, timeout=120)
 
         print(f"\nStatus: {response.status_code}")
 
         if response.status_code == 200:
             print("OK - Requisicao bem-sucedida!")
 
-            # Salvar o XLSX (sempre atualiza o mesmo arquivo)
-            nome_arquivo = "health_events.xlsx"
+            # Salvar o XLSX na pasta docs
+            import os
+            os.makedirs('docs', exist_ok=True)
+            nome_arquivo = "docs/health_events.xlsx"
 
             with open(nome_arquivo, 'wb') as f:
                 f.write(response.content)
@@ -339,8 +342,9 @@ def buscar_registros_movimento(session, start_date: Optional[datetime] = None, e
     import json
     import urllib.parse
 
-    fim = datetime.now() if end_date is None else _ensure_datetime(end_date, "data final")
-    inicio = fim - timedelta(days=2) if start_date is None else _ensure_datetime(start_date, "data inicial")
+    # Data final = amanhã, Data inicial = 2 dias atrás
+    fim = (datetime.now() + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0) if end_date is None else _ensure_datetime(end_date, "data final")
+    inicio = (datetime.now() - timedelta(days=2)).replace(hour=0, minute=0, second=0, microsecond=0) if start_date is None else _ensure_datetime(start_date, "data inicial")
     if inicio > fim:
         raise ValueError("Data inicial nao pode ser maior que a data final")
 
@@ -391,10 +395,8 @@ def buscar_registros_movimento(session, start_date: Optional[datetime] = None, e
         "offSet": 0
     }
 
-    # Payload com o params como string JSON
-    payload = {
-        'params': json.dumps(params_obj)
-    }
+    # Payload com parâmetros diretos (não encapsulados em 'params')
+    payload = params_obj
 
     # Headers para requisição de exportação
     headers = {
@@ -411,15 +413,19 @@ def buscar_registros_movimento(session, start_date: Optional[datetime] = None, e
     }
 
     try:
-        response = session.post(url, data=payload, headers=headers)
+        print(f"Enviando requisição para: {url}")
+        print(f"Tamanho do payload: {len(str(payload))} caracteres")
+        response = session.post(url, data=payload, headers=headers, timeout=120)
 
         print(f"\nStatus: {response.status_code}")
 
         if response.status_code == 200:
             print("OK - Requisicao bem-sucedida!")
 
-            # Salvar o XLSX (sempre atualiza o mesmo arquivo)
-            nome_arquivo = "movements.xlsx"
+            # Salvar o XLSX na pasta docs
+            import os
+            os.makedirs('docs', exist_ok=True)
+            nome_arquivo = "docs/movements.xlsx"
 
             with open(nome_arquivo, 'wb') as f:
                 f.write(response.content)
@@ -493,10 +499,8 @@ def buscar_outlets(session):
         "offSet": 0
     }
 
-    # Payload com o params como string JSON
-    payload = {
-        'params': json.dumps(params_obj)
-    }
+    # Payload com parâmetros diretos (não encapsulados em 'params')
+    payload = params_obj
 
     # Headers para requisição de exportação
     headers = {
@@ -513,15 +517,19 @@ def buscar_outlets(session):
     }
 
     try:
-        response = session.post(url, data=payload, headers=headers)
+        print(f"Enviando requisição para: {url}")
+        print(f"Tamanho do payload: {len(str(payload))} caracteres")
+        response = session.post(url, data=payload, headers=headers, timeout=120)
 
         print(f"\nStatus: {response.status_code}")
 
         if response.status_code == 200:
             print("OK - Requisicao bem-sucedida!")
 
-            # Salvar o XLSX (sempre atualiza o mesmo arquivo)
-            nome_arquivo = "outlets.xlsx"
+            # Salvar o XLSX na pasta docs
+            import os
+            os.makedirs('docs', exist_ok=True)
+            nome_arquivo = "docs/outlets.xlsx"
 
             with open(nome_arquivo, 'wb') as f:
                 f.write(response.content)
@@ -593,10 +601,8 @@ def buscar_assets(session):
         "offSet": 0
     }
 
-    # Payload com o params como string JSON
-    payload = {
-        'params': json.dumps(params_obj)
-    }
+    # Payload com parâmetros diretos (não encapsulados em 'params')
+    payload = params_obj
 
     # Headers para requisição de exportação
     headers = {
@@ -613,15 +619,19 @@ def buscar_assets(session):
     }
 
     try:
-        response = session.post(url, data=payload, headers=headers)
+        print(f"Enviando requisição para: {url}")
+        print(f"Tamanho do payload: {len(str(payload))} caracteres")
+        response = session.post(url, data=payload, headers=headers, timeout=120)
 
         print(f"\nStatus: {response.status_code}")
 
         if response.status_code == 200:
             print("OK - Requisicao bem-sucedida!")
 
-            # Salvar o XLSX (sempre atualiza o mesmo arquivo)
-            nome_arquivo = "assets.xlsx"
+            # Salvar o XLSX na pasta docs
+            import os
+            os.makedirs('docs', exist_ok=True)
+            nome_arquivo = "docs/assets.xlsx"
 
             with open(nome_arquivo, 'wb') as f:
                 f.write(response.content)
@@ -694,10 +704,8 @@ def buscar_smart_devices(session):
         "offSet": 0
     }
 
-    # Payload com o params como string JSON
-    payload = {
-        'params': json.dumps(params_obj)
-    }
+    # Payload com parâmetros diretos (não encapsulados em 'params')
+    payload = params_obj
 
     # Headers para requisição de exportação
     headers = {
@@ -714,15 +722,19 @@ def buscar_smart_devices(session):
     }
 
     try:
-        response = session.post(url, data=payload, headers=headers)
+        print(f"Enviando requisição para: {url}")
+        print(f"Tamanho do payload: {len(str(payload))} caracteres")
+        response = session.post(url, data=payload, headers=headers, timeout=120)
 
         print(f"\nStatus: {response.status_code}")
 
         if response.status_code == 200:
             print("OK - Requisicao bem-sucedida!")
 
-            # Salvar o XLSX (sempre atualiza o mesmo arquivo)
-            nome_arquivo = "smart_devices.xlsx"
+            # Salvar o XLSX na pasta docs
+            import os
+            os.makedirs('docs', exist_ok=True)
+            nome_arquivo = "docs/smart_devices.xlsx"
 
             with open(nome_arquivo, 'wb') as f:
                 f.write(response.content)
@@ -746,6 +758,355 @@ def buscar_smart_devices(session):
 
     except Exception as e:
         print(f"ERRO - Falha ao fazer requisicao: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+def buscar_alerts(session, start_date: Optional[datetime] = None, end_date: Optional[datetime] = None):
+    """
+    Busca e exporta dados de alertas (Alert) em formato XLSX
+    """
+    print("\n" + "="*60)
+    print("Exportando dados de Alerts...")
+    print("="*60)
+
+    # Calcular datas dinamicamente
+    from datetime import datetime, timedelta
+    import urllib.parse
+    import json
+
+    # Data final = amanhã, Data inicial = 2 dias atrás
+    fim = (datetime.now() + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0) if end_date is None else _ensure_datetime(end_date, "data final")
+    inicio = (datetime.now() - timedelta(days=2)).replace(hour=0, minute=0, second=0, microsecond=0) if start_date is None else _ensure_datetime(start_date, "data inicial")
+    if inicio > fim:
+        raise ValueError("Data inicial não pode ser maior que a data final")
+
+    # Formatar datas no padrão MM/DD/YYYY
+    data_fim = fim.strftime('%m/%d/%Y')
+    data_inicio = inicio.strftime('%m/%d/%Y')
+
+    print(f"Período: {data_inicio} até {data_fim}")
+
+    # Criar o parâmetro timestamp para a URL
+    timestamp_str = fim.strftime('%a %b %d %Y %H:%M:%S GMT%z (Brasilia Standard Time)')
+
+    # URL com timestamp
+    base_url = "https://portal.visioniot.net/Controllers/Alert.ashx"
+    url = f"{base_url}?v={urllib.parse.quote(timestamp_str)}"
+
+    # Montar o objeto params conforme a requisição original
+    params_obj = {
+        "action": "export",
+        "asArray": 1,
+        "isFromAlert": True,
+        "start": 0,
+        "limit": 50,
+        "filter[0][field]": "AlertAt",
+        "filter[0][data][type]": "date",
+        "filter[0][data][comparison]": "lt",
+        "filter[0][data][value]": data_fim,
+        "filter[0][data][convert]": False,
+        "filter[1][field]": "AlertAt",
+        "filter[1][data][type]": "date",
+        "filter[1][data][comparison]": "gt",
+        "filter[1][data][value]": data_inicio,
+        "filter[1][data][convert]": False,
+        "sort": "AlertId",
+        "dir": "DESC",
+        "cols": json.dumps([{"ColumnName":"AlertId","Header":"Id","Width":100,"Align":"right","Convert":False},{"ColumnName":"AlertType","Header":"Alert Type","Width":100,"RendererInfo":"","Convert":False},{"ColumnName":"AlertText","Header":"Alert Text","Width":200,"Convert":False},{"ColumnName":"AlertDefinition","Header":"Alert Definition","Width":100,"Convert":False},{"ColumnName":"Status","Header":"Status","Width":100,"RendererInfo":"","Convert":False},{"ColumnName":"VisitCheckStatus","Header":"Visit Check","Width":100,"RendererInfo":"","Convert":False},{"ColumnName":"AssetSerialNumber","Header":"Asset Serial#","Width":150,"RendererInfo":"","Convert":False},{"ColumnName":"SmartDeviceSerial","Header":"Smart Device Serial#","Width":150,"Convert":False},{"ColumnName":"AssetEquipmentNumber","Header":"Asset Equipment Number","Width":150,"Convert":False},{"ColumnName":"TechnicalIdentificationNumber","Header":"Asset Technical Identification Number","Width":150,"Convert":False},{"ColumnName":"AssetType","Header":"Asset Type","Width":150,"Convert":False},{"ColumnName":"Street","Header":"Street","Width":150,"Convert":False},{"ColumnName":"Street2","Header":"Street 2","Width":150,"Convert":False},{"ColumnName":"Street3","Header":"Street 3","Width":150,"Convert":False},{"ColumnName":"IsSmart","Header":"Is Smart?","Width":80,"Renderer":"Boolean","Convert":False},{"ColumnName":"AlertAt","Header":"Alert At","Width":150,"RendererInfo":"TimeZoneRenderer","Convert":False},{"ColumnName":"ClosedOn","Header":"Status Changed On","Width":150,"RendererInfo":"TimeZoneRenderer","Convert":False},{"ColumnName":"Priority","Header":"Priority","Width":60,"Convert":False},{"ColumnName":"AlertAgeFormatted","Header":"Age","Width":100,"RendererInfo":"","Convert":False},{"ColumnName":"AlertAgeMins","Header":"Alert Age(in minutes)","Width":130,"Align":"right","Convert":False},{"ColumnName":"AlertValue","Header":"Value","Width":60,"Align":"right","Convert":False},{"ColumnName":"LastUpdatedOn","Header":"Last Update","Width":150,"RendererInfo":"TimeZoneRenderer","Convert":False},{"ColumnName":"Location","Header":"Outlet","Width":160,"RendererInfo":"","Convert":False},{"ColumnName":"LocationCode","Header":"Outlet Code","Width":160,"RendererInfo":"","Convert":False},{"ColumnName":"OutletType","Header":"Outlet Type","Width":130,"Convert":False},{"ColumnName":"City","Header":"Outlet City","Width":160,"Convert":False},{"ColumnName":"ClientName","Header":"Client","Width":100,"Convert":False},{"ColumnName":"TimeZone","Header":"Time Zone","Width":250,"RendererInfo":"","Convert":False},{"ColumnName":"AlertMonth","Header":"Month","Width":100,"Align":"right","Convert":False},{"ColumnName":"AlertDay","Header":"Day ","Width":100,"Align":"right","Convert":False},{"ColumnName":"AlertWeekDay","Header":"Day of Week","Width":100,"Convert":False},{"ColumnName":"AlertWeek","Header":"Week of Year","Width":100,"Align":"right","Convert":False},{"ColumnName":"MarketName","Header":"Market","Width":100,"Convert":False},{"ColumnName":"LocationType","Header":"Trade Channel","Width":100,"Convert":False},{"ColumnName":"Classification","Header":"Customer Tier","Width":120,"Convert":False},{"ColumnName":"SalesOrganizationName","Header":"Sales Organization","Width":150,"Convert":False},{"ColumnName":"SalesOfficeName","Header":"Sales Office","Width":150,"Convert":False},{"ColumnName":"SalesGroupName","Header":"Sales Group","Width":150,"Convert":False},{"ColumnName":"SalesTerritoryName","Header":"Sales Territory","Width":150,"Convert":False},{"ColumnName":"SalesRep","Header":"Sales Rep","Width":120,"Convert":False},{"ColumnName":"IsSystemAlert","Header":"Is System Alert?","Width":100,"Renderer":"Boolean","Convert":False},{"ColumnName":"AcknowledgeComment","Header":"Acknowledge Comment","Width":230,"RendererInfo":"","Convert":False},{"ColumnName":"CreatedOn","Header":"Created On","Width":130,"RendererInfo":"","Convert":True}]),
+        "exportFileName": "Alerts",
+        "exportFormat": "XLSX",
+        "filterDescription": f"Alert At Is Less Than {data_fim} AND Alert At Is Greater Than {data_inicio}",
+        "selectedFields": json.dumps(["AlertId as [Id]","AlertTypeId as [Alert Type]","AlertText as [Alert Text]","AlertDefinition as [Alert Definition]","StatusId as [Status]","VisitCheckId as [Visit Check]","AssetSerialNumber as [Asset Serial#]","SmartDeviceSerial as [Smart Device Serial#]","AssetEquipmentNumber as [Asset Equipment Number]","TechnicalIdentificationNumber as [Asset Technical Identification Number]","AssetType as [Asset Type]","Street as [Street]","Street2 as [Street 2]","Street3 as [Street 3]","IsSmart as [Is Smart?]","AlertAt as [Alert At]","ClosedOn as [Status Changed On]","Priority as [Priority]","AlertRaisedOn as [Age]","AlertAgeMins as [Alert Age(in minutes)]","AlertValue as [Value]","LastUpdatedOn as [Last Update]","Location as [Outlet]","LocationCode as [Outlet Code]","OutletType as [Outlet Type]","City as [Outlet City]","ClientName as [Client]","TimeZoneId as [Time Zone]","AlertMonth as [Month]","AlertDay as [Day ]","AlertWeekDay as [Day of Week]","AlertWeek as [Week of Year]","MarketName as [Market]","LocationType as [Trade Channel]","Classification as [Customer Tier]","SalesOrganizationName as [Sales Organization]","SalesOfficeName as [Sales Office]","SalesGroupName as [Sales Group]","SalesTerritoryName as [Sales Territory]","SalesRep as [Sales Rep]","IsSystemAlert as [Is System Alert?]","AcknowledgeComment as [Acknowledge Comment]","CreatedOn as [Created On]"]),
+        "selectedConcatenatedFields": json.dumps([]),
+        "Title": "Alerts",
+        "TimeOffSet": -180,
+        "dayLightZone": "BRT",
+        "normalZone": "BRST",
+        "normalOffset": -120,
+        "dayLightOffset": -180,
+        "timeZone": "America/Sao_Paulo",
+        "offSet": 0
+    }
+
+    # Payload com parâmetros diretos (não encapsulados em 'params')
+    payload = params_obj
+
+    # Headers para requisição de exportação
+    headers = {
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Referer': 'https://portal.visioniot.net/default.aspx',
+        'Origin': 'https://portal.visioniot.net',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'same-origin',
+        'Sec-Fetch-User': '?1',
+        'Upgrade-Insecure-Requests': '1',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0'
+    }
+
+    try:
+        print(f"Enviando requisição para: {url}")
+        print(f"Tamanho do payload: {len(str(payload))} caracteres")
+        response = session.post(url, data=payload, headers=headers, timeout=120)
+
+        print(f"\nStatus: {response.status_code}")
+
+        if response.status_code == 200:
+            print("OK - Requisição bem-sucedida!")
+
+            # Salvar o XLSX na pasta docs
+            import os
+            os.makedirs('docs', exist_ok=True)
+            nome_arquivo = "docs/alerts.xlsx"
+
+            with open(nome_arquivo, 'wb') as f:
+                f.write(response.content)
+
+            print(f"\nOK - Arquivo XLSX salvo: {nome_arquivo}")
+            print(f"Tamanho: {len(response.content)} bytes")
+
+            # Verificar se o arquivo foi criado
+            if os.path.exists(nome_arquivo):
+                print(f"OK - Arquivo verificado e salvo com sucesso!")
+            else:
+                print(f"ERRO - Falha ao salvar arquivo")
+
+            return nome_arquivo
+
+        else:
+            print(f"ERRO - Falha na requisição: {response.status_code}")
+            print(f"Resposta: {response.text[:500]}")
+            return None
+
+    except Exception as e:
+        print(f"ERRO - Falha ao fazer requisição: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+def buscar_door_statuses(session, start_date: Optional[datetime] = None, end_date: Optional[datetime] = None):
+    """
+    Busca e exporta dados de status de porta (SmartDeviceDoorStatus) em formato CSV
+    """
+    print("\n" + "="*60)
+    print("Exportando dados de Door Statuses...")
+    print("="*60)
+
+    # Calcular datas dinamicamente
+    from datetime import datetime, timedelta
+    import urllib.parse
+    import json
+
+    # Data final = amanhã, Data inicial = 2 dias atrás
+    fim = (datetime.now() + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0) if end_date is None else _ensure_datetime(end_date, "data final")
+    inicio = (datetime.now() - timedelta(days=2)).replace(hour=0, minute=0, second=0, microsecond=0) if start_date is None else _ensure_datetime(start_date, "data inicial")
+    if inicio > fim:
+        raise ValueError("Data inicial não pode ser maior que a data final")
+
+    # Formatar datas no padrão MM/DD/YYYY
+    data_fim = fim.strftime('%m/%d/%Y')
+    data_inicio = inicio.strftime('%m/%d/%Y')
+
+    print(f"Período: {data_inicio} até {data_fim}")
+
+    # Criar o parâmetro timestamp para a URL
+    timestamp_str = fim.strftime('%a %b %d %Y %H:%M:%S GMT%z (Brasilia Standard Time)')
+
+    # URL com timestamp
+    base_url = "https://portal.visioniot.net/Controllers/SmartDeviceDoorStatus.ashx"
+    url = f"{base_url}?v={urllib.parse.quote(timestamp_str)}"
+
+    # Montar o objeto params conforme a requisição original
+    params_obj = {
+        "action": "export",
+        "asArray": 1,
+        "filter[0][field]": "EventTime",
+        "filter[0][data][type]": "date",
+        "filter[0][data][comparison]": "lt",
+        "filter[0][data][value]": data_fim,
+        "filter[0][data][convert]": False,
+        "filter[1][field]": "EventTime",
+        "filter[1][data][type]": "date",
+        "filter[1][data][comparison]": "gt",
+        "filter[1][data][value]": data_inicio,
+        "filter[1][data][convert]": False,
+        "limit": 50,
+        "sort": "SmartDeviceDoorStatusId",
+        "dir": "DESC",
+        "cols": json.dumps([{"ColumnName":"SmartDeviceDoorStatusId","Header":"Id","Width":100,"Align":"right","Convert":False},{"ColumnName":"DoorOpen","Header":"Open Event Time","Width":180,"RendererInfo":"TimeZoneRenderer","Convert":False},{"ColumnName":"EventTime","Header":"Close Event Time","Width":180,"RendererInfo":"TimeZoneRenderer","Convert":False},{"ColumnName":"EventType","Header":"Event Type","Width":180,"Convert":False},{"ColumnName":"DoorOpenDuration","Header":"Door Open Duration(sec)","Width":90,"Align":"right","Convert":False},{"ColumnName":"SmartDeviceTimeOfDay","Header":"Time of Day","Width":100,"Convert":False},{"ColumnName":"SmartDeviceWeekend","Header":"Weekday / Weekend","Width":100,"Convert":False},{"ColumnName":"HourInDay","Header":"Hour in Day","Width":100,"Align":"right","Convert":False},{"ColumnName":"DoorCount","Header":"Door Count","Width":90,"Align":"right","Convert":False},{"ColumnName":"VisionErrorCodesInfo","Header":"Additional Info","Width":150,"RendererInfo":"","Convert":False},{"ColumnName":"SalesTerritoryName","Header":"Outlet Territory","Width":90,"Convert":False},{"ColumnName":"DoorName","Header":"Door","Width":90,"Convert":False},{"ColumnName":"AssetTypeCapacity","Header":"Capacity Type","Width":150,"Align":"right","Convert":False},{"ColumnName":"DoorOpenTarget","Header":"Door Open Target","Width":150,"Align":"right","Convert":False},{"ColumnName":"DoorOpenTemperature","Header":"Door Open Temperature","Width":150,"Align":"right","Convert":False},{"ColumnName":"DoorCloseTemperature","Header":"Door Close Temperature","Width":150,"Align":"right","Convert":False},{"ColumnName":"AppName","Header":"App Name","Width":160,"Align":"right","Convert":False},{"ColumnName":"AppVersion","Header":"App Version","Width":160,"Align":"right","Convert":False},{"ColumnName":"SDKVersion","Header":"SDK Version","Width":160,"Align":"right","Convert":False},{"ColumnName":"UploadedByUser","Header":"Data Uploaded By","Width":160,"Align":"right","Convert":False},{"ColumnName":"AssetCategory","Header":"Asset Category","Width":160,"Align":"right","Convert":False},{"ColumnName":"EventId","Header":"Event Id","Width":70,"Align":"right","Convert":False},{"ColumnName":"CreatedOn","Header":"Created On","Width":180,"RendererInfo":"","Convert":True},{"ColumnName":"GatewayMacAddress","Header":"Gateway Mac","Width":110,"Convert":False},{"ColumnName":"GatewaySerialNumber","Header":"Gateway#","Width":110,"Convert":False},{"ColumnName":"AssetType","Header":"Asset Type","Width":150,"RendererInfo":"","Convert":False},{"ColumnName":"SmartDeviceMonth","Header":"Month","Width":100,"Align":"right","Convert":False},{"ColumnName":"SmartDeviceDay","Header":"Day ","Width":100,"Align":"right","Convert":False},{"ColumnName":"SmartDeviceWeekDay","Header":"Day of Week","Width":100,"Convert":False},{"ColumnName":"SmartDeviceWeek","Header":"Week of Year","Width":100,"Align":"right","Convert":False},{"ColumnName":"AssetSerialNumber","Header":"Asset Serial #","Width":120,"RendererInfo":"","Convert":False},{"ColumnName":"TechnicalIdentificationNumber","Header":"Technical Id","Width":150,"Convert":False},{"ColumnName":"EquipmentNumber","Header":"Equipment Number","Width":150,"Convert":False},{"ColumnName":"MacAddress","Header":"Smart Device Mac","Width":120,"RendererInfo":"","Convert":False},{"ColumnName":"SerialNumber","Header":"Smart Device#","Width":120,"RendererInfo":"","Convert":False},{"ColumnName":"IsSmart","Header":"Is Smart?","Width":80,"Renderer":"Boolean","Convert":False},{"ColumnName":"SmartDeviceTypeName","Header":"Smart Device Type","Width":120,"RendererInfo":"","Convert":False},{"ColumnName":"Location","Header":"Outlet","Width":160,"RendererInfo":"","Convert":False},{"ColumnName":"LocationCode","Header":"Outlet Code","Width":160,"RendererInfo":"","Convert":False},{"ColumnName":"OutletType","Header":"Outlet Type","Width":130,"Convert":False},{"ColumnName":"TimeZone","Header":"Time Zone","Width":300,"RendererInfo":"","Convert":False},{"ColumnName":"ClientName","Header":"Client","Width":100,"Convert":False},{"ColumnName":"SubClientName","Header":"Sub Client","Width":100,"Convert":False}]),
+        "exportFileName": "Door Statuses",
+        "exportFormat": "CSV",
+        "filterDescription": f"Close Event Time Is Less Than {data_fim} AND Close Event Time Is Greater Than {data_inicio}",
+        "selectedFields": json.dumps(["SmartDeviceDoorStatusId as [Id]","DoorOpen as [Open Event Time]","EventTime as [Close Event Time]","EventType as [Event Type]","DoorOpenDuration as [Door Open Duration(sec)]","SmartDeviceTimeOfDay as [Time of Day]","SmartDeviceWeekend as [Weekday / Weekend]","HourInDay as [Hour in Day]","DoorCount as [Door Count]","VisionErrorCodesInfo as [Additional Info]","SalesTerritoryName as [Outlet Territory]","DoorName as [Door]","AssetTypeCapacity as [Capacity Type]","DoorOpenTarget as [Door Open Target]","DoorOpenTemperature as [Door Open Temperature]","DoorCloseTemperature as [Door Close Temperature]","AppName as [App Name]","AppVersion as [App Version]","SDKVersion as [SDK Version]","UploadedByUser as [Data Uploaded By]","AssetCategory as [Asset Category]","EventId as [Event Id]","CreatedOn as [Created On]","GatewayMacAddress as [Gateway Mac]","GatewaySerialNumber as [Gateway#]","AssetTypeId as [Asset Type]","SmartDeviceMonth as [Month]","SmartDeviceDay as [Day ]","SmartDeviceWeekDay as [Day of Week]","SmartDeviceWeek as [Week of Year]","AssetSerialNumber as [Asset Serial #]","TechnicalIdentificationNumber as [Technical Id]","EquipmentNumber as [Equipment Number]","MacAddress as [Smart Device Mac]","SerialNumber as [Smart Device#]","IsSmart as [Is Smart?]","SmartDeviceTypeId as [Smart Device Type]","Location as [Outlet]","LocationCode as [Outlet Code]","OutletType as [Outlet Type]","TimeZoneId as [Time Zone]","ClientName as [Client]","SubClientName as [Sub Client]"]),
+        "selectedConcatenatedFields": json.dumps([]),
+        "Title": "Door Statuses",
+        "TimeOffSet": -180,
+        "dayLightZone": "BRT",
+        "normalZone": "BRST",
+        "normalOffset": -120,
+        "dayLightOffset": -180,
+        "timeZone": "America/Sao_Paulo",
+        "offSet": 0
+    }
+
+    # Payload com parâmetros diretos (não encapsulados em 'params')
+    payload = params_obj
+
+    # Headers para requisição de exportação
+    headers = {
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Referer': 'https://portal.visioniot.net/default.aspx',
+        'Origin': 'https://portal.visioniot.net',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'same-origin',
+        'Sec-Fetch-User': '?1',
+        'Upgrade-Insecure-Requests': '1',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0'
+    }
+
+    try:
+        print(f"Enviando requisição para: {url}")
+        print(f"Tamanho do payload: {len(str(payload))} caracteres")
+        response = session.post(url, data=payload, headers=headers, timeout=120)
+
+        print(f"\nStatus: {response.status_code}")
+
+        if response.status_code == 200:
+            print("OK - Requisição bem-sucedida!")
+
+            # Salvar o CSV na pasta docs
+            import os
+            os.makedirs('docs', exist_ok=True)
+            nome_arquivo = "docs/door_statuses.csv"
+
+            with open(nome_arquivo, 'wb') as f:
+                f.write(response.content)
+
+            print(f"\nOK - Arquivo CSV salvo: {nome_arquivo}")
+            print(f"Tamanho: {len(response.content)} bytes")
+
+            # Verificar se o arquivo foi criado
+            if os.path.exists(nome_arquivo):
+                print(f"OK - Arquivo verificado e salvo com sucesso!")
+            else:
+                print(f"ERRO - Falha ao salvar arquivo")
+
+            return nome_arquivo
+
+        else:
+            print(f"ERRO - Falha na requisição: {response.status_code}")
+            print(f"Resposta: {response.text[:500]}")
+            return None
+
+    except Exception as e:
+        print(f"ERRO - Falha ao fazer requisição: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+def buscar_users(session):
+    """
+    Busca e exporta dados de usuários (SecurityAppUser) em formato XLSX
+    """
+    print("\n" + "="*60)
+    print("Exportando dados de Users...")
+    print("="*60)
+
+    from datetime import datetime
+    import urllib.parse
+    import json
+
+    hoje = datetime.now()
+
+    # Criar o parâmetro timestamp para a URL
+    timestamp_str = hoje.strftime('%a %b %d %Y %H:%M:%S GMT%z (Brasilia Standard Time)')
+
+    # URL com timestamp
+    base_url = "https://portal.visioniot.net/Controllers/SecurityAppUser.ashx"
+    url = f"{base_url}?v={urllib.parse.quote(timestamp_str)}"
+
+    # Montar o objeto params conforme a requisição original
+    params_obj = {
+        "action": "export",
+        "asArray": 1,
+        "start": 0,
+        "limit": 50,
+        "comboTypes": json.dumps([]),
+        "sort": "UserId",
+        "dir": "DESC",
+        "cols": json.dumps([{"ColumnName":"FirstName","Header":"First Name","Width":100,"Convert":False},{"ColumnName":"LastName","Header":"Last Name","Width":100,"Convert":False},{"ColumnName":"Username","Header":"User Name","Width":100,"Convert":False},{"ColumnName":"UPN","Header":"UPN","Width":100,"Convert":False},{"ColumnName":"PrimaryEmail","Header":"Email","Width":150,"Convert":False},{"ColumnName":"PrimaryPhone","Header":"Phone","Width":100,"Convert":False},{"ColumnName":"Role","Header":"Role","Width":100,"Convert":False},{"ColumnName":"ReportingManager","Header":"Reporting Manager","Width":100,"Convert":False},{"ColumnName":"PreferedNotificationType","Header":"Preferred Notification Type","Width":100,"Convert":False},{"ColumnName":"Country","Header":"Country","Width":150,"Convert":False},{"ColumnName":"ResponsibleCountry","Header":"Responsible Country","Width":100,"Convert":False},{"ColumnName":"IsActive","Header":"Is Active?","Width":100,"Renderer":"Boolean","Convert":False},{"ColumnName":"SalesOrganization","Header":"Sales Organization","Width":100,"Convert":False},{"ColumnName":"SalesOffice","Header":"Sales Office","Width":100,"Convert":False},{"ColumnName":"SalesGroup","Header":"Sales Group","Width":100,"Convert":False},{"ColumnName":"SalesTerritory","Header":"Sales Territory","Width":100,"Convert":False},{"ColumnName":"TeleSellingTerritoryName","Header":"Teleselling Territory","Width":100,"Convert":False},{"ColumnName":"BD_Territory","Header":"BD Territory Name","Width":150,"Convert":False},{"ColumnName":"CA_Territory","Header":"CA Territory Name","Width":150,"Convert":False},{"ColumnName":"MC_Territory","Header":"MC Territory Name","Width":150,"Convert":False},{"ColumnName":"P1_Territory","Header":"P1 Territory Name","Width":150,"Convert":False},{"ColumnName":"P2_Territory","Header":"P2 Territory Name","Width":150,"Convert":False},{"ColumnName":"P3_Territory","Header":"P3 Territory Name","Width":150,"Convert":False},{"ColumnName":"P4_Territory","Header":"P4 Territory Name","Width":150,"Convert":False},{"ColumnName":"P5_Territory","Header":"P5 Territory Name","Width":150,"Convert":False},{"ColumnName":"NCB_Territory","Header":"NCB Territory Name","Width":150,"Convert":False},{"ColumnName":"LastLoginOn","Header":"Last Login On","Width":150,"RendererInfo":"","Convert":True},{"ColumnName":"ClientName","Header":"Client","Width":100,"Convert":False},{"ColumnName":"CreatedOn","Header":"Created On","Width":130,"RendererInfo":"","Convert":True},{"ColumnName":"CreatedByUser","Header":"Created By","Width":150,"Convert":False},{"ColumnName":"ModifiedOn","Header":"Modified On","Width":130,"RendererInfo":"","Convert":True},{"ColumnName":"ModifiedByUser","Header":"Modified By","Width":150,"Convert":False},{"ColumnName":"RewardPoint","Header":"Reward Point","Width":150,"Convert":False}]),
+        "exportFileName": "Users",
+        "exportFormat": "XLSX",
+        "filterDescription": "",
+        "selectedFields": json.dumps(["FirstName as [First Name]","LastName as [Last Name]","Username as [User Name]","UPN as [UPN]","PrimaryEmail as [Email]","PrimaryPhone as [Phone]","Role as [Role]","ReportingManager as [Reporting Manager]","PreferedNotificationType as [Preferred Notification Type]","Country as [Country]","ResponsibleCountry as [Responsible Country]","IsActive as [Is Active?]","SalesOrganization as [Sales Organization]","SalesOffice as [Sales Office]","SalesGroup as [Sales Group]","SalesTerritory as [Sales Territory]","TeleSellingTerritoryName as [Teleselling Territory]","BD_Territory as [BD Territory Name]","CA_Territory as [CA Territory Name]","MC_Territory as [MC Territory Name]","P1_Territory as [P1 Territory Name]","P2_Territory as [P2 Territory Name]","P3_Territory as [P3 Territory Name]","P4_Territory as [P4 Territory Name]","P5_Territory as [P5 Territory Name]","NCB_Territory as [NCB Territory Name]","LastLoginOn as [Last Login On]","ClientName as [Client]","CreatedOn as [Created On]","CreatedByUser as [Created By]","ModifiedOn as [Modified On]","ModifiedByUser as [Modified By]","RewardPoint as [Reward Point]"]),
+        "selectedConcatenatedFields": json.dumps([]),
+        "Title": "Users",
+        "TimeOffSet": -180,
+        "dayLightZone": "BRT",
+        "normalZone": "BRST",
+        "normalOffset": -120,
+        "dayLightOffset": -180,
+        "timeZone": "America/Sao_Paulo",
+        "offSet": 0
+    }
+
+    # Payload com parâmetros diretos (não encapsulados em 'params')
+    payload = params_obj
+
+    # Headers para requisição de exportação
+    headers = {
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Referer': 'https://portal.visioniot.net/default.aspx',
+        'Origin': 'https://portal.visioniot.net',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'same-origin',
+        'Sec-Fetch-User': '?1',
+        'Upgrade-Insecure-Requests': '1',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0'
+    }
+
+    try:
+        print(f"Enviando requisição para: {url}")
+        print(f"Tamanho do payload: {len(str(payload))} caracteres")
+        response = session.post(url, data=payload, headers=headers, timeout=120)
+
+        print(f"\nStatus: {response.status_code}")
+
+        if response.status_code == 200:
+            print("OK - Requisição bem-sucedida!")
+
+            # Salvar o XLSX na pasta docs
+            import os
+            os.makedirs('docs', exist_ok=True)
+            nome_arquivo = "docs/users.xlsx"
+
+            with open(nome_arquivo, 'wb') as f:
+                f.write(response.content)
+
+            print(f"\nOK - Arquivo XLSX salvo: {nome_arquivo}")
+            print(f"Tamanho: {len(response.content)} bytes")
+
+            # Verificar se o arquivo foi criado
+            if os.path.exists(nome_arquivo):
+                print(f"OK - Arquivo verificado e salvo com sucesso!")
+            else:
+                print(f"ERRO - Falha ao salvar arquivo")
+
+            return nome_arquivo
+
+        else:
+            print(f"ERRO - Falha na requisição: {response.status_code}")
+            print(f"Resposta: {response.text[:500]}")
+            return None
+
+    except Exception as e:
+        print(f"ERRO - Falha ao fazer requisição: {str(e)}")
         import traceback
         traceback.print_exc()
         return None
@@ -826,8 +1187,24 @@ def conectar_banco():
     Conecta ao banco de dados PostgreSQL usando variáveis de ambiente
     """
     try:
+        import sys
+        import os
+        
+        # Adicionar o diretório pai ao path se necessário
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        parent_dir = os.path.dirname(current_dir)
+        if parent_dir not in sys.path:
+            sys.path.insert(0, parent_dir)
+        
+        # Carregar .env se necessário
+        from dotenv import load_dotenv
+        load_dotenv()
+        
         # Pegar a URL do banco de dados do .env
-        db_url = os.getenv('URL_DATABASE')
+        db_url = os.getenv('DATABASE_URL')
+        
+        if not db_url:
+            raise ValueError("DATABASE_URL não encontrada no .env")
 
         # Parse da URL: postgresql://user:password@host:port/database
         # Formato: postgresql://postgres:2584@72.60.146.124:5432/portal_associacao_db
@@ -850,615 +1227,436 @@ def conectar_banco():
         traceback.print_exc()
         return None
 
-def inserir_health_events(arquivo_xlsx):
-    """
-    Lê o arquivo XLSX de health events e insere os dados no banco
-    """
-    print("\n" + "="*60)
-    print("Inserindo dados de Health Events no banco...")
-    print("="*60)
 
+# ============================================================================
+# FUNÇÕES DE INTEGRAÇÃO COM BANCO DE DADOS
+# ============================================================================
+
+def buscar_contas_vision():
+    """
+    Busca todas as contas VisionAccount da base de dados
+    """
     try:
-        # Ler o arquivo Excel
-        df = pd.read_excel(arquivo_xlsx)
-        print(f"Total de registros lidos: {len(df)}")
-
-        # Conectar ao banco
-        conn = conectar_banco()
-        if not conn:
-            return False
-
-        cursor = conn.cursor()
-
-        # Preparar query de insert (52 colunas)
-        insert_query = """
-        INSERT INTO health_events (
-            id, event_type, light, light_status, temperature_c, evaporator_temperature_c,
-            condensor_temperature_c, temperature_f, evaporator_temperature_f, condensor_temperature_f,
-            battery, battery_status, interval_min, cooler_voltage_v, max_voltage_v, min_voltage_v,
-            avg_power_consumption_watt, total_compressor_on_time_percent, max_cabinet_temperature_c,
-            min_cabinet_temperature_c, ambient_temperature_c, max_cabinet_temperature_f,
-            min_cabinet_temperature_f, ambient_temperature_f, app_name, app_version, sdk_version,
-            data_uploaded_by, asset_category, event_id, created_on, event_time, gateway_mac,
-            gateway_number, asset_type, month, day, day_of_week, week_of_year, asset_serial_number,
-            technical_id, equipment_number, smart_device_mac, smart_device_number, is_smart,
-            smart_device_type, outlet, outlet_code, outlet_type, time_zone, client, sub_client
-        ) VALUES (
-            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
-        )
-        """
-
-        # Inserir cada linha
-        registros_inseridos = 0
-        from dateutil import parser as date_parser
-
-        for idx, row in df.iterrows():
-            try:
-                # Converter valores NaN para None e formatar datas
-                valores = []
-                for i, val in enumerate(row):
-                    if pd.isna(val):
-                        valores.append(None)
-                    # Índices 30 e 31 são as colunas de data (Created On e Event Time)
-                    elif i in [30, 31] and isinstance(val, str):
-                        # Converter string de data para timestamp PostgreSQL
-                        # Formato original: "27/10/2025 10:27:53 BRST"
-                        try:
-                            dt = date_parser.parse(val, dayfirst=True)
-                            valores.append(dt)
-                        except:
-                            valores.append(val)
-                    else:
-                        valores.append(val)
-
-                cursor.execute(insert_query, valores)
-                registros_inseridos += 1
-
-                # Mostrar progresso a cada 100 registros
-                if registros_inseridos % 100 == 0:
-                    print(f"Inseridos {registros_inseridos} registros...")
-
-            except Exception as e:
-                print(f"ERRO ao inserir linha {idx}: {str(e)}")
-                # Fazer rollback apenas da transação atual
-                conn.rollback()
-                # Precisamos recriar o cursor após rollback
-                cursor = conn.cursor()
-                continue
-
-        # Commit das alterações
-        conn.commit()
-        print(f"\nOK - Total de {registros_inseridos} registros inseridos com sucesso!")
-
-        # Fechar conexão
-        cursor.close()
-        conn.close()
-
-        return True
-
+        import sys
+        import os
+        
+        # Adicionar o diretório pai ao path se necessário
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        parent_dir = os.path.dirname(current_dir)
+        if parent_dir not in sys.path:
+            sys.path.insert(0, parent_dir)
+        
+        from db.database import get_session
+        from models.models import VisionAccount, Client
+        
+        session = get_session()
+        
+        # Buscar contas e clientes separadamente, depois fazer o match manual
+        contas = session.query(VisionAccount).all()
+        
+        if not contas:
+            print("Nenhuma conta VisionAccount encontrada.")
+            return []
+        
+        contas_formatadas = []
+        for conta in contas:
+            # Tentar encontrar o cliente pelo client_id
+            client = session.query(Client).filter(Client.id == conta.client_id).first()
+            if not client:
+                # Tentar encontrar pelo client_code se não encontrar por id
+                client = session.query(Client).filter(Client.client_code == conta.client_id).first()
+            
+            client_name = client.client_name if client else f"Client_{conta.client_id}"
+            contas_formatadas.append((conta, client_name))
+        
+        session.close()
+        return contas_formatadas
+        
     except Exception as e:
-        print(f"ERRO ao processar arquivo: {str(e)}")
+        print(f"ERRO ao buscar contas: {str(e)}")
         import traceback
         traceback.print_exc()
+        return []
+
+def processar_cliente_dados_estaticos(username, password, client_name):
+    """
+    Processa um cliente específico para baixar dados estáticos: assets, outlets e smartdevices
+    Estes dados não mudam frequentemente e devem ser baixados periodicamente
+    """
+    print(f"\n{'='*80}")
+    print(f"PROCESSANDO CLIENTE (DADOS ESTÁTICOS): {client_name} (Username: {username})")
+    print(f"{'='*80}")
+    
+    # Fazer login
+    session = logar(username, password)
+    if not session:
+        print(f"ERRO - Falha no login para {client_name}. Pulando cliente.")
+        return False
+    
+    print(f"Login realizado com sucesso para {client_name}")
+    
+    # Prefixar arquivos com o client_name para evitar sobreposição
+    arquivos_baixados = {}
+    
+    try:
+        # Buscar dados de outlets
+        print(f"\nBuscando outlets para {client_name}...")
+        arquivo_outlets = buscar_outlets(session)
+        if arquivo_outlets:
+            import os
+            nome_novo = f"docs/{client_name.replace(' ', '_')}_outlets.xlsx"
+            os.rename(arquivo_outlets, nome_novo)
+            arquivos_baixados['outlets'] = nome_novo
+            print(f"OK - Arquivo de outlets salvo: {nome_novo}")
+        
+        # Buscar dados de assets
+        print(f"\nBuscando assets para {client_name}...")
+        arquivo_assets = buscar_assets(session)
+        if arquivo_assets:
+            import os
+            nome_novo = f"docs/{client_name.replace(' ', '_')}_assets.xlsx"
+            os.rename(arquivo_assets, nome_novo)
+            arquivos_baixados['assets'] = nome_novo
+            print(f"OK - Arquivo de assets salvo: {nome_novo}")
+        
+        # Buscar dados de smart devices
+        print(f"\nBuscando smart devices para {client_name}...")
+        arquivo_smart_devices = buscar_smart_devices(session)
+        if arquivo_smart_devices:
+            import os
+            nome_novo = f"docs/{client_name.replace(' ', '_')}_smart_devices.xlsx"
+            os.rename(arquivo_smart_devices, nome_novo)
+            arquivos_baixados['smart_devices'] = nome_novo
+            print(f"OK - Arquivo de smart devices salvo: {nome_novo}")
+        
+    except Exception as e:
+        print(f"ERRO durante o processamento de dados estáticos para {client_name}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+    
+    finally:
+        # Sempre fazer logout
+        print(f"\nFazendo logout de {client_name}...")
+        deslogar(session)
+    
+    # Verificar se todos os downloads foram bem-sucedidos
+    if len(arquivos_baixados) == 3:  # Todos os 3 tipos de dados estáticos
+        print(f"\n{'='*60}")
+        print(f"DOWNLOAD ESTÁTICO COMPLETO - {client_name}")
+        print(f"{'='*60}")
+        
+        # Mostrar arquivos baixados
+        for tipo, arquivo in arquivos_baixados.items():
+            print(f"{tipo.replace('_', ' ').title()}: {arquivo}")
+        
+        print(f"\nTodos os dados estáticos de {client_name} foram baixados com sucesso!")
+        return True
+    else:
+        print(f"\nERRO - Download de dados estáticos incompleto para {client_name}.")
+        print(f"Arquivos baixados ({len(arquivos_baixados)}/3):")
+        for tipo, arquivo in arquivos_baixados.items():
+            print(f"  - {tipo}: {arquivo}")
         return False
 
-def inserir_movements(arquivo_xlsx):
+def processar_cliente_dados_diarios(username, password, client_name, start_date=None, end_date=None):
     """
-    Lê o arquivo XLSX de movements e insere os dados no banco
+    Processa um cliente específico para baixar dados diários: health events, movements, alerts, door statuses e users
+    Esta função deve ser executada diariamente
     """
-    print("\n" + "="*60)
-    print("Inserindo dados de Movements no banco...")
-    print("="*60)
-
-    try:
-        # Ler o arquivo Excel
-        df = pd.read_excel(arquivo_xlsx)
-        print(f"Total de registros lidos: {len(df)}")
-
-        # Conectar ao banco
-        conn = conectar_banco()
-        if not conn:
-            return False
-
-        cursor = conn.cursor()
-
-        # Preparar query de insert (39 colunas)
-        insert_query = """
-        INSERT INTO movements (
-            id, movement_type, start_time, end_time, duration, latitude, longitude,
-            movement_count, door_open, displacement_meter, accuracy_meter, power_status,
-            app_name, app_version, sdk_version, data_uploaded_by, gps_source, event_id,
-            created_on, gateway_mac, gateway_number, asset_type, month, day, day_of_week,
-            week_of_year, asset_serial_number, technical_id, equipment_number, smart_device_mac,
-            smart_device_number, is_smart, smart_device_type, outlet, outlet_code, outlet_type,
-            time_zone, client, sub_client
-        ) VALUES (
-            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
-        )
-        """
-
-        # Inserir cada linha
-        registros_inseridos = 0
-        from dateutil import parser as date_parser
-
-        for idx, row in df.iterrows():
-            try:
-                # Converter valores NaN para None e formatar datas
-                valores = []
-                for i, val in enumerate(row):
-                    if pd.isna(val):
-                        valores.append(None)
-                    # Índices 2, 3 e 18 são as colunas de data (Start Time, End Time e Created On)
-                    elif i in [2, 3, 18] and isinstance(val, str):
-                        # Converter string de data para timestamp PostgreSQL
-                        try:
-                            dt = date_parser.parse(val, dayfirst=True)
-                            valores.append(dt)
-                        except:
-                            valores.append(val)
-                    else:
-                        valores.append(val)
-
-                cursor.execute(insert_query, valores)
-                registros_inseridos += 1
-
-                # Mostrar progresso a cada 100 registros
-                if registros_inseridos % 100 == 0:
-                    print(f"Inseridos {registros_inseridos} registros...")
-
-            except Exception as e:
-                print(f"ERRO ao inserir linha {idx}: {str(e)}")
-                # Fazer rollback apenas da transação atual
-                conn.rollback()
-                # Precisamos recriar o cursor após rollback
-                cursor = conn.cursor()
-                continue
-
-        # Commit das alterações
-        conn.commit()
-        print(f"\nOK - Total de {registros_inseridos} registros inseridos com sucesso!")
-
-        # Fechar conexão
-        cursor.close()
-        conn.close()
-
-        return True
-
-    except Exception as e:
-        print(f"ERRO ao processar arquivo: {str(e)}")
-        import traceback
-        traceback.print_exc()
+    print(f"\n{'='*80}")
+    print(f"PROCESSANDO CLIENTE (DADOS DIÁRIOS): {client_name} (Username: {username})")
+    print(f"{'='*80}")
+    
+    # Fazer login
+    session = logar(username, password)
+    if not session:
+        print(f"ERRO - Falha no login para {client_name}. Pulando cliente.")
         return False
-
-def inserir_outlets(arquivo_xlsx):
-    """
-    Lê o arquivo XLSX de outlets e realiza UPSERT usando Code como chave.
-    Colunas mapeadas para o schema atual da tabela outlets.
-    """
-    print("\n" + "=" * 60)
-    print("Inserindo/Atualizando dados de Outlets no banco...")
-    print("=" * 60)
-
+    
+    print(f"Login realizado com sucesso para {client_name}")
+    
+    # Prefixar arquivos com o client_name para evitar sobreposição
+    arquivos_baixados = {}
+    
     try:
-        df = pd.read_excel(arquivo_xlsx)
-        print(f"Total de registros lidos: {len(df)}")
-        print(f"Colunas: {list(df.columns)}")
-
-        if df.empty:
-            print("Planilha vazia. Nada a inserir.")
-            return True
-
-        conn = conectar_banco()
-        if not conn:
-            return False
-
-        cursor = conn.cursor()
-
-        upsert_query = """
-        INSERT INTO outlets (
-            name, code, outlet_type, is_key_outlet, is_smart,
-            country, state, city, street, address_2,
-            latitude, longitude, is_active, created_on, modified_on
-        ) VALUES (
-            %s, %s, %s, %s, %s,
-            %s, %s, %s, %s, %s,
-            %s, %s, %s, %s, %s
-        )
-        ON CONFLICT (code) DO UPDATE SET
-            name = EXCLUDED.name,
-            outlet_type = EXCLUDED.outlet_type,
-            is_key_outlet = EXCLUDED.is_key_outlet,
-            is_smart = EXCLUDED.is_smart,
-            country = EXCLUDED.country,
-            state = EXCLUDED.state,
-            city = EXCLUDED.city,
-            street = EXCLUDED.street,
-            address_2 = EXCLUDED.address_2,
-            latitude = EXCLUDED.latitude,
-            longitude = EXCLUDED.longitude,
-            is_active = EXCLUDED.is_active,
-            modified_on = EXCLUDED.modified_on
-        """
-
-        field_map = [
-            ("name", "Name", None),
-            ("code", "Code", None),
-            ("outlet_type", "Outlet Type", None),
-            ("is_key_outlet", "Is Key Outlet?", _parse_bool),
-            ("is_smart", "Is Smart?", _parse_bool),
-            ("country", "Country", None),
-            ("state", "State", None),
-            ("city", "City", None),
-            ("street", "Street", None),
-            ("address_2", "Address 2", None),
-            ("latitude", "Latitude", _parse_float),
-            ("longitude", "Longitude", _parse_float),
-            ("is_active", "Is Active?", _parse_bool),
-            ("created_on", "Created On", _parse_datetime),
-            ("modified_on", "Modified On", _parse_datetime),
-        ]
-
-        def get_value(row, excel_col, converter):
-            raw = row.get(excel_col) if excel_col in row.index else None
-            if converter:
-                return converter(raw)
-            if raw is None or pd.isna(raw):
-                return None
-            return raw
-
-        registros_processados = 0
-
-        for idx, row in df.iterrows():
-            try:
-                dados = {}
-                for db_col, excel_col, converter in field_map:
-                    dados[db_col] = get_value(row, excel_col, converter)
-
-                if not dados["code"]:
-                    print(f"Pulando linha {idx}: Code vazio ou invalido.")
-                    continue
-
-                if dados["created_on"] is None:
-                    dados["created_on"] = datetime.utcnow()
-                if dados["modified_on"] is None:
-                    dados["modified_on"] = dados["created_on"]
-
-                valores = [dados[col] for col, _, _ in field_map]
-                cursor.execute(upsert_query, tuple(valores))
-                registros_processados += 1
-
-                if registros_processados % 100 == 0:
-                    print(f"Processados {registros_processados} registros...")
-
-            except Exception as e:
-                if registros_processados < 5:
-                    print(f"ERRO ao processar linha {idx}: {str(e)}")
-                conn.rollback()
-                cursor = conn.cursor()
-                continue
-
-        conn.commit()
-        print(f"\nOK - Total de {registros_processados} registros processados (insert/update) com sucesso!")
-
-        cursor.close()
-        conn.close()
-        return True
-
+        # Buscar registros de saúde
+        print(f"\nBuscando registros de saúde para {client_name}...")
+        arquivo_saude = buscar_registros_saude(session, start_date, end_date)
+        if arquivo_saude:
+            import os
+            nome_novo = f"docs/{client_name.replace(' ', '_')}_health_events.xlsx"
+            os.rename(arquivo_saude, nome_novo)
+            arquivos_baixados['health_events'] = nome_novo
+            print(f"OK - Arquivo de saúde salvo: {nome_novo}")
+        
+        # Buscar registros de movimento
+        print(f"\nBuscando registros de movimento para {client_name}...")
+        arquivo_movimento = buscar_registros_movimento(session, start_date, end_date)
+        if arquivo_movimento:
+            import os
+            nome_novo = f"docs/{client_name.replace(' ', '_')}_movements.xlsx"
+            os.rename(arquivo_movimento, nome_novo)
+            arquivos_baixados['movements'] = nome_novo
+            print(f"OK - Arquivo de movimento salvo: {nome_novo}")
+        
+        # Buscar dados de alerts
+        print(f"\nBuscando alerts para {client_name}...")
+        arquivo_alerts = buscar_alerts(session, start_date, end_date)
+        if arquivo_alerts:
+            import os
+            nome_novo = f"docs/{client_name.replace(' ', '_')}_alerts.xlsx"
+            os.rename(arquivo_alerts, nome_novo)
+            arquivos_baixados['alerts'] = nome_novo
+            print(f"OK - Arquivo de alerts salvo: {nome_novo}")
+        
+        # Buscar dados de door statuses
+        print(f"\nBuscando door statuses para {client_name}...")
+        arquivo_door_statuses = buscar_door_statuses(session, start_date, end_date)
+        if arquivo_door_statuses:
+            import os
+            nome_novo = f"docs/{client_name.replace(' ', '_')}_door_statuses.csv"
+            os.rename(arquivo_door_statuses, nome_novo)
+            arquivos_baixados['door_statuses'] = nome_novo
+            print(f"OK - Arquivo de door statuses salvo: {nome_novo}")
+        
+        # Buscar dados de users
+        print(f"\nBuscando users para {client_name}...")
+        arquivo_users = buscar_users(session)
+        if arquivo_users:
+            import os
+            nome_novo = f"docs/{client_name.replace(' ', '_')}_users.xlsx"
+            os.rename(arquivo_users, nome_novo)
+            arquivos_baixados['users'] = nome_novo
+            print(f"OK - Arquivo de users salvo: {nome_novo}")
+        
     except Exception as e:
-        print(f"ERRO ao processar arquivo: {str(e)}")
+        print(f"ERRO durante o processamento de dados diários para {client_name}: {str(e)}")
         import traceback
         traceback.print_exc()
-        return False
-
-def inserir_assets(arquivo_xlsx):
-    """
-    Lê o arquivo XLSX de assets e faz UPSERT usando Bottler Equipment Number como chave.
-    """
-    print("\n" + "=" * 60)
-    print("Inserindo/Atualizando dados de Assets no banco...")
-    print("=" * 60)
-
-    try:
-        df = pd.read_excel(arquivo_xlsx)
-        print(f"Total de registros lidos: {len(df)}")
-
-        if df.empty:
-            print("Planilha vazia. Nada a inserir.")
-            return True
-
-        conn = conectar_banco()
-        if not conn:
-            return False
-
-        cursor = conn.cursor()
-
-        upsert_query = """
-        INSERT INTO assets (
-            asset_type, bottler_equipment_number, outlet, outlet_code, outlet_type,
-            is_missing, latitude, longitude, client, city, state, country,
-            created_on, modified_on
-        ) VALUES (
-            %s, %s, %s, %s, %s,
-            %s, %s, %s, %s, %s, %s, %s,
-            %s, %s
-        )
-        ON CONFLICT (bottler_equipment_number) DO UPDATE SET
-            asset_type = EXCLUDED.asset_type,
-            outlet = EXCLUDED.outlet,
-            outlet_code = EXCLUDED.outlet_code,
-            outlet_type = EXCLUDED.outlet_type,
-            is_missing = EXCLUDED.is_missing,
-            latitude = EXCLUDED.latitude,
-            longitude = EXCLUDED.longitude,
-            client = EXCLUDED.client,
-            city = EXCLUDED.city,
-            state = EXCLUDED.state,
-            country = EXCLUDED.country,
-            modified_on = EXCLUDED.modified_on
-        """
-
-        field_map = [
-            ("asset_type", "Asset Type", None),
-            ("bottler_equipment_number", "Bottler Equipment Number", None),
-            ("outlet", "Outlet", None),
-            ("outlet_code", "Outlet Code", None),
-            ("outlet_type", "Outlet Type", None),
-            ("is_missing", "Is Missing?", _parse_bool),
-            ("latitude", "Latitude", _parse_float),
-            ("longitude", "Longitude", _parse_float),
-            ("client", "Client", None),
-            ("city", "City", None),
-            ("state", "State", None),
-            ("country", "Country", None),
-            ("created_on", "Created On", _parse_datetime),
-            ("modified_on", "Created On", _parse_datetime),
-        ]
-
-        def get_value(row, excel_col, converter):
-            raw = row.get(excel_col) if excel_col in row.index else None
-            if converter:
-                return converter(raw)
-            if raw is None or pd.isna(raw):
-                return None
-            return raw
-
-        registros_processados = 0
-
-        for idx, row in df.iterrows():
-            try:
-                dados = {}
-                for db_col, excel_col, converter in field_map:
-                    dados[db_col] = get_value(row, excel_col, converter)
-
-                if not dados["bottler_equipment_number"]:
-                    print(f"Pulando linha {idx}: Bottler Equipment Number vazio ou invalido.")
-                    continue
-
-                if dados["created_on"] is None:
-                    dados["created_on"] = datetime.utcnow()
-                if dados["modified_on"] is None:
-                    dados["modified_on"] = dados["created_on"]
-
-                valores = [dados[col] for col, _, _ in field_map]
-                cursor.execute(upsert_query, tuple(valores))
-                registros_processados += 1
-
-                if registros_processados % 100 == 0:
-                    print(f"Processados {registros_processados} registros...")
-
-            except Exception as e:
-                if registros_processados < 5:
-                    print(f"ERRO ao processar linha {idx}: {str(e)}")
-                conn.rollback()
-                cursor = conn.cursor()
-                continue
-
-        conn.commit()
-        print(f"\nOK - Total de {registros_processados} registros processados (insert/update) com sucesso!")
-
-        cursor.close()
-        conn.close()
+    
+    finally:
+        # Sempre fazer logout
+        print(f"\nFazendo logout de {client_name}...")
+        deslogar(session)
+    
+    # Verificar se todos os downloads foram bem-sucedidos
+    if len(arquivos_baixados) == 5:  # Todos os 5 tipos de dados diários
+        print(f"\n{'='*60}")
+        print(f"DOWNLOAD DIÁRIO COMPLETO - {client_name}")
+        print(f"{'='*60}")
+        
+        # Mostrar arquivos baixados
+        for tipo, arquivo in arquivos_baixados.items():
+            print(f"{tipo.replace('_', ' ').title()}: {arquivo}")
+        
+        print(f"\nTodos os dados diários de {client_name} foram baixados com sucesso!")
+        print(f"Para inserir no banco de dados, execute: python3 import_all_data.py")
+        
         return True
-
-    except Exception as e:
-        print(f"ERRO ao processar arquivo: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return False
-
-def inserir_smart_devices(arquivo_xlsx):
-    """
-    Lê o arquivo XLSX de smart devices e faz UPSERT usando MAC Address como chave
-    Usa ordem das colunas da planilha, não nomes
-    """
-    print("\n" + "="*60)
-    print("Inserindo/Atualizando dados de Smart Devices no banco...")
-    print("="*60)
-
-    try:
-        # Ler o arquivo Excel
-        df = pd.read_excel(arquivo_xlsx)
-        print(f"Total de registros lidos: {len(df)}")
-
-        # Conectar ao banco
-        conn = conectar_banco()
-        if not conn:
-            return False
-
-        cursor = conn.cursor()
-
-        # Preparar query de UPSERT (usando MAC Address como chave)
-        upsert_query = """
-        INSERT INTO smart_devices (
-            device_type, manufacturer, serial_number, mac_address, imei,
-            last_ping, linked_asset, association, is_missing, outlet,
-            outlet_code, outlet_type, street, city, state, country,
-            time_zone, battery_level, created_on, modified_on
-        ) VALUES (
-            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-            %s, %s, %s, %s, %s
-        )
-        ON CONFLICT (mac_address) DO UPDATE SET
-            device_type = EXCLUDED.device_type,
-            manufacturer = EXCLUDED.manufacturer,
-            serial_number = EXCLUDED.serial_number,
-            imei = EXCLUDED.imei,
-            last_ping = EXCLUDED.last_ping,
-            linked_asset = EXCLUDED.linked_asset,
-            association = EXCLUDED.association,
-            is_missing = EXCLUDED.is_missing,
-            outlet = EXCLUDED.outlet,
-            outlet_code = EXCLUDED.outlet_code,
-            outlet_type = EXCLUDED.outlet_type,
-            street = EXCLUDED.street,
-            city = EXCLUDED.city,
-            state = EXCLUDED.state,
-            country = EXCLUDED.country,
-            time_zone = EXCLUDED.time_zone,
-            battery_level = EXCLUDED.battery_level,
-            modified_on = EXCLUDED.modified_on
-        """
-
-        # Inserir/Atualizar cada linha
-        registros_processados = 0
-
-        for idx, row in df.iterrows():
-            try:
-                # Converter valores NaN para None - mantém ordem das colunas
-                valores = tuple(None if pd.isna(val) else val for val in row)
-
-                cursor.execute(upsert_query, valores)
-                registros_processados += 1
-
-                # Mostrar progresso a cada 100 registros
-                if registros_processados % 100 == 0:
-                    print(f"Processados {registros_processados} registros...")
-
-            except Exception as e:
-                print(f"ERRO ao processar linha {idx}: {str(e)}")
-                # Fazer rollback apenas da transação atual
-                conn.rollback()
-                # Precisamos recriar o cursor após rollback
-                cursor = conn.cursor()
-                continue
-
-        # Commit das alterações
-        conn.commit()
-        print(f"\nOK - Total de {registros_processados} registros processados (insert/update) com sucesso!")
-
-        # Fechar conexão
-        cursor.close()
-        conn.close()
-
-        return True
-
-    except Exception as e:
-        print(f"ERRO ao processar arquivo: {str(e)}")
-        import traceback
-        traceback.print_exc()
+    else:
+        print(f"\nERRO - Download de dados diários incompleto para {client_name}.")
+        print(f"Arquivos baixados ({len(arquivos_baixados)}/5):")
+        for tipo, arquivo in arquivos_baixados.items():
+            print(f"  - {tipo}: {arquivo}")
         return False
 
 def main():
-    session = logar()
-    if not session:
-        print("\nERRO - Falha no login. Nao foi possivel buscar dados.")
+    """
+    Função principal que processa todos os clientes
+    """
+    print("INICIANDO SCRAPING MULTI-CLIENTE")
+    print("="*80)
+    
+    # Buscar todas as contas da base de dados
+    contas = buscar_contas_vision()
+    
+    if not contas:
+        print("ERRO - Nenhuma conta VisionAccount encontrada na base de dados")
         return
-
-    print("\nSessao estabelecida. Buscando dados...")
-
-    # Buscar registros de saúde
-    dados_saude = buscar_registros_saude(session)
-
-    # Buscar registros de movimento
-    dados_movimento = buscar_registros_movimento(session)
-
-    # Buscar dados de outlets
-    dados_outlets = buscar_outlets(session)
-
-    # Buscar dados de assets
-    dados_assets = buscar_assets(session)
-
-    # Buscar dados de smart devices
-    dados_smart_devices = buscar_smart_devices(session)
-
-    # Fazer logout ao terminar
-    deslogar(session)
-
-    # Resumo dos arquivos baixados
-    print("\n" + "="*60)
-    print("RESUMO - DOWNLOAD")
-    print("="*60)
-    if dados_saude:
-        print(f"OK - Arquivo de saude: {dados_saude}")
+    
+    print(f"Encontradas {len(contas)} contas para processar:")
+    for conta_data in contas:
+        conta, client_name = conta_data
+        print(f"  - {client_name} (Username: {conta.username})")
+    
+    # Processar cada cliente - DADOS DIÁRIOS (executar diariamente)
+    resultados = {}
+    
+    for conta_data in contas:
+        conta, client_name = conta_data
+        
+        try:
+            sucesso = processar_cliente_dados_diarios(
+                username=conta.username,
+                password=conta.password,
+                client_name=client_name
+            )
+            resultados[client_name] = sucesso
+        except Exception as e:
+            print(f"ERRO CRÍTICO ao processar {client_name}: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            resultados[client_name] = False
+    
+    # Resumo final
+    print(f"\n{'='*80}")
+    print("RESUMO FINAL - TODOS OS CLIENTES")
+    print(f"{'='*80}")
+    
+    for client_name, sucesso in resultados.items():
+        status = "✓ SUCESSO" if sucesso else "✗ ERRO"
+        print(f"{client_name}: {status}")
+    
+    sucessos = sum(1 for s in resultados.values() if s)
+    total = len(resultados)
+    
+    print(f"\nTotal processado: {sucessos}/{total} clientes com sucesso")
+    
+    if sucessos == total:
+        print("✓ Todos os clientes processados com sucesso!")
+        
+        # Executar automaticamente o script de importação
+        print(f"\n{'='*60}")
+        print("INICIANDO IMPORTAÇÃO AUTOMÁTICA DOS DADOS")
+        print(f"{'='*60}")
+        
+        try:
+            import subprocess
+            import sys
+            
+            # Executar o script import_all_data.py
+            result = subprocess.run([
+                sys.executable, 
+                "import_all_data.py"
+            ], 
+            capture_output=True, 
+            text=True,
+            cwd="."  # Executar no diretório atual
+            )
+            
+            if result.returncode == 0:
+                print("✓ Importação automática concluída com sucesso!")
+                if result.stdout:
+                    print("\nSaída da importação:")
+                    print(result.stdout)
+            else:
+                print("✗ Erro durante a importação automática:")
+                if result.stderr:
+                    print("Erro:", result.stderr)
+                if result.stdout:
+                    print("Saída:", result.stdout)
+                    
+        except Exception as e:
+            print(f"✗ Erro ao executar importação automática: {str(e)}")
+            print("Execute manualmente: python3 import_all_data.py")
     else:
-        print("ERRO - Falha ao baixar arquivo de saude")
+        print("✗ Alguns clientes falharam durante o processamento")
+        print("Importação automática cancelada devido a erros no download")
+        print("Verifique os erros e execute manualmente: python3 import_all_data.py")
 
-    if dados_movimento:
-        print(f"OK - Arquivo de movimento: {dados_movimento}")
+def main_dados_estaticos():
+    """
+    Função principal para baixar dados estáticos (assets, outlets, smartdevices)
+    Execute esta função periodicamente (ex: uma vez por semana ou mês)
+    """
+    print("INICIANDO SCRAPING DE DADOS ESTÁTICOS (ASSETS, OUTLETS, SMARTDEVICES)")
+    print("="*80)
+    
+    # Buscar todas as contas da base de dados
+    contas = buscar_contas_vision()
+    
+    if not contas:
+        print("ERRO - Nenhuma conta VisionAccount encontrada na base de dados")
+        return
+    
+    print(f"Encontradas {len(contas)} contas para processar:")
+    for conta_data in contas:
+        conta, client_name = conta_data
+        print(f"  - {client_name} (Username: {conta.username})")
+    
+    # Processar cada cliente - DADOS ESTÁTICOS (executar periodicamente)
+    resultados = {}
+    
+    for conta_data in contas:
+        conta, client_name = conta_data
+        
+        try:
+            sucesso = processar_cliente_dados_estaticos(
+                username=conta.username,
+                password=conta.password,
+                client_name=client_name
+            )
+            resultados[client_name] = sucesso
+        except Exception as e:
+            print(f"ERRO CRÍTICO ao processar {client_name}: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            resultados[client_name] = False
+    
+    # Resumo final
+    print(f"\n{'='*80}")
+    print("RESUMO FINAL - DADOS ESTÁTICOS")
+    print(f"{'='*80}")
+    
+    for client_name, sucesso in resultados.items():
+        status = "✓ SUCESSO" if sucesso else "✗ ERRO"
+        print(f"{client_name}: {status}")
+    
+    sucessos = sum(1 for s in resultados.values() if s)
+    total = len(resultados)
+    
+    print(f"\nTotal processado: {sucessos}/{total} clientes com sucesso")
+    
+    if sucessos == total:
+        print("✓ Todos os clientes processados com sucesso!")
+        
+        # Executar automaticamente o script de importação
+        print(f"\n{'='*60}")
+        print("INICIANDO IMPORTAÇÃO AUTOMÁTICA DOS DADOS ESTÁTICOS")
+        print(f"{'='*60}")
+        
+        try:
+            import subprocess
+            import sys
+            
+            # Executar o script import_all_data.py
+            result = subprocess.run([
+                sys.executable, 
+                "import_all_data.py"
+            ], 
+            capture_output=True, 
+            text=True,
+            cwd="."  # Executar no diretório atual
+            )
+            
+            if result.returncode == 0:
+                print("✓ Importação automática concluída com sucesso!")
+                if result.stdout:
+                    print("\nSaída da importação:")
+                    print(result.stdout)
+            else:
+                print("✗ Erro durante a importação automática:")
+                if result.stderr:
+                    print("Erro:", result.stderr)
+                if result.stdout:
+                    print("Saída:", result.stdout)
+                    
+        except Exception as e:
+            print(f"✗ Erro ao executar importação automática: {str(e)}")
+            print("Execute manualmente: python3 import_all_data.py")
     else:
-        print("ERRO - Falha ao baixar arquivo de movimento")
+        print("✗ Alguns clientes falharam durante o processamento")
+        print("Importação automática cancelada devido a erros no download")
+        print("Verifique os erros e execute manualmente: python3 import_all_data.py")
 
-    if dados_outlets:
-        print(f"OK - Arquivo de outlets: {dados_outlets}")
-    else:
-        print("ERRO - Falha ao baixar arquivo de outlets")
-
-    if dados_assets:
-        print(f"OK - Arquivo de assets: {dados_assets}")
-    else:
-        print("ERRO - Falha ao baixar arquivo de assets")
-
-    if dados_smart_devices:
-        print(f"OK - Arquivo de smart devices: {dados_smart_devices}")
-    else:
-        print("ERRO - Falha ao baixar arquivo de smart devices")
-
-    # Inserir dados no banco se os downloads foram bem-sucedidos
-    if dados_saude and dados_movimento and dados_outlets and dados_assets and dados_smart_devices:
-        print("\n" + "="*60)
-        print("INICIANDO INSERCAO NO BANCO DE DADOS")
-        print("="*60)
-
-        # Inserir health events
-        sucesso_health = inserir_health_events(dados_saude)
-
-        # Inserir movements
-        sucesso_movements = inserir_movements(dados_movimento)
-
-        # Inserir outlets
-        sucesso_outlets = inserir_outlets(dados_outlets)
-
-        # Inserir assets
-        sucesso_assets = inserir_assets(dados_assets)
-
-        # Inserir smart devices
-        sucesso_smart_devices = inserir_smart_devices(dados_smart_devices)
-
-        # Resumo final
-        print("\n" + "="*60)
-        print("RESUMO FINAL")
-        print("="*60)
-        print(f"Download Health Events: {'OK' if dados_saude else 'ERRO'}")
-        print(f"Download Movements: {'OK' if dados_movimento else 'ERRO'}")
-        print(f"Download Outlets: {'OK' if dados_outlets else 'ERRO'}")
-        print(f"Download Assets: {'OK' if dados_assets else 'ERRO'}")
-        print(f"Download Smart Devices: {'OK' if dados_smart_devices else 'ERRO'}")
-        print(f"Insert Health Events: {'OK' if sucesso_health else 'ERRO'}")
-        print(f"Insert Movements: {'OK' if sucesso_movements else 'ERRO'}")
-        print(f"Insert Outlets: {'OK' if sucesso_outlets else 'ERRO'}")
-        print(f"Insert Assets: {'OK' if sucesso_assets else 'ERRO'}")
-        print(f"Insert Smart Devices: {'OK' if sucesso_smart_devices else 'ERRO'}")
-
-        if sucesso_health and sucesso_movements and sucesso_outlets and sucesso_assets and sucesso_smart_devices:
-            print("\n✓ Processo concluido com sucesso!")
-        else:
-            print("\n✗ Processo concluido com erros")
-    else:
-        print("\n✗ Insercao no banco cancelada devido a falhas no download")
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+    
+    if len(sys.argv) > 1 and sys.argv[1] == "static":
+        # Executar scraping de dados estáticos
+        main_dados_estaticos()
+    else:
+        # Executar scraping de dados diários (padrão)
+        main()

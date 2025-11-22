@@ -1,11 +1,15 @@
 {% extends "portal/base.html" %}
-
 {% block title %}Dashboard{% endblock %}
 {% block page_title %}Dashboard de Monitoramento{% endblock %}
 
 {% block breadcrumb %}
     <i class="fas fa-home"></i>
     <span>Dashboard</span>
+{% endblock %}
+
+{% block styles %}
+    {{ super() }} 
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -45,91 +49,98 @@
     </div>
 </div>
 
-<!-- Top KPIs Cards (5 colunas) -->
-<div class="kpi-container">
-    <!-- Total Assets Card -->
-    <div class="kpi-card" style="border-top: 4px solid #667eea;">
-        <div class="kpi-icon" style="color: #667eea;">
+<div class="stats-grid">
+    
+    <div class="stat-card">
+        <div class="stat-icon bg-indigo">
             <i class="fas fa-boxes"></i>
         </div>
-        <div class="kpi-content">
-            <p class="kpi-label">Total de Ativos</p>
-            <h3 class="kpi-value">{{ stats.total_assets }}</h3>
+        <div class="stat-content">
+            <p class="stat-label">Total de Ativos</p>
+            <h4 class="stat-value" id="kpiTotalAssets">{{ stats.total_assets }}</h4>
         </div>
     </div>
 
-    <!-- Ativos (24h) Card -->
-    <div class="kpi-card" style="border-top: 4px solid #48bb78;">
-        <div class="kpi-icon" style="color: #48bb78;">
+    <a href="{{url_for('portal_tracking.render_tracking')}}?is_active=true" class="stat-card clickable">
+        <div class="stat-icon bg-green">
             <i class="fas fa-heartbeat"></i>
         </div>
-        <div class="kpi-content">
-            <p class="kpi-label">Ativos (24h)</p>
-            <h3 class="kpi-value">{{ stats.assets_health_last_24h_count }}</h3>
+        <div class="stat-content">
+            <p class="stat-label">Ativos (24h)</p>
+            <h4 class="stat-value" id="kpiAssets24h">{{ stats.assets_health_last_24h_count }}</h4>
         </div>
-    </div>
+        <div class="stat-arrow">
+            <i class="fas fa-chevron-right"></i>
+        </div>
+    </a>
 
-    <!-- Temperatura OK % Card -->
-    <div class="kpi-card" style="border-top: 4px solid #4299e1;">
-        <div class="kpi-icon" style="color: #4299e1;">
+    <div class="stat-card temp-card">
+        <div class="stat-icon bg-blue">
             <i class="fas fa-thermometer-half"></i>
         </div>
-        <div class="kpi-content">
-            <p class="kpi-label">Temperatura OK</p>
-            <h3 class="kpi-value" id="tempPercentage">0%</h3>
+        
+        <div class="stat-content">
+            <p class="stat-label">Temperatura <small class="click-hint"></small></p>
+            
+            <div class="split-values">
+                <a href="{{url_for('portal_tracking.render_tracking')}}?temp_is_ok=true" class="split-item clickable-split">
+                    <span class="dot green"></span>
+                    <span class="split-text">OK:</span>
+                    <span class="split-val" id="tempOkPercentage">0%</span>
+                </a>
+                <div class="split-divider"></div>
+                <a href="{{url_for('portal_tracking.render_tracking')}}?temp_is_ok=false" class="split-item clickable-split">
+                    <span class="dot red"></span>
+                    <span class="split-text">Ruim:</span>
+                    <span class="split-val" id="tempNotOkPercentage">0%</span>
+                </a>
+            </div>
         </div>
     </div>
 
-    <!-- Bateria Boa % Card -->
-    <div class="kpi-card" style="border-top: 4px solid #48bb78;">
-        <div class="kpi-icon" style="color: #48bb78;">
+    <div class="stat-card">
+        <div class="stat-icon bg-teal">
             <i class="fas fa-battery-full"></i>
         </div>
-        <div class="kpi-content">
-            <p class="kpi-label">Bateria Boa (>50%)</p>
-            <h3 class="kpi-value" id="batteryPercentage">0%</h3>
+        <div class="stat-content">
+            <p class="stat-label">Bateria >50%</p>
+            <h4 class="stat-value" id="batteryPercentage">0%</h4>
         </div>
     </div>
 
-    <!-- Alertas Card -->
-    <div class="kpi-card" style="border-top: 4px solid #f56565;" data-alerts-card>
-        <div class="kpi-icon" style="color: #f56565;">
+    <div class="stat-card" data-alerts-card>
+        <div class="stat-icon bg-red">
             <i class="fas fa-bell"></i>
         </div>
-        <div class="kpi-content">
-            <p class="kpi-label">Alertas (período)</p>
-            <h3 class="kpi-value">{{ stats.alerts_period_count }}</h3>
+        <div class="stat-content">
+            <p class="stat-label">Alertas</p>
+            <h4 class="stat-value" id="kpiAlerts">{{ stats.alerts_period_count }}</h4>
         </div>
+        <span class="period-badge">30d</span>
     </div>
-</div>
 
-<!-- KPIs de Consumo e Compressor -->
-<div class="kpi-container" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));">
-    <!-- Compressor ON % Card (only render if > 0) -->
-    {% if stats.avg_compressor_on_time and stats.avg_compressor_on_time > 0 %}
-    <div class="kpi-card" style="border-top: 4px solid #38B2AC;" data-compressor-card>
-        <div class="kpi-icon" style="color: #38B2AC;">
+    <div class="stat-card" id="cardCompressor" style="display: {{ 'flex' if stats.avg_compressor_on_time and stats.avg_compressor_on_time > 0 else 'none' }};">
+        <div class="stat-icon bg-cyan">
             <i class="fas fa-cogs"></i>
         </div>
-        <div class="kpi-content">
-            <p class="kpi-label">Compressor ON (Média {{ stats.period_days }}d)</p>
-            <h3 class="kpi-value">{{ stats.avg_compressor_on_time }}%</h3>
+        <div class="stat-content">
+            <p class="stat-label">Compressor</p>
+            <h4 class="stat-value" id="kpiCompressor">{{ stats.avg_compressor_on_time }}%</h4>
         </div>
+        <span class="period-badge">30d</span>
     </div>
-    {% endif %}
 
-    <!-- Consumo Médio Card (only render if > 0) -->
-    {% if stats.avg_power_consumption and stats.avg_power_consumption > 0 %}
-    <div class="kpi-card" style="border-top: 4px solid #ED8936;" data-consumption-card>
-        <div class="kpi-icon" style="color: #ED8936;">
+    <div class="stat-card" id="cardConsumption" style="display: {{ 'flex' if stats.avg_power_consumption and stats.avg_power_consumption > 0 else 'none' }};">
+        <div class="stat-icon bg-orange">
             <i class="fas fa-bolt"></i>
         </div>
-        <div class="kpi-content">
-            <p class="kpi-label">Consumo Médio (Média {{ stats.period_days }}d)</p>
-            <h3 class="kpi-value">{{ stats.avg_power_consumption }} W</h3>
+        <div class="stat-content">
+            <p class="stat-label">Consumo</p>
+            <h4 class="stat-value" id="kpiConsumption">{{ stats.avg_power_consumption }} W</h4>
         </div>
+        <span class="period-badge">30d</span>
     </div>
-    {% endif %}
+
 </div>
 
 <!-- Import Section with Button -->
@@ -262,7 +273,7 @@
             </a>
 
             <!-- Smart Devices Card -->
-            <a href="{{url_for('portal_smartdevices.get_smart_devices')}}" class="dashboard-card">
+            <a href="{{url_for('portal_smartdevices.list_and_create_smartdevices')}}" class="dashboard-card">
                 <div class="dashboard-card-icon danger">
                     <i class="fas fa-mobile-alt"></i>
                 </div>
@@ -282,1589 +293,672 @@
     </div>
 </div>
 
-<!-- Chart.js Library -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-// Import Modal Logic
-const importModal = document.getElementById('importModal');
-const importFileInput = document.getElementById('importFileInput');
-const importFileZone = document.querySelector('.import-file-zone');
-const importFileName = document.getElementById('importFileName');
-const startImportBtn = document.getElementById('startImport');
-const importFeedback = document.getElementById('importFeedback');
-
-// Open modal
-document.getElementById('openImportModal').addEventListener('click', () => {
-    importModal.style.display = 'flex';
-    importFileInput.value = '';
-    importFileName.style.display = 'none';
-    importFeedback.style.display = 'none';
-    startImportBtn.disabled = true;
-});
-
-// Close modal
-function closeImportModal() {
-    importModal.style.display = 'none';
-    importFileInput.value = '';
-    importFileName.style.display = 'none';
-    importFeedback.style.display = 'none';
-    startImportBtn.disabled = true;
-}
-
-document.getElementById('closeImport').addEventListener('click', closeImportModal);
-document.getElementById('closeImportX').addEventListener('click', closeImportModal);
-
-// Click overlay to close
-document.querySelector('.import-modal-overlay').addEventListener('click', closeImportModal);
-
-// File selection handler
-importFileInput.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (file) {
-        importFileName.textContent = `📄 ${file.name}`;
-        importFileName.style.display = 'block';
-        startImportBtn.disabled = false;
-    } else {
-        importFileName.style.display = 'none';
-        startImportBtn.disabled = true;
-    }
-});
-
-// Drag & drop support
-importFileZone.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    importFileZone.classList.add('dragover');
-});
-
-importFileZone.addEventListener('dragleave', () => {
-    importFileZone.classList.remove('dragover');
-});
-
-importFileZone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    importFileZone.classList.remove('dragover');
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-        importFileInput.files = files;
-        const file = files[0];
-        importFileName.textContent = `📄 ${file.name}`;
-        importFileName.style.display = 'block';
-        startImportBtn.disabled = false;
-    }
-});
-
-// Import handler
-document.getElementById('startImport').addEventListener('click', async () => {
-    const file = importFileInput.files[0];
-    if (!file) {
-        importFeedback.innerHTML = '<div class="import-feedback-error">❌ Selecione um arquivo primeiro.</div>';
-        importFeedback.style.display = 'block';
-        return;
-    }
-
-    startImportBtn.disabled = true;
-    importFeedback.innerHTML = '<div class="import-feedback-loading">⏳ Processando importação...</div>';
-    importFeedback.style.display = 'block';
-
-    const form = new FormData();
-    form.append('file', file);
-
-    try {
-        const resp = await fetch('{{ url_for("dashboard.import_file") }}', {
-            method: 'POST',
-            body: form
-        });
-        const data = await resp.json();
-
-        if (resp.ok && data.status === 'ok') {
-            const { inserted, updated } = data.result || {};
-            const total = (inserted || 0) + (updated || 0);
-            const model = data.model || 'Modelo desconhecido';
-            
-            let htmlContent = '<div class="import-feedback-success">';
-            htmlContent += '<strong>✅ Importação Concluída com Sucesso!</strong><br>';
-            htmlContent += `<div class="import-stats">`;
-            htmlContent += `<p><span class="stat-label">Modelo:</span> <span class="stat-value">${model}</span></p>`;
-            htmlContent += `<p><span class="stat-label">Novos Registros:</span> <span class="stat-value">${inserted || 0}</span></p>`;
-            htmlContent += `<p><span class="stat-label">Registros Atualizados:</span> <span class="stat-value">${updated || 0}</span></p>`;
-            htmlContent += `<p><span class="stat-label">Total Processado:</span> <span class="stat-value">${total}</span></p>`;
-            htmlContent += `</div>`;
-            htmlContent += '</div>';
-            
-            importFeedback.innerHTML = htmlContent;
-            importFeedback.style.display = 'block';
-            startImportBtn.disabled = true;
-
-            // Auto close after 5 seconds
-            setTimeout(() => {
-                closeImportModal();
-            }, 5000);
-        } else {
-            const errorMsg = data.message || 'Erro ao importar arquivo';
-            importFeedback.innerHTML = `<div class="import-feedback-error">❌ Erro: ${errorMsg}</div>`;
-            importFeedback.style.display = 'block';
-            startImportBtn.disabled = false;
-        }
-    } catch (err) {
-        importFeedback.innerHTML = `<div class="import-feedback-error">❌ Erro: ${err.message}</div>`;
-        importFeedback.style.display = 'block';
-        startImportBtn.disabled = false;
-    }
-});
-</script>
 
 <script>
-    // Calculate percentages
-    const totalAssets = {{ stats.total_assets }};
-    const okTemp = {{ stats.ok_temperatures_count }};
-    const totalWithTemperature = {{ stats.total_with_temperature }};
-    const goodBattery = {{ stats.good_battery_assets_count }};
-    const lowBattery = {{ stats.low_battery_assets_count }};
-    const criticalBattery = {{ stats.critical_battery_assets_count }};
-    
-    // Temperature OK % = OK / (OK + Acima + Abaixo)
-    const tempPercentage = totalWithTemperature > 0 ? Math.round((okTemp / totalWithTemperature) * 100) : 0;
-    // Battery Good % = Good / (Good + Low + Critical)
-    const totalWithBattery = goodBattery + lowBattery + criticalBattery;
-    const batteryPercentage = totalWithBattery > 0 ? Math.round((goodBattery / totalWithBattery) * 100) : 0;
-    
-    document.getElementById('tempPercentage').textContent = tempPercentage + '%';
-    document.getElementById('batteryPercentage').textContent = batteryPercentage + '%';
-
-    // Temperature Line Chart
-    const tempLineCtx = document.getElementById('tempLineChart').getContext('2d');
-    const hourlyTempData = {{ stats.hourly_temp_chart.data | tojson }};
-    const numericTemps = hourlyTempData.filter(v => typeof v === 'number' && !isNaN(v));
-    const minTemp = numericTemps.length ? Math.min(...numericTemps) : 0;
-    window.hourlyTempChart = new Chart(tempLineCtx, {
-        type: 'line',
-        data: {
-            labels: {{ stats.hourly_temp_chart.labels | tojson }},
-            datasets: [{
-                label: 'Temperatura Média (°C)',
-                data: hourlyTempData,
-                borderColor: '#667eea',
-                backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                borderWidth: 3,
-                fill: true,
-                tension: 0.4,
-                pointBackgroundColor: '#667eea',
-                pointBorderColor: '#fff',
-                pointBorderWidth: 2,
-                pointRadius: 5,
-                pointHoverRadius: 7
-            }]
+    /**
+     * ============================================================================
+     * 1. CONFIGURAÇÃO E DADOS (SERVER-SIDE DATA)
+     * Centraliza todas as variáveis do Jinja2 aqui. Facilita a manutenção.
+     * ============================================================================
+     */
+    const APP_CONFIG = {
+        urls: {
+            import: "{{ url_for('dashboard.import_file') }}",
+            stats: "{{ url_for('dashboard.get_dashboard_stats') }}"
         },
-            options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: true,
-                    labels: {
-                        font: { size: 13, weight: 'bold' },
-                        color: '#333',
-                        padding: 15
-                    }
-                }
+        stats: {
+            assets: {
+                total: {{ stats.total_assets }},
+                temp_ok: {{ stats.ok_temperatures_count }},
+                temp_total: {{ stats.total_with_temperature }},
+                bat_good: {{ stats.good_battery_assets_count }},
+                bat_low: {{ stats.low_battery_assets_count }},
+                bat_crit: {{ stats.critical_battery_assets_count }}
+            }
+        },
+        charts: {
+            temp: {
+                labels: {{ stats.hourly_temp_chart.labels | tojson }},
+                data: {{ stats.hourly_temp_chart.data | tojson }}
             },
-            scales: {
-                y: {
-                    beginAtZero: minTemp >= 0,
-                    ticks: {
-                        color: '#666',
-                        font: { size: 12 }
-                    },
-                    grid: {
-                        color: 'rgba(0, 0, 0, 0.05)'
-                    }
-                },
-                x: {
-                    ticks: {
-                        color: '#666',
-                        font: { size: 11 }
-                    },
-                    grid: {
-                        color: 'rgba(0, 0, 0, 0.05)'
-                    }
-                }
-            }
-        }
-    });
-
-    // Door Openings Line Chart
-    const doorLineCtx = document.getElementById('doorLineChart').getContext('2d');
-    window.hourlyDoorChart = new Chart(doorLineCtx, {
-        type: 'line',
-        data: {
-            labels: {{ stats.hourly_door_chart.labels | tojson }},
-            datasets: [{
-                label: 'Média de Aberturas de Porta',
-                data: {{ stats.hourly_door_chart.data | tojson }},
-                borderColor: '#f6ad55',
-                backgroundColor: 'rgba(246, 173, 85, 0.1)',
-                borderWidth: 3,
-                fill: true,
-                tension: 0.4,
-                pointBackgroundColor: '#f6ad55',
-                pointBorderColor: '#fff',
-                pointBorderWidth: 2,
-                pointRadius: 5,
-                pointHoverRadius: 7
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: true,
-                    labels: {
-                        font: { size: 13, weight: 'bold' },
-                        color: '#333',
-                        padding: 15
-                    }
-                }
+            door: {
+                labels: {{ stats.hourly_door_chart.labels | tojson }},
+                data: {{ stats.hourly_door_chart.data | tojson }}
             },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        color: '#666',
-                        font: { size: 12 }
-                    },
-                    grid: {
-                        color: 'rgba(0, 0, 0, 0.05)'
-                    }
-                },
-                x: {
-                    ticks: {
-                        color: '#666',
-                        font: { size: 11 }
-                    },
-                    grid: {
-                        color: 'rgba(0, 0, 0, 0.05)'
-                    }
-                }
+            status_temp: {
+                labels: {{ stats.temperature_status_chart.labels | tojson }},
+                data: {{ stats.temperature_status_chart.data | tojson }}
             }
         }
-    });
+    };
 
-    // Battery Status Pie Chart
-    const batteryCtx = document.getElementById('batteryChart').getContext('2d');
-    new Chart(batteryCtx, {
-        type: 'doughnut',
-        data: {
-            labels: ['Bateria Boa (>50%)', 'Bateria Baixa (25-50%)', 'Bateria Crítica (<25%)'],
-            datasets: [{
-                data: [{{ stats.good_battery_assets_count }}, {{ stats.low_battery_assets_count }}, {{ stats.critical_battery_assets_count }}],
-                backgroundColor: [
-                    '#48bb78', // Boa
-                    '#f6ad55', // Baixa
-                    '#f56565'  // Crítica
-                ],
-                borderColor: '#fff',
-                borderWidth: 2
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        padding: 20,
-                        font: { size: 13, weight: 'bold' },
-                        color: '#333'
-                    }
-                }
+    /**
+     * ============================================================================
+     * 2. CLASSES DO SISTEMA
+     * ============================================================================
+     */
+
+    // --- Gerenciador de Timezone ---
+    // --- Gerenciador de Timezone (Versão Corrigida) ---
+    class TimezoneConverter {
+        constructor() {
+            this.currentTimezone = 'America/Sao_Paulo'; // Padrão inicial
+            // Armazena uma cópia profunda dos dados originais (UTC) vindos do servidor
+            this.originalData = {
+                temp: [...APP_CONFIG.charts.temp.data],
+                door: [...APP_CONFIG.charts.door.data]
+            };
+            this.init();
+        }
+        
+        init() {
+            const selector = document.getElementById('timezoneSelect');
+            if (selector) {
+                // Define o valor inicial do select se necessário
+                selector.value = this.currentTimezone;
+                selector.addEventListener('change', (e) => this.changeTimezone(e.target.value));
             }
+            
+            // Aplica a conversão inicial (caso o servidor mande UTC e a gente queira BRT logo de cara)
+            this.changeTimezone(this.currentTimezone);
         }
-    });
 
-    // Temperature Status Pie Chart
-    const tempCtx = document.getElementById('temperatureChart').getContext('2d');
-    new Chart(tempCtx, {
-        type: 'doughnut',
-        data: {
-            labels: {{ stats.temperature_status_chart.labels | tojson }},
-            datasets: [{
-                data: {{ stats.temperature_status_chart.data | tojson }},
-                backgroundColor: [
-                    '#48bb78',
-                    '#f56565',
-                    '#667eea'
-                ],
-                borderColor: '#fff',
-                borderWidth: 2
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        padding: 20,
-                        font: { size: 13, weight: 'bold' },
-                        color: '#333'
-                    }
-                }
+        // Chamado quando novos dados chegam via Seletor de Período
+        updateOriginalData(newTempData, newDoorData) {
+            this.originalData.temp = [...newTempData];
+            this.originalData.door = [...newDoorData];
+            // Re-aplica o timezone atual nos novos dados
+            this.changeTimezone(this.currentTimezone);
+        }
+        
+        changeTimezone(timezone) {
+            this.currentTimezone = timezone;
+            
+            // 1. Calcula o Offset
+            const offset = this.calculateOffset(timezone);
+            
+            // 2. Rotaciona os dados
+            const newTempData = this.shiftDataArray(this.originalData.temp, offset);
+            const newDoorData = this.shiftDataArray(this.originalData.door, offset);
+            
+            // 3. Atualiza os gráficos COM ANIMAÇÃO
+            if (window.hourlyTempChart) {
+                window.hourlyTempChart.data.datasets[0].data = newTempData;
+                window.hourlyTempChart.update(); // Removido o 'none' para animar
             }
+            if (window.hourlyDoorChart) {
+                window.hourlyDoorChart.data.datasets[0].data = newDoorData;
+                window.hourlyDoorChart.update(); // Removido o 'none' para animar
+            }
+
+            // 4. Atualiza textos
+            this.updateDisplayedTimestamps();
+            
+            // 5. Feedback visual no indicador
+            this.showAnimation(timezone, offset);
         }
-    });
-</script>
-
-<style>
-    /* * ===================================================================
-     * CORREÇÃO DOS KPIS (Cards de Estatística)
-     * Abordagem 'Mobile-first': 1 coluna em telas pequenas.
-     * ===================================================================
-    */
-    .kpi-container {
-        display: grid;
-        gap: 1.5rem;
-        margin-bottom: 2rem;
-    }
-
-    /* Layout Padrão para KPI Container (5 colunas em desktop) */
-    @media (min-width: 1200px) {
-        .kpi-container {
-            grid-template-columns: repeat(5, 1fr);
-        }
-    }
-
-    /* Layout para 3 colunas em tablets */
-    @media (min-width: 768px) and (max-width: 1199px) {
-        .kpi-container {
-            grid-template-columns: repeat(3, 1fr);
-        }
-    }
-
-    /* Layout para 1 coluna em mobile */
-    @media (max-width: 767px) {
-        .kpi-container {
-            grid-template-columns: 1fr;
-        }
-    }
-
-    /* * ===================================================================
-     * IMPORT SECTION - Novo Design Profissional
-     * ===================================================================
-    */
-    .import-section {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 12px;
-        padding: 2rem;
-        margin: 2.5rem 0;
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 2rem;
-        flex-wrap: wrap;
-    }
-
-    .import-section-header {
-        flex: 1;
-        min-width: 250px;
-        color: white;
-    }
-
-    .import-section-title {
-        margin: 0 0 0.5rem 0;
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: white;
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-    }
-
-    .import-section-desc {
-        margin: 0;
-        font-size: 0.95rem;
-        color: rgba(255, 255, 255, 0.9);
-        line-height: 1.5;
-    }
-
-    .btn-import-primary {
-        background: white;
-        color: #667eea;
-        border: none;
-        padding: 0.875rem 2rem;
-        border-radius: 8px;
-        font-size: 1rem;
-        font-weight: 600;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        transition: all 0.3s ease;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-        white-space: nowrap;
-    }
-
-    .btn-import-primary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-        background: #f8f9ff;
-    }
-
-    .btn-import-primary:active {
-        transform: translateY(0);
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-    }
-
-    @media (max-width: 768px) {
-        .import-section {
-            flex-direction: column;
-            align-items: stretch;
-            text-align: center;
-        }
-
-        .btn-import-primary {
-            justify-content: center;
-            width: 100%;
-        }
-    }
-
-    /* * ===================================================================
-     * IMPORT MODAL - Novo Design Moderno
-     * ===================================================================
-    */
-    .import-modal {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        z-index: 9999;
-        align-items: center;
-        justify-content: center;
-        flex-direction: column;
-    }
-
-    .import-modal-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.5);
-        backdrop-filter: blur(4px);
-        z-index: -1;
-    }
-
-    .import-modal-content {
-        background: white;
-        border-radius: 12px;
-        width: 90%;
-        max-width: 600px;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-        display: flex;
-        flex-direction: column;
-        z-index: 10000;
-        animation: slideUp 0.3s ease;
-    }
-
-    @keyframes slideUp {
-        from {
-            opacity: 0;
-            transform: translateY(20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-
-    .import-modal-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 1.5rem 2rem;
-        border-bottom: 1px solid #e2e8f0;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 12px 12px 0 0;
-    }
-
-    .import-modal-header h2 {
-        margin: 0;
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: white;
-    }
-
-    .import-modal-close {
-        background: none;
-        border: none;
-        font-size: 1.5rem;
-        color: white;
-        cursor: pointer;
-        padding: 0;
-        width: 40px;
-        height: 40px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 6px;
-        transition: all 0.2s ease;
-    }
-
-    .import-modal-close:hover {
-        background: rgba(255, 255, 255, 0.2);
-    }
-
-    .import-modal-body {
-        padding: 2rem;
-        flex: 1;
-        overflow-y: auto;
-    }
-
-    .import-file-zone {
-        border: 2px dashed #667eea;
-        border-radius: 8px;
-        padding: 2.5rem;
-        text-align: center;
-        background: #f8f9ff;
-        transition: all 0.3s ease;
-        cursor: pointer;
-    }
-
-    .import-file-zone.dragover {
-        background: #e6ebff;
-        border-color: #764ba2;
-        transform: scale(1.02);
-    }
-
-    .import-file-icon {
-        font-size: 3rem;
-        color: #667eea;
-        margin-bottom: 1rem;
-    }
-
-    .import-file-title {
-        margin: 1rem 0 0.5rem 0;
-        font-size: 1.1rem;
-        font-weight: 600;
-        color: #333;
-    }
-
-    .import-file-desc {
-        margin: 0.5rem 0 1.5rem 0;
-        font-size: 0.9rem;
-        color: #666;
-    }
-
-    .import-file-input-label {
-        display: inline-block;
-        cursor: pointer;
-        transition: all 0.2s ease;
-    }
-
-    .import-file-input {
-        display: none;
-    }
-
-    .import-file-input-text {
-        display: inline-block;
-        padding: 0.75rem 2rem;
-        background: #667eea;
-        color: white;
-        border-radius: 6px;
-        font-weight: 500;
-        transition: all 0.2s ease;
-    }
-
-    .import-file-input-label:hover .import-file-input-text {
-        background: #764ba2;
-        transform: translateY(-2px);
-    }
-
-    .import-file-name {
-        margin: 1.5rem 0 0 0;
-        padding: 0.75rem 1rem;
-        background: #e6ffed;
-        color: #0d6f3d;
-        border-radius: 6px;
-        border-left: 4px solid #48bb78;
-        font-size: 0.95rem;
-        font-weight: 500;
-    }
-
-    /* Feedback Messages */
-    .import-feedback {
-        margin-top: 1.5rem;
-    }
-
-    .import-feedback-loading,
-    .import-feedback-error,
-    .import-feedback-success {
-        padding: 1rem;
-        border-radius: 6px;
-        font-weight: 500;
-        animation: fadeIn 0.3s ease;
-    }
-
-    @keyframes fadeIn {
-        from {
-            opacity: 0;
-        }
-        to {
-            opacity: 1;
-        }
-    }
-
-    .import-feedback-loading {
-        background: #e6f3ff;
-        color: #0047ab;
-        border-left: 4px solid #4299e1;
-    }
-
-    .import-feedback-error {
-        background: #ffe6e6;
-        color: #c00;
-        border-left: 4px solid #f56565;
-    }
-
-    .import-feedback-success {
-        background: #e6ffed;
-        color: #0d6f3d;
-        border-left: 4px solid #48bb78;
-    }
-
-    .import-feedback-success strong {
-        color: #0d6f3d;
-        font-size: 1.05rem;
-    }
-
-    .import-stats {
-        margin-top: 1rem;
-        padding-top: 1rem;
-        border-top: 1px solid rgba(13, 111, 61, 0.2);
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 0.75rem;
-    }
-
-    .import-stats p {
-        margin: 0;
-        font-size: 0.9rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .stat-label {
-        font-weight: 500;
-        color: #333;
-    }
-
-    .stat-value {
-        background: rgba(13, 111, 61, 0.1);
-        padding: 0.25rem 0.75rem;
-        border-radius: 4px;
-        font-weight: 700;
-        color: #0d6f3d;
-        min-width: 60px;
-        text-align: center;
-    }
-
-    .import-modal-footer {
-        padding: 1.5rem 2rem;
-        border-top: 1px solid #e2e8f0;
-        display: flex;
-        gap: 1rem;
-        justify-content: flex-end;
-        background: #f8f9fa;
-        border-radius: 0 0 12px 12px;
-    }
-
-    .import-btn-start,
-    .import-btn-cancel {
-        padding: 0.75rem 1.75rem;
-        border: none;
-        border-radius: 6px;
-        font-size: 0.95rem;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .import-btn-start {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-    }
-
-    .import-btn-start:hover:not(:disabled) {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-    }
-
-    .import-btn-start:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-
-    .import-btn-cancel {
-        background: #e2e8f0;
-        color: #333;
-    }
-
-    .import-btn-cancel:hover {
-        background: #cbd5e0;
-    }
-
-    @media (max-width: 600px) {
-        .import-modal-content {
-            width: 95%;
-            max-width: 100%;
-        }
-
-        .import-modal-header {
-            padding: 1.25rem 1.5rem;
-        }
-
-        .import-modal-header h2 {
-            font-size: 1.25rem;
-        }
-
-        .import-modal-body {
-            padding: 1.5rem;
-        }
-
-        .import-file-zone {
-            padding: 2rem;
-        }
-
-        .import-file-icon {
-            font-size: 2.5rem;
-        }
-
-        .import-modal-footer {
-            padding: 1.25rem 1.5rem;
-            flex-direction: column-reverse;
-        }
-
-        .import-btn-start,
-        .import-btn-cancel {
-            width: 100%;
-            justify-content: center;
-        }
-
-        .import-stats {
-            grid-template-columns: 1fr;
-        }
-    }
-
-    /* * ===================================================================
-     * CORREÇÃO DOS GRÁFICOS (Charts Grid)
-     * 1 coluna em telas pequenas (celular).
-     * ===================================================================
-    */
-    .charts-grid {
-        display: grid;
-        grid-template-columns: 1fr; /* 1 coluna em mobile (padrão) */
-        gap: 2rem;
-        margin-bottom: 2rem;
-    }
-
-    /* 2 colunas para tablets e desktops */
-    @media (min-width: 768px) {
-        .charts-grid {
-            grid-template-columns: repeat(2, 1fr);
-        }
-    }
-
-    /* * ===================================================================
-     * Estilos dos Cards de KPI (Seu código original, mantido)
-     * ===================================================================
-    */
-    .kpi-card {
-        background: white;
-        border-radius: 8px;
-        border: 1px solid #e2e8f0;
-        padding: 1.5rem;
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        transition: all 0.3s ease;
-    }
-
-    .kpi-card:hover {
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        transform: translateY(-2px);
-    }
-
-    .kpi-icon {
-        font-size: 2.5rem;
-        opacity: 0.8;
-    }
-
-    .kpi-content {
-        flex: 1;
-    }
-
-    .kpi-label {
-        margin: 0;
-        font-size: 0.9rem;
-        color: #666;
-        font-weight: 500;
-    }
-
-    .kpi-value {
-        margin: 0.5rem 0 0 0;
-        font-size: 2rem;
-        font-weight: 700;
-        color: #333;
-    }
-
-    /* * ===================================================================
-     * Estilos dos Cards de Gráficos (Seu código original, mantido)
-     * ===================================================================
-    */
-    .chart-card {
-        background: white;
-        border-radius: 8px;
-        border: 1px solid #e2e8f0;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        overflow: hidden;
-    }
-
-    .chart-header {
-        padding: 1.5rem;
-        border-bottom: 1px solid #e2e8f0;
-        background: #f8f9fa;
-    }
-
-    .chart-header h3 {
-        margin: 0;
-        font-size: 1.1rem;
-        font-weight: 600;
-        color: #333;
-    }
-
-    .chart-body {
-        padding: 1.5rem;
-        position: relative;
-        height: 350px;
-    }
-
-    /* * ===================================================================
-     * Estilos dos Cards de Acesso Rápido (Seu código original, mantido)
-     * ===================================================================
-    */
-    .card {
-        background: white;
-        border-radius: 8px;
-        border: 1px solid #e2e8f0;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
-
-    .card-header {
-        padding: 1.5rem;
-        border-bottom: 1px solid #e2e8f0;
-    }
-
-    .card-title {
-        margin: 0;
-        font-size: 1.1rem;
-        font-weight: 600;
-        color: #333;
-    }
-
-    .card-body {
-        padding: 1.5rem;
-    }
-
-    .dashboard-cards {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-        gap: 1.5rem;
-    }
-
-    .dashboard-card {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 1.5rem;
-        text-decoration: none;
-        color: inherit;
-        transition: all 0.3s ease;
-        background: white;
-        border-radius: 8px;
-        border: 1px solid #e2e8f0;
-    }
-
-    .dashboard-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    }
-
-    .dashboard-card-icon {
-        font-size: 2.5rem;
-        margin-bottom: 1rem;
-        padding: 1rem;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .dashboard-card-icon.primary {
-        background: rgba(102, 126, 234, 0.1);
-        color: #667eea;
-    }
-
-    .dashboard-card-icon.success {
-        background: rgba(72, 187, 120, 0.1);
-        color: #48bb78;
-    }
-
-    .dashboard-card-icon.warning {
-        background: rgba(246, 173, 85, 0.1);
-        color: #f6ad55;
-    }
-
-    .dashboard-card-icon.danger {
-        background: rgba(245, 101, 101, 0.1);
-        color: #f56565;
-    }
-
-    .dashboard-card-icon.info {
-        background: rgba(66, 153, 225, 0.1);
-        color: #4299e1;
-    }
-
-    .dashboard-card-title {
-        margin: 0 0 0.25rem 0;
-        font-size: 1rem;
-        font-weight: 600;
-        color: #333;
-    }
-
-    .dashboard-card-subtitle {
-        margin: 0;
-        font-size: 0.85rem;
-        color: #999;
-    }
-
-    /* Timezone Selector Styles */
-    .timezone-selector-container {
-        background: #fff;
-        padding: 15px 20px;
-        margin-bottom: 20px;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-    
-    .timezone-label {
-        font-weight: 600;
-        color: #374151;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        margin: 0;
-    }
-    
-    .timezone-select {
-        padding: 8px 12px;
-        border: 2px solid #e5e7eb;
-        border-radius: 6px;
-        font-size: 14px;
-        background: #fff;
-        color: #374151;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        min-width: 200px;
-    }
-    
-    .timezone-select:hover {
-        border-color: #667eea;
-    }
-    
-    .timezone-select:focus {
-        outline: none;
-        border-color: #667eea;
-        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-    }
-    
-    .timezone-indicator {
-        background: #f3f4f6;
-        padding: 6px 12px;
-        border-radius: 6px;
-        font-size: 12px;
-        color: #6b7280;
-        font-weight: 500;
-        border: 1px solid #e5e7eb;
-    }
-    
-    .timezone-updated {
-        animation: highlight 0.5s ease;
-    }
-    
-    @keyframes highlight {
-        0% { background-color: #fef3c7; }
-        100% { background-color: transparent; }
-    }
-
-    /* Period Selector Styles */
-    .period-selector-container {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 15px 20px;
-        margin-bottom: 20px;
-        border-radius: 8px;
-        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 20px;
-        flex-wrap: wrap;
-    }
-
-    .period-toggle {
-        display: flex;
-        gap: 8px;
-        background: rgba(255, 255, 255, 0.1);
-        padding: 4px;
-        border-radius: 6px;
-        backdrop-filter: blur(10px);
-    }
-
-    .period-btn {
-        padding: 8px 16px;
-        border: none;
-        border-radius: 4px;
-        background: transparent;
-        color: white;
-        font-weight: 600;
-        font-size: 14px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        white-space: nowrap;
-    }
-
-    .period-btn:hover {
-        background: rgba(255, 255, 255, 0.2);
-        transform: translateY(-1px);
-    }
-
-    .period-btn.active {
-        background: white;
-        color: #667eea;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-    }
-
-    .period-btn.active:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-    }
-
-    .period-indicator {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        color: white;
-        font-weight: 500;
-    }
-
-    #periodLabel {
-        font-size: 14px;
-        font-weight: 600;
-    }
-
-    .period-dates {
-        font-size: 12px;
-        opacity: 0.9;
-    }
-
-    @media (max-width: 768px) {
-        .period-selector-container {
-            flex-direction: column;
-            align-items: stretch;
-        }
-
-        .period-toggle {
-            width: 100%;
-            justify-content: space-between;
-        }
-
-        .period-btn {
-            flex: 1;
-            justify-content: center;
-        }
-
-        .period-indicator {
-            justify-content: center;
-        }
-    }
-
-    /* Loading Overlay Styles */
-    .loading-overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(255, 255, 255, 0.7);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 100;
-        border-radius: 8px;
-        backdrop-filter: blur(2px);
-    }
-
-    .spinner {
-        width: 40px;
-        height: 40px;
-        border: 4px solid #f3f3f3;
-        border-top: 4px solid #667eea;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-</style>
-
-<script>
-// ============================================================================
-// 📊 SISTEMA DE SELEÇÃO DE PERÍODO (7 dias vs 30 dias)
-// ============================================================================
-
-class PeriodSelector {
-    constructor() {
-        this.currentPeriod = 30;
-        this.periodButtons = document.querySelectorAll('.period-btn');
-        this.periodLabel = document.getElementById('periodLabel');
-        this.periodDates = document.getElementById('periodDates');
         
-        this.init();
-    }
-    
-    init() {
-        this.periodButtons.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                this.changePeriod(parseInt(e.target.closest('.period-btn').dataset.period));
-            });
-        });
-        
-        // Update period indicator
-        this.updatePeriodIndicator();
-    }
-    
-    changePeriod(days) {
-        
-        this.currentPeriod = days;
-        
-        // Update button states
-        this.periodButtons.forEach(btn => {
-            if (parseInt(btn.dataset.period) === days) {
-                btn.classList.add('active');
+        calculateOffset(timezone) {
+            // Cria duas datas iguais, uma em UTC e outra no Fuso destino
+            const now = new Date();
+            
+            // Formata para string para extrair a hora "local" daquele fuso
+            const utcStr = now.toLocaleString('en-US', { timeZone: 'UTC', hour12: false });
+            const targetStr = now.toLocaleString('en-US', { timeZone: timezone, hour12: false });
+            
+            const utcDate = new Date(utcStr);
+            const targetDate = new Date(targetStr);
+            
+            // Calcula diferença em horas (pode ser -3, +1, etc)
+            const diffMs = targetDate - utcDate;
+            const diffHours = Math.round(diffMs / (1000 * 60 * 60));
+            
+            return diffHours;
+        }
+
+        shiftDataArray(data, offset) {
+            if (!data || data.length === 0) return [];
+            
+            const len = data.length;
+            // Normaliza o offset (ex: -3 vira um shift positivo equivalente para rotação)
+            // Se offset é -3 (BRT), significa que 03:00 UTC é 00:00 BRT.
+            // Precisamos mover o índice 3 para o índice 0. (Shift para esquerda)
+            
+            let shift = offset % len;
+            if (shift < 0) shift += len; // Garante índice positivo
+
+            // Se o fuso está ATRÁS do UTC (ex: -3), giramos para a esquerda (dados "futuros" do UTC viram "presente" do Local)
+            // Mas espera: Se são 03:00 UTC, são 00:00 Brasil.
+            // O dado que estava na posição 3 (03:00) deve ir para posição 0 (00:00).
+            // Isso é rotacionar o array para a esquerda em 3 posições.
+            
+            // Lógica de rotação de array:
+            // Data: [0h, 1h, 2h, 3h, 4h...] (UTC)
+            // Queremos: [3h, 4h, 5h...] (BRT) -> O valor que era 3h vira o primeiro (0h local)
+            
+            // slice(3) pega do 3 em diante. slice(0, 3) pega o começo.
+            // [3h...].concat([0h, 1h, 2h])
+            
+            // Se offset calculado for negativo (ex: -3):
+            // offset real para slice deve ser positivo 3.
+            
+            let sliceIndex = 0;
+            
+            // A lógica do Date compare acima retorna -3 para Brasil.
+            // Se diffHours é -3. Queremos slice(3).
+            // Se diffHours é +1 (Londres verão). Queremos slice(-1) ou slice(23).
+            
+            if (offset < 0) {
+                sliceIndex = Math.abs(offset);
+            } else if (offset > 0) {
+                sliceIndex = len - offset;
             } else {
-                btn.classList.remove('active');
+                return data; // Offset 0, não faz nada
             }
-        });
-        
-        // Update indicator
-        this.updatePeriodIndicator();
-        
-        // Fetch new stats
-        this.loadNewStats();
-        
-        // Show loading animation
-        this.showLoadingState();
-    }
-    
-    updatePeriodIndicator() {
-        const now = new Date();
-        const startDate = new Date(now);
-        startDate.setDate(startDate.getDate() - this.currentPeriod);
-        
-        if (this.currentPeriod === 7) {
-            this.periodLabel.textContent = 'Últimos 7 dias';
-        } else {
-            this.periodLabel.textContent = 'Últimos 30 dias';
-        }
-        
-        // Format date range
-        const formatter = new Intl.DateTimeFormat('pt-BR', {
-            month: 'short',
-            day: '2-digit'
-        });
-        
-        this.periodDates.textContent = `(${formatter.format(startDate)} - ${formatter.format(now)})`;
-    }
-    
-    loadNewStats() {
-        fetch(`{{ url_for('dashboard.get_dashboard_stats') }}?period=${this.currentPeriod}`)
-            .then(response => {
-                if (!response.ok) throw new Error('Network response was not ok');
-                return response.json();
-            })
-            .then(data => {
-                if (data.status === 'ok') {
-                    this.updateDashboard(data.data);
-                    this.hideLoadingState();
-                } else {
-                    console.error('Erro ao carregar dados:', data.message);
-                    this.hideLoadingState();
-                }
-            })
-            .catch(error => {
-                console.error('Erro na requisição:', error);
-                this.hideLoadingState();
-            });
-    }
-    
-    updateDashboard(stats) {
-        
-        // Update KPI values
-        const alertsCard = document.querySelector('[data-alerts-card]');
-        if (alertsCard) {
-            const alertValue = alertsCard.querySelector('.kpi-value');
-            if (alertValue) {
-                alertValue.textContent = stats.alerts_period_count;
-            }
-        }
-        
-        // Update Compressor Card
-        const compressorCard = document.querySelector('[data-compressor-card]');
-        if (compressorCard) {
-            const label = compressorCard.querySelector('.kpi-label');
-            const value = compressorCard.querySelector('.kpi-value');
-            if (label) {
-                label.textContent = `Compressor ON (Média ${stats.period_days}d)`;
-            }
-            if (value) {
-                value.textContent = stats.avg_compressor_on_time + '%';
-            }
-        }
-        
-        // Update Consumption Card
-        const consumptionCard = document.querySelector('[data-consumption-card]');
-        if (consumptionCard) {
-            const label = consumptionCard.querySelector('.kpi-label');
-            const value = consumptionCard.querySelector('.kpi-value');
-            if (label) {
-                label.textContent = `Consumo Médio (Média ${stats.period_days}d)`;
-            }
-            if (value) {
-                value.textContent = stats.avg_power_consumption + ' W';
-            }
-        }
-        
-        // Update Temperature Line Chart
-        if (window.hourlyTempChart && stats.hourly_temp_chart) {
-            window.hourlyTempChart.data.datasets[0].data = stats.hourly_temp_chart.data;
-            window.hourlyTempChart.data.labels = stats.hourly_temp_chart.labels;
-            window.hourlyTempChart.update('none'); // Update without animation
             
-            // Update chart title to reflect period
-            const tempChartHeader = document.querySelector('.chart-card:nth-child(1) .chart-header h3');
-            if (tempChartHeader) {
-                tempChartHeader.textContent = `🌡️ Temperatura por Hora (${stats.period_days}d)`;
-            }
+            return data.slice(sliceIndex).concat(data.slice(0, sliceIndex));
         }
         
-        // Update Door Openings Line Chart
-        if (window.hourlyDoorChart && stats.hourly_door_chart) {
-            window.hourlyDoorChart.data.datasets[0].data = stats.hourly_door_chart.data;
-            window.hourlyDoorChart.data.labels = stats.hourly_door_chart.labels;
-            window.hourlyDoorChart.update('none');
-            
-            // Update chart title
-            const doorChartHeader = document.querySelector('.chart-card:nth-child(2) .chart-header h3');
-            if (doorChartHeader) {
-                doorChartHeader.textContent = `🚪 Aberturas de Porta (${stats.period_days}d)`;
-            }
-        }
-        
-        // Update battery status chart if exists
-        if (window.batteryChart && stats) {
-            const batteryData = [
-                stats.good_battery_assets_count,
-                stats.low_battery_assets_count,
-                stats.critical_battery_assets_count
-            ];
-            window.batteryChart.data.datasets[0].data = batteryData;
-            window.batteryChart.update('none');
-        }
-        
-        // Update temperature status chart if exists
-        if (window.temperatureChart && stats) {
-            const tempData = stats.temperature_status_chart.data;
-            window.temperatureChart.data.datasets[0].data = tempData;
-            window.temperatureChart.update('none');
-        }
-        
-        // Recalculate percentages
-        this.updatePercentages(stats);
-    }
-    
-    updatePercentages(stats) {
-        // Temperature OK %
-        const totalWithTemperature = stats.total_with_temperature;
-        const tempPercentage = totalWithTemperature > 0 ? Math.round((stats.ok_temperatures_count / totalWithTemperature) * 100) : 0;
-        const tempPercentageEl = document.getElementById('tempPercentage');
-        if (tempPercentageEl) {
-            tempPercentageEl.textContent = tempPercentage + '%';
-        }
-        
-        // Battery Good %
-        const totalWithBattery = stats.good_battery_assets_count + stats.low_battery_assets_count + stats.critical_battery_assets_count;
-        const batteryPercentage = totalWithBattery > 0 ? Math.round((stats.good_battery_assets_count / totalWithBattery) * 100) : 0;
-        const batteryPercentageEl = document.getElementById('batteryPercentage');
-        if (batteryPercentageEl) {
-            batteryPercentageEl.textContent = batteryPercentage + '%';
-        }
-    }
-    
-    showLoadingState() {
-        // Add fade effect to charts
-        const charts = document.querySelectorAll('.chart-card');
-        charts.forEach(chart => {
-            chart.style.opacity = '0.6';
-            chart.style.pointerEvents = 'none';
-            chart.style.transition = 'opacity 0.3s ease';
-        });
-        
-        // Add loading indicator
-        const chartsGrid = document.querySelector('.charts-grid');
-        if (chartsGrid && !chartsGrid.querySelector('.loading-overlay')) {
-            const overlay = document.createElement('div');
-            overlay.className = 'loading-overlay';
-            overlay.innerHTML = '<div class="spinner"></div>';
-            chartsGrid.style.position = 'relative';
-            chartsGrid.appendChild(overlay);
-        }
-    }
-    
-    hideLoadingState() {
-        // Remove fade effect
-        const charts = document.querySelectorAll('.chart-card');
-        charts.forEach(chart => {
-            chart.style.opacity = '1';
-            chart.style.pointerEvents = 'auto';
-        });
-        
-        // Remove loading indicator
-        const overlay = document.querySelector('.loading-overlay');
-        if (overlay) {
-            overlay.remove();
-        }
-    }
-}
-
-// ============================================================================
-// 🕐 SISTEMA DE CONVERSÃO DE TIMEZONE
-// ============================================================================
-
-class TimezoneConverter {
-    constructor() {
-        this.currentTimezone = 'America/Sao_Paulo';
-        this.originalData = {}; // Store original UTC data
-        this.init();
-    }
-    
-    init() {
-        // Store original UTC data from backend
-        this.storeOriginalData();
-        
-        // Setup timezone selector
-        const selector = document.getElementById('timezoneSelect');
-        if (selector) {
-            selector.addEventListener('change', (e) => {
-                this.changeTimezone(e.target.value);
+        updateDisplayedTimestamps() {
+            // Atualiza qualquer elemento com data-timestamp="..."
+            document.querySelectorAll('[data-timestamp]').forEach(el => {
+                try {
+                    const date = new Date(el.getAttribute('data-timestamp'));
+                    el.textContent = date.toLocaleString('pt-BR', {
+                        timeZone: this.currentTimezone,
+                        year: 'numeric', month: '2-digit', day: '2-digit',
+                        hour: '2-digit', minute: '2-digit'
+                    });
+                } catch (e) { console.warn(e); }
             });
         }
         
-        // Initial conversion to default timezone
-        this.changeTimezone(this.currentTimezone);
-    }
-    
-    storeOriginalData() {
-        // Store original data for timezone conversion
-        this.originalData = {
-            hourly_temp_chart: {{ stats.hourly_temp_chart | tojson }},
-            hourly_door_chart: {{ stats.hourly_door_chart | tojson }}
-        };
-    }
-    
-    changeTimezone(timezone) {
-        this.currentTimezone = timezone;
-        
-        // Redistribute chart data based on new timezone
-        this.redistributeChartData();
-        
-        // Update any displayed timestamps
-        this.updateDisplayedTimestamps();
-        
-        // Refresh charts
-        this.refreshCharts();
-        
-        // Visual feedback
-        this.showTimezoneChangeAnimation();
-    }
-    
-    redistributeChartData() {
-        if (!this.originalData || !this.originalData.hourly_temp_chart || !this.originalData.hourly_temp_chart.raw_data) {
-            console.log('No raw data available for timezone conversion');
-            return;
-        }
-        
-        
-        // Calculate timezone offset
-        const now = new Date();
-        const utc1 = new Date(now.toLocaleString("en-US", {timeZone: "UTC"}));
-        const utc2 = new Date(now.toLocaleString("en-US", {timeZone: this.currentTimezone}));
-        const timezoneOffsetHours = Math.round((utc2.getTime() - utc1.getTime()) / (1000 * 60 * 60));
-        
-        
-        // Initialize new data arrays
-        const newTempData = new Array(24).fill(0);
-        const newDoorData = new Array(24).fill(0);
-        
-        // Redistribute data based on timezone offset
-        this.originalData.hourly_temp_chart.raw_data.forEach(item => {
-            const utcHour = item.hour;
-            let localHour = (utcHour + timezoneOffsetHours) % 24;
-            if (localHour < 0) localHour += 24;
-            
-            // Set values (not accumulate, since each UTC hour maps to one local hour)
-            newTempData[localHour] = item.temp || 0;
-            newDoorData[localHour] = item.door || 0;
-        });
-        
-        
-        // Update chart data
-        if (window.hourlyTempChart && window.hourlyTempChart.data) {
-            window.hourlyTempChart.data.datasets[0].data = newTempData;
-            window.hourlyTempChart.update();
-        }
-        if (window.hourlyDoorChart && window.hourlyDoorChart.data) {
-            window.hourlyDoorChart.data.datasets[0].data = newDoorData;
-            window.hourlyDoorChart.update();
+        showAnimation(timezone, offset) {
+            const indicator = document.getElementById('timezoneIndicator');
+            if (indicator) {
+                // Formata nome amigável: "America/Sao_Paulo" -> "Sao Paulo (UTC-3)"
+                const city = timezone.split('/').pop().replace(/_/g, ' ');
+                const sign = offset >= 0 ? '+' : '';
+                indicator.textContent = `Exibindo: ${city} (UTC${sign}${offset})`;
+                
+                indicator.classList.add('timezone-updated');
+                setTimeout(() => indicator.classList.remove('timezone-updated'), 500);
+            }
         }
     }
-    
-    updateDisplayedTimestamps() {
-        // Find and update any displayed timestamps in the DOM
-        const timestampElements = document.querySelectorAll('[data-timestamp]');
+
+    // --- Seletor de Período (7/30 Dias) ---
+    // --- Seletor de Período (7/30 Dias) ---
+    class PeriodSelector {
+        constructor() {
+            this.currentPeriod = 30;
+            this.init();
+        }
         
-        timestampElements.forEach(element => {
-            const utcTimestamp = element.getAttribute('data-timestamp');
-            try {
-                const utcDate = new Date(utcTimestamp);
-                const localizedTime = utcDate.toLocaleString('pt-BR', {
-                    timeZone: this.currentTimezone,
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit'
+        init() {
+            // Adiciona Click nos botões
+            document.querySelectorAll('.period-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const btnEl = e.currentTarget; // Garante pegar o botão, não o ícone
+                    const days = parseInt(btnEl.dataset.period);
+                    this.changePeriod(days);
                 });
-                element.textContent = localizedTime;
-            } catch (e) {
-                console.warn('Error converting timestamp:', utcTimestamp, e);
-            }
-        });
-    }
-    
-    refreshCharts() {
-        // Update existing charts
-        if (window.hourlyTempChart) {
-            window.hourlyTempChart.update();
-        }
-        if (window.hourlyDoorChart) {
-            window.hourlyDoorChart.update();
-        }
-    }
-    
-    showTimezoneChangeAnimation() {
-        // Add visual feedback for timezone change
-        const kpiCards = document.querySelectorAll('.kpi-card');
-        kpiCards.forEach(card => {
-            card.classList.add('timezone-updated');
-            setTimeout(() => card.classList.remove('timezone-updated'), 500);
-        });
-        
-        // Update timezone indicator
-        const indicator = document.getElementById('timezoneIndicator');
-        if (indicator) {
-            const info = this.getCurrentTimezoneInfo();
-            indicator.textContent = `Exibindo horários em: ${info.abbreviation}`;
-            indicator.classList.add('timezone-updated');
-            setTimeout(() => indicator.classList.remove('timezone-updated'), 500);
-        }
-    }
-    
-    // Utility method to format time for a specific timezone
-    formatTimeForTimezone(utcDateString) {
-        try {
-            const utcDate = new Date(utcDateString);
-            return utcDate.toLocaleString('pt-BR', {
-                timeZone: this.currentTimezone,
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit'
             });
-        } catch (e) {
-            return utcDateString;
+            this.updateUI();
+            this.updateBadges();
+        }
+        
+        changePeriod(days) {
+            if (this.currentPeriod === days) return; // Evita recarregar se já estiver ativo
+
+            this.currentPeriod = days;
+            this.updateUI();
+            this.updateBadges();
+            this.toggleLoading(true); // Liga loading
+            this.loadStats();         // Busca dados
+        }
+        
+        updateUI() {
+            // Atualiza estilo dos botões (Active/Inactive)
+            document.querySelectorAll('.period-btn').forEach(btn => {
+                const isActive = parseInt(btn.dataset.period) === this.currentPeriod;
+                btn.classList.toggle('active', isActive);
+            });
+            
+            // Atualiza label de texto
+            const label = document.getElementById('periodLabel');
+            if(label) label.textContent = `Últimos ${this.currentPeriod} dias`;
+            
+            // Atualiza as datas no parênteses (ex: 01 Nov - 30 Nov)
+            const dates = document.getElementById('periodDates');
+            if(dates) {
+                const now = new Date();
+                const start = new Date();
+                start.setDate(start.getDate() - this.currentPeriod);
+                const fmt = new Intl.DateTimeFormat('pt-BR', { month: 'short', day: '2-digit' });
+                dates.textContent = `(${fmt.format(start)} - ${fmt.format(now)})`;
+            }
+        }
+        
+        loadStats() {
+            // Faz a requisição ao Flask enviando ?period=7 ou 30
+            fetch(`${APP_CONFIG.urls.stats}?period=${this.currentPeriod}`)
+                .then(res => {
+                    if (!res.ok) throw new Error('Erro na rede');
+                    return res.json();
+                })
+                .then(response => {
+                    if (response.status === 'ok') {
+                        this.updateDashboard(response.data);
+                    } else {
+                        console.error('Erro do servidor:', response.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro ao carregar stats:', error);
+                })
+                .finally(() => {
+                    this.toggleLoading(false); // Desliga loading
+                });
+        }
+        updateBadges() {
+            // Pode adicionar um ícone de relógio para ficar mais bonito
+            const icon = '<i class="far fa-clock" style="margin-right:4px;"></i>'; 
+            const text = `${this.currentPeriod}d`;
+            
+            const badges = document.querySelectorAll('.period-badge');
+            
+            badges.forEach(badge => {
+                badge.style.opacity = '0';
+                setTimeout(() => {
+                    // Injeta HTML para suportar o ícones
+                    badge.innerHTML = icon + text;
+                    badge.style.opacity = '1';
+                }, 150);
+            });
+        }
+        
+        updateDashboard(stats) {
+            // ============================================================
+            // 1. ATUALIZAÇÃO DE TEXTOS (KPIs SIMPLES)
+            // ============================================================
+            const setText = (id, value) => {
+                const el = document.getElementById(id);
+                if(el) el.textContent = value;
+            };
+
+            setText('kpiTotalAssets', stats.total_assets);
+            setText('kpiAssets24h', stats.assets_health_last_24h_count);
+            setText('kpiAlerts', stats.alerts_period_count);
+            
+            // Cards Opcionais (Verifica se o valor existe antes de tentar atualizar)
+            if(stats.avg_compressor_on_time !== undefined) {
+                setText('kpiCompressor', stats.avg_compressor_on_time + '%');
+            }
+            if(stats.avg_power_consumption !== undefined) {
+                setText('kpiConsumption', stats.avg_power_consumption + ' W');
+            }
+
+            // ============================================================
+            // 2. ATUALIZAÇÃO DE PORCENTAGENS (USANDO DADOS DO BACKEND)
+            // ============================================================
+            // Usar os percentuais já calculados corretamente no backend
+            const tempOkEl = document.getElementById('tempOkPercentage');
+            const tempNotOkEl = document.getElementById('tempNotOkPercentage');
+            if(tempOkEl) tempOkEl.textContent = stats.temp_ok_percentage + '%';
+            if(tempNotOkEl) tempNotOkEl.textContent = stats.temp_not_ok_percentage + '%';
+
+            // Bateria (manter cálculo local pois funciona corretamente)
+            const totalBat = stats.good_battery_assets_count + stats.low_battery_assets_count + stats.critical_battery_assets_count;
+            const batPct = totalBat > 0 ? Math.round((stats.good_battery_assets_count / totalBat) * 100) : 0;
+            const batteryEl = document.getElementById('batteryPercentage');
+            if(batteryEl) batteryEl.textContent = batPct + '%';
+
+            // ============================================================
+            // 3. ATUALIZAÇÃO DE GRÁFICOS DE LINHA (COM TIMEZONE)
+            // ============================================================
+            
+            // A. Atualiza os Labels (Eixo X) dos gráficos globais
+            if (window.hourlyTempChart) window.hourlyTempChart.data.labels = stats.hourly_temp_chart.labels;
+            if (window.hourlyDoorChart) window.hourlyDoorChart.data.labels = stats.hourly_door_chart.labels;
+
+            // B. Envia os DADOS NOVOS (UTC) para o TimezoneConverter
+            // O Converter vai guardar esses dados, aplicar o offset do fuso horário atual
+            // e atualizar visualmente os gráficos de linha.
+            if (window.timezoneConverter) {
+                window.timezoneConverter.updateOriginalData(
+                    stats.hourly_temp_chart.data, // Array de Temperatura
+                    stats.hourly_door_chart.data  // Array de Porta
+                );
+            }
+
+            // ============================================================
+            // 4. ATUALIZAÇÃO DE GRÁFICOS DE PIZZA
+            // ============================================================
+            
+            // Gráfico de Bateria
+            this.updatePieChart(window.batteryChart, [
+                stats.good_battery_assets_count, 
+                stats.low_battery_assets_count, 
+                stats.critical_battery_assets_count
+            ]);
+
+            // Gráfico de Status de Temperatura
+            this.updatePieChart(window.temperatureChart, stats.temperature_status_chart.data);
+        }
+        
+        // Helper para atualizar gráficos de linha Chart.js
+        updateLineChart(chartInstance, newDataObj) {
+            if (chartInstance && newDataObj) {
+                chartInstance.data.labels = newDataObj.labels;
+                chartInstance.data.datasets[0].data = newDataObj.data;
+                
+                // Atualiza título do gráfico se necessário (ex: "Temperatura (7d)")
+                // chartInstance.options.plugins.title.text = ...
+                
+                chartInstance.update();
+            }
+        }
+
+        // Helper para atualizar gráficos de pizza Chart.js
+        updatePieChart(chartInstance, newDataArray) {
+            if (chartInstance && newDataArray) {
+                chartInstance.data.datasets[0].data = newDataArray;
+                chartInstance.update();
+            }
+        }
+        
+        toggleLoading(isLoading) {
+            // Adiciona um efeito visual de "Carregando..." sobre a grade de gráficos
+            const grid = document.querySelector('.charts-grid');
+            if(!grid) return;
+            
+            if(isLoading) {
+                // Se já existe overlay, não cria outro
+                if (grid.querySelector('.loading-overlay')) return;
+                
+                const overlay = document.createElement('div');
+                overlay.className = 'loading-overlay';
+                overlay.innerHTML = '<div class="spinner"></div>';
+                
+                // Garante que o pai tenha position relative para o absolute funcionar
+                grid.style.position = 'relative';
+                grid.appendChild(overlay);
+                
+                // Opcional: Diminuir opacidade dos KPIs também
+                document.querySelector('.stats-grid').style.opacity = '0.6';
+            } else {
+                const overlay = grid.querySelector('.loading-overlay');
+                if(overlay) overlay.remove();
+                document.querySelector('.stats-grid').style.opacity = '1';
+            }
         }
     }
-    
-    // Get current timezone info for display
-    getCurrentTimezoneInfo() {
-        const now = new Date();
-        const formatter = new Intl.DateTimeFormat('pt-BR', {
-            timeZone: this.currentTimezone,
-            timeZoneName: 'short'
-        });
-        
-        const parts = formatter.formatToParts(now);
-        const timeZoneName = parts.find(part => part.type === 'timeZoneName')?.value || this.currentTimezone;
-        
-        return {
-            name: this.currentTimezone,
-            abbreviation: timeZoneName,
-            offset: now.toLocaleString('en-US', {
-                timeZone: this.currentTimezone,
-                timeZoneName: 'short'
-            }).split(' ').pop()
-        };
-    }
-}
 
-// Initialize timezone converter when DOM is ready
-document.addEventListener('DOMContentLoaded', function() {
-    window.timezoneConverter = new TimezoneConverter();
-    
-    // Initialize period selector
-    new PeriodSelector();
-});
+    /**
+     * ============================================================================
+     * 3. GERENCIADOR CENTRAL DO DASHBOARD (FUNÇÕES STATICAS)
+     * ============================================================================
+     */
+    const DashboardManager = {
+        init: function() {
+            this.initImportModal();
+            this.initCharts();
+            this.initPercentages();
+            
+            // Inicializa classes auxiliares
+            window.timezoneConverter = new TimezoneConverter();
+            window.periodSelector = new PeriodSelector();
+        },
 
+        // --- Lógica do Modal de Importação ---
+        initImportModal: function() {
+            const modal = document.getElementById('importModal');
+            const input = document.getElementById('importFileInput');
+            const btnStart = document.getElementById('startImport');
+            const feedback = document.getElementById('importFeedback');
+            const fileNameDisplay = document.getElementById('importFileName');
+            const zone = document.querySelector('.import-file-zone');
+
+            if (!modal) return;
+
+            const closeModal = () => {
+                modal.style.display = 'none';
+                input.value = '';
+                fileNameDisplay.style.display = 'none';
+                feedback.style.display = 'none';
+                btnStart.disabled = true;
+            };
+
+            // Event Listeners
+            document.getElementById('openImportModal').onclick = () => {
+                modal.style.display = 'flex';
+                closeModal(); // Reset visual state but keep display flex
+                modal.style.display = 'flex';
+            };
+            document.getElementById('closeImport').onclick = closeModal;
+            document.getElementById('closeImportX').onclick = closeModal;
+            document.querySelector('.import-modal-overlay').onclick = closeModal;
+
+            // File Handling
+            const handleFile = (file) => {
+                if (file) {
+                    fileNameDisplay.textContent = `📄 ${file.name}`;
+                    fileNameDisplay.style.display = 'block';
+                    btnStart.disabled = false;
+                }
+            };
+
+            input.onchange = (e) => handleFile(e.target.files[0]);
+
+            // Drag & Drop
+            zone.ondragover = (e) => { e.preventDefault(); zone.classList.add('dragover'); };
+            zone.ondragleave = () => zone.classList.remove('dragover');
+            zone.ondrop = (e) => {
+                e.preventDefault();
+                zone.classList.remove('dragover');
+                if (e.dataTransfer.files.length) {
+                    input.files = e.dataTransfer.files;
+                    handleFile(e.dataTransfer.files[0]);
+                }
+            };
+
+            // Upload Action
+            btnStart.onclick = async () => {
+                const file = input.files[0];
+                if (!file) return;
+
+                btnStart.disabled = true;
+                feedback.innerHTML = '<div class="import-feedback-loading">⏳ Processando...</div>';
+                feedback.style.display = 'block';
+
+                const formData = new FormData();
+                formData.append('file', file);
+
+                try {
+                    const res = await fetch(APP_CONFIG.urls.import, { method: 'POST', body: formData });
+                    const data = await res.json();
+
+                    if (res.ok && data.status === 'ok') {
+                        const { inserted = 0, updated = 0 } = data.result || {};
+                        feedback.innerHTML = `
+                            <div class="import-feedback-success">
+                                <strong>✅ Sucesso!</strong>
+                                <div class="import-stats">
+                                    <p><span class="stat-label">Novos:</span> <span class="stat-value">${inserted}</span></p>
+                                    <p><span class="stat-label">Atualizados:</span> <span class="stat-value">${updated}</span></p>
+                                </div>
+                            </div>`;
+                        setTimeout(closeModal, 4000);
+                    } else {
+                        throw new Error(data.message || 'Erro desconhecido');
+                    }
+                } catch (err) {
+                    feedback.innerHTML = `<div class="import-feedback-error">❌ ${err.message}</div>`;
+                    btnStart.disabled = false;
+                }
+            };
+        },
+
+        // --- Inicialização dos Gráficos ---
+        initCharts: function() {
+            // 1. Temp Line Chart
+            const tempCtx = document.getElementById('tempLineChart')?.getContext('2d');
+            if (tempCtx) {
+                window.hourlyTempChart = new Chart(tempCtx, {
+                    type: 'line',
+                    data: {
+                        labels: APP_CONFIG.charts.temp.labels,
+                        datasets: [{
+                            label: 'Temp Média (°C)',
+                            data: APP_CONFIG.charts.temp.data,
+                            borderColor: '#667eea',
+                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                            borderWidth: 3, fill: true, tension: 0.4,
+                            pointBackgroundColor: '#667eea', pointRadius: 4
+                        }]
+                    },
+                    options: this._getChartOptions()
+                });
+            }
+
+            // 2. Door Line Chart
+            const doorCtx = document.getElementById('doorLineChart')?.getContext('2d');
+            if (doorCtx) {
+                window.hourlyDoorChart = new Chart(doorCtx, {
+                    type: 'line',
+                    data: {
+                        labels: APP_CONFIG.charts.door.labels,
+                        datasets: [{
+                            label: 'Aberturas',
+                            data: APP_CONFIG.charts.door.data,
+                            borderColor: '#f6ad55',
+                            backgroundColor: 'rgba(246, 173, 85, 0.1)',
+                            borderWidth: 3, fill: true, tension: 0.4,
+                            pointBackgroundColor: '#f6ad55', pointRadius: 4
+                        }]
+                    },
+                    options: this._getChartOptions()
+                });
+            }
+
+            // 3. Battery Pie Chart
+            const batCtx = document.getElementById('batteryChart')?.getContext('2d');
+            if (batCtx) {
+                const s = APP_CONFIG.stats.assets;
+                window.batteryChart = new Chart(batCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Boa (>50%)', 'Baixa (25-50%)', 'Crítica (<25%)'],
+                        datasets: [{
+                            data: [s.bat_good, s.bat_low, s.bat_crit],
+                            backgroundColor: ['#48bb78', '#f6ad55', '#f56565'],
+                            borderWidth: 2
+                        }]
+                    },
+                    options: this._getPieOptions()
+                });
+            }
+
+            // 4. Temperature Status Pie Chart
+            const statusCtx = document.getElementById('temperatureChart')?.getContext('2d');
+            if (statusCtx) {
+                window.temperatureChart = new Chart(statusCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: APP_CONFIG.charts.status_temp.labels,
+                        datasets: [{
+                            data: APP_CONFIG.charts.status_temp.data,
+                            backgroundColor: ['#48bb78', '#f56565', '#667eea'],
+                            borderWidth: 2
+                        }]
+                    },
+                    options: this._getPieOptions()
+                });
+            }
+        },
+
+        // --- Inicialização de Percentuais (Dados do Backend) ---
+        initPercentages: function() {
+            // Temperatura - usar percentuais já calculados no backend
+            const backendStats = {{ stats | tojson }};
+            const tempOkEl = document.getElementById('tempOkPercentage');
+            const tempNotOkEl = document.getElementById('tempNotOkPercentage');
+            if(tempOkEl) tempOkEl.textContent = backendStats.temp_ok_percentage + '%';
+            if(tempNotOkEl) tempNotOkEl.textContent = backendStats.temp_not_ok_percentage + '%';
+
+            // Bateria
+            const totalBat = backendStats.good_battery_assets_count + backendStats.low_battery_assets_count + backendStats.critical_battery_assets_count;
+            const batPct = totalBat > 0 ? Math.round((backendStats.good_battery_assets_count / totalBat) * 100) : 0;
+            const batteryEl = document.getElementById('batteryPercentage');
+            if(batteryEl) batteryEl.textContent = batPct + '%';
+        },
+
+        // --- Cálculo de KPIs (Para auto-refresh) ---
+        calculateKPIs: function(s) {
+            // Temperatura - usar dados já calculados no backend
+            const tempOkEl = document.getElementById('tempOkPercentage');
+            const tempNotOkEl = document.getElementById('tempNotOkPercentage');
+            if(tempOkEl) tempOkEl.textContent = (s.temp_ok_percentage || 0) + '%';
+            if(tempNotOkEl) tempNotOkEl.textContent = (s.temp_not_ok_percentage || 0) + '%';
+
+            // Bateria
+            const totalBat = (s.good_battery_assets_count || 0) + (s.low_battery_assets_count || 0) + (s.critical_battery_assets_count || 0);
+            const batPct = totalBat > 0 ? Math.round(((s.good_battery_assets_count || 0) / totalBat) * 100) : 0;
+            const batteryEl = document.getElementById('batteryPercentage');
+            if(batteryEl) batteryEl.textContent = batPct + '%';
+        },
+
+        // Helpers de Opções de Gráfico
+        _getChartOptions: () => ({
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } }, // Legenda oculta para visual limpo
+            scales: {
+                y: { beginAtZero: true, grid: { color: '#f1f5f9' } },
+                x: { grid: { display: false } }
+            }
+        }),
+
+        _getPieOptions: () => ({
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom', labels: { padding: 20, usePointStyle: true } } }
+        })
+    };
+
+    /**
+     * ============================================================================
+     * 4. START + AUTO-REFRESH
+     * ============================================================================
+     */
+    document.addEventListener('DOMContentLoaded', () => {
+        DashboardManager.init();
+        
+        // Auto-refresh do dashboard a cada 60 segundos
+        setInterval(() => {
+            // Buscar stats com o período atual
+            const periodSelector = document.querySelector('.period-btn.active');
+            const currentPeriod = periodSelector ? parseInt(periodSelector.dataset.period) : 30;
+            
+            fetch(`{{ url_for('dashboard.get_dashboard_stats') }}?period=${currentPeriod}`)
+                .then(response => {
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.status === 'ok') {
+                        DashboardManager.updateDashboard(data.data);
+                        console.log('Dashboard atualizado automaticamente');
+                    }
+                })
+                .catch(error => {
+                    console.warn('Erro no auto-refresh do dashboard:', error);
+                });
+        }, 60000); // 60 segundos
+    });
 </script>
+
 
 {% endblock %}
