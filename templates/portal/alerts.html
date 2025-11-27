@@ -1,0 +1,693 @@
+{% extends "portal/base.html" %}
+{% block title %}Alertas{% endblock %}
+{% block page_title %}Alertas do Sistema{% endblock %}
+
+{% block breadcrumb %}
+    <i class="fas fa-bell"></i>
+    <span>Alertas</span>
+{% endblock %}
+
+{% block styles %}
+    {{ super() }}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/alerts.css') }}">
+    <style>
+        .alerts-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .alerts-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 8px;
+            color: white;
+        }
+
+        .alerts-header h2 {
+            margin: 0;
+            font-size: 1.5rem;
+        }
+
+        .alerts-stats {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            opacity: 0.9;
+        }
+
+        .period-selector {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .period-btn {
+            padding: 0.75rem 1.5rem;
+            border: 2px solid #e2e8f0;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .period-btn:hover {
+            border-color: #667eea;
+            color: #667eea;
+        }
+
+        .period-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .alerts-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .alert-item {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 1.5rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 1.5rem;
+            transition: all 0.3s ease;
+            border-left: 4px solid #667eea;
+        }
+
+        .alert-item:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .alert-item.critical {
+            border-left-color: #f56565;
+            background: rgba(245, 101, 101, 0.05);
+        }
+
+        .alert-item.warning {
+            border-left-color: #f6ad55;
+            background: rgba(246, 173, 85, 0.05);
+        }
+
+        .alert-item.info {
+            border-left-color: #4299e1;
+            background: rgba(66, 153, 225, 0.05);
+        }
+
+        .alert-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 48px;
+            width: 48px;
+            height: 48px;
+            border-radius: 8px;
+            font-size: 1.25rem;
+        }
+
+        .alert-icon.critical {
+            background: #fed7d7;
+            color: #f56565;
+        }
+
+        .alert-icon.warning {
+            background: #feebc8;
+            color: #f6ad55;
+        }
+
+        .alert-icon.info {
+            background: #bee3f8;
+            color: #4299e1;
+        }
+
+        .alert-content {
+            flex: 1;
+        }
+
+        .alert-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 0.5rem;
+        }
+
+        .alert-title {
+            font-weight: 600;
+            font-size: 1rem;
+            color: #1a202c;
+            margin: 0;
+        }
+
+        .alert-type {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            background: #edf2f7;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: #4a5568;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .alert-meta {
+            display: flex;
+            gap: 1.5rem;
+            font-size: 0.875rem;
+            color: #718096;
+            margin-top: 0.75rem;
+        }
+
+        .alert-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .alert-meta-item i {
+            color: #cbd5e0;
+        }
+
+        .alert-priority {
+            font-weight: 600;
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+        }
+
+        .alert-priority.high {
+            background: #fed7d7;
+            color: #c53030;
+        }
+
+        .alert-priority.medium {
+            background: #feebc8;
+            color: #c05621;
+        }
+
+        .alert-priority.low {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem 2rem;
+            background: #f7fafc;
+            border-radius: 8px;
+            color: #718096;
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            color: #cbd5e0;
+            margin-bottom: 1rem;
+        }
+
+        .empty-state p {
+            font-size: 1rem;
+            margin: 0.5rem 0;
+        }
+
+        .loading-spinner {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e2e8f0;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .pagination-container {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .pagination-btn {
+            padding: 0.5rem 1rem;
+            border: 1px solid #e2e8f0;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.3s ease;
+        }
+
+        .pagination-btn:hover:not(:disabled) {
+            background: #edf2f7;
+            border-color: #667eea;
+        }
+
+        .pagination-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .pagination-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .filters-section {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .filters-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #4a5568;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .filters-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .filter-label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #2d3748;
+        }
+
+        .filter-input,
+        .filter-select {
+            padding: 0.625rem;
+            border: 1px solid #cbd5e0;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-family: inherit;
+            transition: all 0.2s ease;
+            background: white;
+        }
+
+        .filter-input:focus,
+        .filter-select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .filters-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .btn-apply-filters {
+            padding: 0.625rem 1.25rem;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-apply-filters:hover {
+            background: #5a67d8;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-clear-filters {
+            padding: 0.625rem 1.25rem;
+            background: #f7fafc;
+            color: #4a5568;
+            border: 1px solid #cbd5e0;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-clear-filters:hover {
+            background: #edf2f7;
+            border-color: #a0aec0;
+        }
+
+        .active-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .filter-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.25rem 0.75rem;
+            background: #bee3f8;
+            color: #2c5282;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .filter-badge i {
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .filter-badge i:hover {
+            transform: scale(1.2);
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+
+<div class="alerts-container">
+    <!-- Header com Período -->
+    <div class="alerts-header">
+        <div>
+            <h2><i class="fas fa-bell"></i> Alertas</h2>
+            <p style="margin: 0.5rem 0 0; opacity: 0.9;">Total de {{ total_alerts }} alerta{{ 's' if total_alerts != 1 else '' }} nos últimos {{ period }} dias</p>
+        </div>
+        <div class="alerts-stats">
+            <div class="stat-item">
+                <div class="stat-value">{{ total_alerts }}</div>
+                <div class="stat-label">Total</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Period Selector -->
+    <div class="period-selector">
+        <button class="period-btn {% if period == 7 %}active{% endif %}" data-period="7">
+            <i class="fas fa-calendar-week"></i> 7 Dias
+        </button>
+        <button class="period-btn {% if period == 30 %}active{% endif %}" data-period="30">
+            <i class="fas fa-calendar"></i> 30 Dias
+        </button>
+    </div>
+
+    <!-- Filters Section -->
+    <div class="filters-section">
+        <div class="filters-title">
+            <i class="fas fa-filter"></i> Filtros Avançados
+        </div>
+        <form id="filterForm">
+            <!-- Hidden input to store current period -->
+            <input type="hidden" id="currentPeriod" name="period" value="{{ period }}">
+
+            <div class="filters-grid">
+                <!-- Alert Type Filter -->
+                <div class="filter-group">
+                    <label class="filter-label" for="alertTypeFilter">Tipo de Alerta</label>
+                    <select id="alertTypeFilter" class="filter-select" name="alert_type">
+                        <option value="">Todos os tipos</option>
+                        {% for at in alert_types %}
+                        <option value="{{ at }}" {% if selected_alert_type == at %}selected{% endif %}>{{ at }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- City Filter -->
+                <div class="filter-group">
+                    <label class="filter-label" for="cityFilter">Cidade</label>
+                    <select id="cityFilter" class="filter-select" name="city">
+                        <option value="">Todas as cidades</option>
+                        {% for city in cities %}
+                        <option value="{{ city }}" {% if selected_city == city %}selected{% endif %}>{{ city }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Outlet Filter -->
+                <div class="filter-group">
+                    <label class="filter-label" for="outletFilter">Outlet</label>
+                    <select id="outletFilter" class="filter-select" name="outlet">
+                        <option value="">Todos os outlets</option>
+                        {% for outlet_name in outlets %}
+                        <option value="{{ outlet_name }}" {% if selected_outlet == outlet_name %}selected{% endif %}>{{ outlet_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Serial Filter -->
+                <div class="filter-group">
+                    <label class="filter-label" for="serialFilter">Serial do Asset</label>
+                    <select id="serialFilter" class="filter-select" name="serial">
+                        <option value="">Todos os seriais</option>
+                        {% for serial in serials %}
+                        <option value="{{ serial }}" {% if selected_serial == serial %}selected{% endif %}>{{ serial }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <!-- Filter Actions -->
+            <div class="filters-actions">
+                <button type="submit" class="btn-apply-filters">
+                    <i class="fas fa-search"></i> Aplicar Filtros
+                </button>
+                <button type="reset" class="btn-clear-filters" id="clearFiltersBtn">
+                    <i class="fas fa-times"></i> Limpar Filtros
+                </button>
+            </div>
+        </form>
+
+        <!-- Active Filters Display -->
+        {% set active_count = (1 if selected_alert_type else 0) + (1 if selected_city else 0) + (1 if selected_outlet else 0) + (1 if selected_serial else 0) %}
+        {% if active_count > 0 %}
+        <div class="active-filters">
+            <span style="font-size: 0.875rem; color: #718096; font-weight: 500;">Filtros ativos:</span>
+            {% if selected_alert_type %}
+            <div class="filter-badge">
+                <i class="fas fa-times" onclick="document.getElementById('alertTypeFilter').value = ''; document.getElementById('filterForm').submit();"></i>
+                Tipo: {{ selected_alert_type }}
+            </div>
+            {% endif %}
+            {% if selected_city %}
+            <div class="filter-badge">
+                <i class="fas fa-times" onclick="document.getElementById('cityFilter').value = ''; document.getElementById('filterForm').submit();"></i>
+                Cidade: {{ selected_city }}
+            </div>
+            {% endif %}
+            {% if selected_outlet %}
+            <div class="filter-badge">
+                <i class="fas fa-times" onclick="document.getElementById('outletFilter').value = ''; document.getElementById('filterForm').submit();"></i>
+                Outlet: {{ selected_outlet }}
+            </div>
+            {% endif %}
+            {% if selected_serial %}
+            <div class="filter-badge">
+                <i class="fas fa-times" onclick="document.getElementById('serialFilter').value = ''; document.getElementById('filterForm').submit();"></i>
+                Serial: {{ selected_serial }}
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Alerts List -->
+    <div class="alerts-list" id="alertsList">
+        {% if alerts %}
+            {% for alert in alerts %}
+            <div class="alert-item {% if alert.priority == 'High' %}critical{% elif alert.priority == 'Medium' %}warning{% else %}info{% endif %}">
+                <div class="alert-icon {% if alert.priority == 'High' %}critical{% elif alert.priority == 'Medium' %}warning{% else %}info{% endif %}">
+                    {% if alert.priority == 'High' %}
+                        <i class="fas fa-exclamation-circle"></i>
+                    {% elif alert.priority == 'Medium' %}
+                        <i class="fas fa-exclamation-triangle"></i>
+                    {% else %}
+                        <i class="fas fa-info-circle"></i>
+                    {% endif %}
+                </div>
+                <div class="alert-content">
+                    <div class="alert-header-row">
+                        <h3 class="alert-title">{{ alert.alert_text or alert.alert_definition }}</h3>
+                        {% if alert.priority %}
+                        <span class="alert-priority {% if alert.priority == 'High' %}high{% elif alert.priority == 'Medium' %}medium{% else %}low{% endif %}">
+                            {{ alert.priority }}
+                        </span>
+                        {% endif %}
+                    </div>
+                    <span class="alert-type">{{ alert.alert_type }}</span>
+                    <div class="alert-meta">
+                        {% if alert.asset_serial_number %}
+                        <div class="alert-meta-item">
+                            <i class="fas fa-barcode"></i>
+                            <span>{{ alert.asset_serial_number }}</span>
+                        </div>
+                        {% endif %}
+                        {% if alert.outlet %}
+                        <div class="alert-meta-item">
+                            <i class="fas fa-store"></i>
+                            <span>{{ alert.outlet }}</span>
+                        </div>
+                        {% endif %}
+                        {% if alert.outlet_city %}
+                        <div class="alert-meta-item">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span>{{ alert.outlet_city }}</span>
+                        </div>
+                        {% endif %}
+                        {% if alert.alert_at %}
+                        <div class="alert-meta-item">
+                            <i class="fas fa-clock"></i>
+                            <span id="alert-time-{{ loop.index0 }}" data-timestamp="{{ alert.alert_at.isoformat() if alert.alert_at else '' }}">{{ alert.alert_at.strftime('%d/%m/%Y %H:%M') }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state">
+                <div>
+                    <i class="fas fa-inbox"></i>
+                    <p><strong>Nenhum alerta encontrado</strong></p>
+                    <p>Não há alertas nos últimos {{ period }} dias</p>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    // Get current filter values
+    function getFilterParams() {
+        const params = new URLSearchParams();
+        const alertType = document.getElementById('alertTypeFilter').value;
+        const city = document.getElementById('cityFilter').value;
+        const outlet = document.getElementById('outletFilter').value;
+        const serial = document.getElementById('serialFilter').value;
+
+        if (alertType) params.append('alert_type', alertType);
+        if (city) params.append('city', city);
+        if (outlet) params.append('outlet', outlet);
+        if (serial) params.append('serial', serial);
+
+        return params.toString();
+    }
+
+    // Period selector with filters preservation
+    document.querySelectorAll('.period-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const period = this.dataset.period;
+            // Atualiza o input hidden com o período selecionado
+            document.getElementById('currentPeriod').value = period;
+            const filterParams = getFilterParams();
+            const separator = filterParams ? '&' : '?';
+            window.location.href = `{{ url_for('portal_alerts.render_alerts') }}?period=${period}${filterParams ? separator + filterParams : ''}`;
+        });
+    });
+
+    // Handle filter form submission
+    document.getElementById('filterForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        // Pega o período do input hidden (preserva o período atual)
+        const period = document.getElementById('currentPeriod').value || 30;
+        const filterParams = getFilterParams();
+        const separator = filterParams ? '&' : '?';
+        window.location.href = `{{ url_for('portal_alerts.render_alerts') }}?period=${period}${filterParams ? separator + filterParams : ''}`;
+    });
+
+    // Handle clear filters button
+    document.getElementById('clearFiltersBtn').addEventListener('click', function(e) {
+        e.preventDefault();
+        // Pega o período do input hidden (preserva o período atual)
+        const period = document.getElementById('currentPeriod').value || 30;
+        window.location.href = `{{ url_for('portal_alerts.render_alerts') }}?period=${period}`;
+    });
+
+    // Update timestamps to local timezone
+    document.querySelectorAll('[data-timestamp]').forEach(el => {
+        try {
+            const timestamp = el.getAttribute('data-timestamp');
+
+            // Validar se timestamp não está vazio
+            if (!timestamp || timestamp.trim() === '') {
+                return; // Pula este elemento
+            }
+
+            // Tentar fazer parse da data
+            let date = new Date(timestamp);
+
+            // Validar se a data é válida
+            if (isNaN(date.getTime())) {
+                // Se falhar, tenta com Z no final (ISO 8601 UTC)
+                date = new Date(timestamp + 'Z');
+            }
+
+            // Verificar novamente se é válida
+            if (isNaN(date.getTime())) {
+                console.warn('Invalid timestamp format:', timestamp);
+                return; // Pula este elemento
+            }
+
+            // Formatar e exibir
+            el.textContent = date.toLocaleString('pt-BR', {
+                year: 'numeric', month: '2-digit', day: '2-digit',
+                hour: '2-digit', minute: '2-digit', second: '2-digit'
+            });
+        } catch (e) {
+            console.warn('Error formatting timestamp:', e);
+        }
+    });
+</script>
+
+{% endblock %}

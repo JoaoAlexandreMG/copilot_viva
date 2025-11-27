@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, session, redirect, url_for, request, jsonify
 from pathlib import Path
-from models.models import Asset, AlertsDefinition
+from models.models import Asset, AlertsDefinition, User
 from .decorators import require_authentication
 from db.database import get_session
 from datetime import datetime, timedelta, timezone
@@ -10,6 +10,101 @@ import tempfile
 from utils.new_excel_to_db import importar_dados_generico
 
 dashboard_bp = Blueprint("dashboard", __name__, url_prefix="/portal_associacao")
+
+def get_technicians_activity(client):
+    """
+    Retorna métricas de atividade dos técnicos (perfil Technician) do cliente nos últimos 30 dias.
+    
+    Métricas:
+    - user_coolers_read: Contagem de health_events do usuário
+    - ghost_read: Contagem de ghost_assets reportados pelo usuário
+    - Sinalização: Técnicos sem atividade em ambas as tabelas
+    
+    Args:
+        client: Nome do cliente para filtrar
+        
+    Returns:
+        Lista de dicionários com dados de cada técnico
+    """
+    db_session = get_session()
+    
+    # Query combinada que obtém ambas as métricas em uma única consulta
+    technicians_sql = text("""
+        WITH technician_users AS (
+            SELECT 
+                upn, 
+                COALESCE(first_name || ' ' || last_name, user_name, upn) as name,
+                email
+            FROM users
+            WHERE client = :client
+            AND role = 'Technician'
+            AND is_active = true
+        ),
+        health_counts AS (
+            SELECT
+                u.upn,
+                COUNT(he.data_uploaded_by) AS user_coolers_read
+            FROM
+                technician_users u
+            LEFT JOIN
+                health_events he
+                ON u.upn = he.data_uploaded_by
+                AND he.event_time >= NOW() - INTERVAL '30 days'
+            GROUP BY
+                u.upn
+        ),
+        ghost_counts AS (
+            SELECT
+                u.upn,
+                COUNT(ga.reported_by) AS ghost_read
+            FROM
+                technician_users u
+            LEFT JOIN
+                ghost_assets ga
+                ON u.upn = ga.reported_by
+                AND ga.reported_on >= NOW() - INTERVAL '30 days'
+            GROUP BY
+                u.upn
+        )
+        SELECT
+            tu.upn,
+            tu.name,
+            tu.email,
+            COALESCE(hc.user_coolers_read, 0) AS user_coolers_read,
+            COALESCE(gc.ghost_read, 0) AS ghost_read,
+            CASE 
+                WHEN COALESCE(hc.user_coolers_read, 0) = 0 
+                AND COALESCE(gc.ghost_read, 0) = 0 
+                THEN true 
+                ELSE false 
+            END AS no_activity
+        FROM
+            technician_users tu
+        LEFT JOIN
+            health_counts hc ON tu.upn = hc.upn
+        LEFT JOIN
+            ghost_counts gc ON tu.upn = gc.upn
+        ORDER BY
+            no_activity DESC,
+            (COALESCE(hc.user_coolers_read, 0) + COALESCE(gc.ghost_read, 0)) DESC
+    """)
+    
+    results = db_session.execute(technicians_sql, {"client": client}).fetchall()
+    
+    technicians_data = []
+    for row in results:
+        technicians_data.append({
+            "upn": row.upn,
+            "name": row.name,
+            "email": row.email,
+            "user_coolers_read": int(row.user_coolers_read),
+            "ghost_read": int(row.ghost_read),
+            "total_activity": int(row.user_coolers_read + row.ghost_read),
+            "no_activity": bool(row.no_activity)
+        })
+    
+    db_session.close()
+    return technicians_data
 
 def stats_for_dashboard(days=30):
     """
@@ -34,42 +129,53 @@ def stats_for_dashboard(days=30):
     period_start = now - timedelta(days=days)
 
     # 2. Obter Definições Dinâmicas de Alerta
-    temp_alert_definition = db_session.query(AlertsDefinition).filter(
-        AlertsDefinition.client == client, 
-        AlertsDefinition.type == "Temperature Alert"
-    ).first()
+    temp_alert_definition_sql = text("""
+        SELECT vco.applied_min, vco.applied_max
+        FROM mv_client_overview vco
+        WHERE vco.client = :client
+    """)
+    temp_alert_definition = db_session.execute(temp_alert_definition_sql, {"client": client}).fetchone()
     
     # Definir limites de temperatura (usados no SQL dinâmico)
-    temp_min = temp_alert_definition.temperature_below if temp_alert_definition and temp_alert_definition.temperature_below is not None else 0
-    temp_max = temp_alert_definition.temperature_above if temp_alert_definition and temp_alert_definition.temperature_above is not None else 7
+    temp_min = temp_alert_definition.applied_min if temp_alert_definition and temp_alert_definition.applied_min is not None else 0
+    temp_max = temp_alert_definition.applied_max if temp_alert_definition and temp_alert_definition.applied_max is not None else 7
 
     # 3. Query 1: Status Dinâmicos e Contagens usando MVs otimizadas
     # Usar mv_dashboard_stats_main para dados de bateria e mv_client_assets_report para temperatura
     status_and_counts_sql = text(f"""
         SELECT 
             -- Totais
-            (SELECT COUNT(*) FROM assets WHERE client = :client) AS total_assets,
+            (SELECT COUNT(*) FROM mv_asset_current_status WHERE client = :client) AS total_assets,
             (SELECT COUNT(id) FROM alerts WHERE client = :client AND alert_at >= :period_start) AS alerts_period_count,
-            (SELECT COUNT(*) FROM mv_client_assets_report WHERE client = :client AND is_active = true) AS assets_health_last_24h_count,
+            (SELECT COUNT(*) FROM mv_asset_current_status WHERE client = :client AND last_movement_time >= (now() AT TIME ZONE 'UTC' - INTERVAL '24 hours')) AS assets_health_last_24h_count,
         
             -- Status de Bateria usando mv_dashboard_stats_main
-            (SELECT COUNT(*) FROM mv_dashboard_stats_main WHERE client = :client AND latest_battery > 50) AS good_battery_assets_count,
-            (SELECT COUNT(*) FROM mv_dashboard_stats_main WHERE client = :client AND latest_battery >= 25 AND latest_battery <= 50) AS low_battery_assets_count,
-            (SELECT COUNT(*) FROM mv_dashboard_stats_main WHERE client = :client AND latest_battery < 25 AND latest_battery IS NOT NULL) AS critical_battery_assets_count,
-
-            -- Status de Temperatura usando dados filtrados para excluir valores impossíveis (-30°C a 20°C)
-            (SELECT COUNT(*) FROM mv_client_assets_report WHERE client = :client AND latest_cabinet_temperature_c BETWEEN :temp_min AND :temp_max AND latest_cabinet_temperature_c BETWEEN -30 AND 20 AND latest_cabinet_temperature_c IS NOT NULL) AS ok_temperatures_count,
-            (SELECT COUNT(*) FROM mv_client_assets_report WHERE client = :client AND latest_cabinet_temperature_c > :temp_max AND latest_cabinet_temperature_c BETWEEN -30 AND 20 AND latest_cabinet_temperature_c IS NOT NULL) AS above_temperatures_count,
-            (SELECT COUNT(*) FROM mv_client_assets_report WHERE client = :client AND latest_cabinet_temperature_c < :temp_min AND latest_cabinet_temperature_c BETWEEN -30 AND 20 AND latest_cabinet_temperature_c IS NOT NULL) AS below_temperatures_count,
-
+            (SELECT count_battery_ok FROM mv_client_overview WHERE client = :client) AS good_battery_assets_count,
+            (SELECT count_battery_low FROM mv_client_overview WHERE client = :client) AS low_battery_assets_count,
+            (SELECT count_battery_critical FROM mv_client_overview WHERE client = :client) AS critical_battery_assets_count,
+            (SELECT count_temp_ok FROM mv_client_overview WHERE client = :client) AS ok_temperatures_count,
+            (SELECT count_temp_low FROM mv_client_overview WHERE client = :client) AS below_temperatures_count,
+            (SELECT count_temp_high FROM mv_client_overview WHERE client = :client) AS above_temperatures_count,
+            (SELECT total_assets_monitored FROM mv_client_overview WHERE client = :client) AS total_with_temperature,
+    
             -- Estatísticas de consumo e compressor (usando health_events para dados mais recentes, com filtro de temperatura)
-            (SELECT AVG(total_compressor_on_time_percent) FROM health_events WHERE client = :client AND event_time >= :period_start AND total_compressor_on_time_percent > 0) AS avg_compressor_on_time,
-            (SELECT AVG(avg_power_consumption_watt) FROM health_events WHERE client = :client AND event_time >= :period_start AND avg_power_consumption_watt > 0) AS avg_power_consumption;
-    """)
+            (SELECT 
+                CASE 
+                    WHEN :days = 30 THEN avg_compressor_percent_30d 
+                    ELSE avg_compressor_percent_7d 
+                END 
+             FROM mv_client_overview WHERE client = :client) AS avg_compressor_on_time,
+            (SELECT 
+                CASE 
+                    WHEN :days = 30 THEN avg_consumption_watt_30d 
+                    ELSE avg_consumption_watt_7d 
+                END 
+             FROM mv_client_overview WHERE client = :client) AS avg_power_consumption;
+            """)
     
     status_results = db_session.execute(
         status_and_counts_sql, 
-        {
+        {   "days": days,
             "client": client, 
             "period_start": period_start, 
             "temp_min": temp_min, 
@@ -80,7 +186,7 @@ def stats_for_dashboard(days=30):
     if not status_results:
         # Retorna um dicionário vazio ou com zeros se o cliente não tiver dados
         return {
-            "total_assets": db_session.execute(text("SELECT COUNT(*) FROM mv_client_assets_report WHERE client = :client"), {"client": client}).scalar() or 0,
+            "total_assets": 0,
             "assets_health_last_24h_count": 0,
             "alerts_period_count": 0,
             "ok_temperatures_count": 0, "not_ok_temperatures_count": 0, "total_with_temperature": 0,
@@ -110,31 +216,29 @@ def stats_for_dashboard(days=30):
             client = :client
             AND {period_filter}
             AND temperature_c IS NOT NULL
-            AND temperature_c BETWEEN -30 AND 20
+            AND temperature_c >= -30 AND temperature_c <= 20
         GROUP BY
             EXTRACT(HOUR FROM event_time)
         ORDER BY
             EXTRACT(HOUR FROM event_time)
     """)
     hourly_data = db_session.execute(hourly_data_sql, {"client": client}).fetchall()
-
     # Query separada para dados de porta
     door_data_sql = text(f"""
         SELECT
-            EXTRACT(HOUR FROM open_event_time)::integer AS hour_num,
-            COUNT(*) AS hourly_door_count
+            hour_in_day::integer AS hour_num,
+            avg(door_count) AS hourly_door_count
         FROM
             door
         WHERE
             client = :client
-            AND {period_filter.replace('event_time', 'open_event_time')}
-            AND open_event_time IS NOT NULL
+            AND {period_filter.replace("event_time", "open_event_time")}
         GROUP BY
-            EXTRACT(HOUR FROM open_event_time)
+            hour_in_day
         ORDER BY
-            EXTRACT(HOUR FROM open_event_time)
-    """)
-    door_data = db_session.execute(door_data_sql, {"client": client}).fetchall()
+            hour_in_day;
+        """)
+    door_data = db_session.execute(door_data_sql, {"client": client}).fetchall() # Assuming 'Sorocaba Refrescos' is replaced by :client
 
     # 5. Processamento Python (Preenchimento e Formatação)
     
@@ -186,7 +290,7 @@ def stats_for_dashboard(days=30):
     not_ok_temperatures_count = above_temperatures_count + below_temperatures_count
     
     # Total de ativos COM temperatura (OK + Not OK direto da MV)
-    total_with_temperature = ok_temperatures_count + not_ok_temperatures_count
+    total_with_temperature = int(status_results.total_with_temperature or 0)
     
     # Calcular percentuais corretos
     temp_ok_percentage = round((ok_temperatures_count / total_with_temperature) * 100) if total_with_temperature > 0 else 0
@@ -207,32 +311,92 @@ def stats_for_dashboard(days=30):
         below_temperatures_count
     ]
 
+    # 7. Query 3: Top 10 Ativos por Displacement (últimas 24h) - COM RANKING NA QUERY
+    top10_sql = text("""
+        SELECT
+            a.sales_office,
+            r.asset_serial_number,
+            r.displacement_meter,
+            r.start_time,
+            ROW_NUMBER() OVER (
+                ORDER BY r.displacement_meter DESC
+            ) as global_rank
+        FROM (
+            -- 1. Subconsulta para encontrar o movimento mais recente
+            SELECT
+                asset_serial_number,
+                displacement_meter,
+                start_time,
+                ROW_NUMBER() OVER (
+                    PARTITION BY asset_serial_number
+                    ORDER BY start_time DESC
+                ) as rank_recente
+            FROM
+                movements
+            WHERE
+                start_time >= CURRENT_TIMESTAMP - INTERVAL '24 hours'
+                AND client = :client
+        ) AS r
+        JOIN
+            assets a ON r.asset_serial_number = a.oem_serial_number
+        WHERE
+            r.rank_recente = 1
+        ORDER BY
+            r.displacement_meter DESC
+        LIMIT 10;
+    """)
+
+    top10_results = db_session.execute(top10_sql, {"client": client}).fetchall()
+
+    # Processar resultados mantendo a ordem global do ranking (1-10)
+    # Usar um dicionário para agrupamento, mas retornar como array para garantir ordem
+    top10_by_office = {}
+
+    for row in top10_results:
+        office = row.sales_office or "Sem Escritório"
+        if office not in top10_by_office:
+            top10_by_office[office] = []
+        top10_by_office[office].append({
+            "rank": int(row.global_rank),  # Rank global vindo do SQL (1-10)
+            "asset_serial_number": row.asset_serial_number,
+            "displacement_meter": float(row.displacement_meter) if row.displacement_meter else 0,
+            "start_time": row.start_time.isoformat() if row.start_time else None
+        })
+
+    # Converter para array de offices ordenado pela ordem de aparição do primeiro asset de cada office no ranking global
+    top10_data = []
+    for office in sorted(top10_by_office.keys(), key=lambda o: min(asset["rank"] for asset in top10_by_office[o])):
+        top10_data.append({
+            "office": office,
+            "assets": sorted(top10_by_office[office], key=lambda a: a["rank"])
+        })
+
     # 6. Retorno Final
     return {
         # Período de referência
         "period_days": days,
-        
+
         # Métricas de Cartão (Totais e Contagens)
         "total_assets": int(status_results.total_assets or 0),
         "assets_health_last_24h_count": int(status_results.assets_health_last_24h_count or 0),
         "alerts_period_count": int(status_results.alerts_period_count or 0),
-        
+
         # Métricas de Temperatura (Contagens e Percentuais)
         "ok_temperatures_count": ok_temperatures_count,
         "not_ok_temperatures_count": not_ok_temperatures_count,
         "total_with_temperature": total_with_temperature,
         "temp_ok_percentage": temp_ok_percentage,
         "temp_not_ok_percentage": temp_not_ok_percentage,
-        
+
         # Métricas de Bateria (Contagens)
         "good_battery_assets_count": int(status_results.good_battery_assets_count or 0),
         "low_battery_assets_count": int(status_results.low_battery_assets_count or 0),
         "critical_battery_assets_count": int(status_results.critical_battery_assets_count or 0),
-        
+
         # Novas Estatísticas
         "avg_compressor_on_time": round(status_results.avg_compressor_on_time, 2) if status_results.avg_compressor_on_time else 0,
         "avg_power_consumption": round(status_results.avg_power_consumption, 2) if status_results.avg_power_consumption else 0,
-        
+
         # Dados para Gráficos (MV)
         "hourly_temp_chart": {
             "labels": hourly_labels,
@@ -248,6 +412,9 @@ def stats_for_dashboard(days=30):
             "labels": temp_status_labels,
             "data": temp_status_data,
         },
+
+        # Top 10 Ativos por Displacement (últimas 24h)
+        "top10_assets": top10_data,
     }
 
 @dashboard_bp.route("/dashboard", methods=["GET"])
@@ -271,6 +438,37 @@ def render_dashboard():
     except Exception as e:
         print(f"[ERROR] Error rendering dashboard: {str(e)}")
         return redirect(url_for("index"))
+
+@dashboard_bp.route("/technicians", methods=["GET"])
+@require_authentication
+def render_technicians_page():
+    """
+    Render technicians monitoring page
+    Shows activity metrics for all technicians in the last 30 days
+    """
+    try:
+        user = session.get("user")
+        if not user:
+            return redirect(url_for("index"))
+        
+        client = user.get("client")
+        if not client:
+            return redirect(url_for("index"))
+        
+        # Get technicians activity data
+        technicians_data = get_technicians_activity(client)
+        
+        return render_template(
+            "portal/technicians.html", 
+            technicians=technicians_data,
+            page_type="list"
+        )
+        
+    except Exception as e:
+        print(f"[ERROR] Error rendering technicians page: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return redirect(url_for("dashboard.render_dashboard"))
     
 @dashboard_bp.route('/api/dashboard-stats', methods=['GET'])
 @require_authentication
@@ -295,6 +493,39 @@ def get_dashboard_stats():
         stats = stats_for_dashboard(days=period)
         return jsonify({'status': 'ok', 'data': stats}), 200
     except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@dashboard_bp.route('/api/technicians-activity', methods=['GET'])
+@require_authentication
+def get_technicians_activity_api():
+    """
+    API endpoint para retornar métricas de atividade dos técnicos nos últimos 30 dias.
+    
+    Retorna:
+    - Lista de técnicos com user_coolers_read e ghost_read
+    - Sinalização para técnicos sem atividade
+    """
+    try:
+        user = session.get("user")
+        if not user:
+            return jsonify({'status': 'error', 'message': 'Unauthorized'}), 401
+        
+        client = user.get("client")
+        if not client:
+            return jsonify({'status': 'error', 'message': 'Client not found in session'}), 400
+        
+        technicians_data = get_technicians_activity(client)
+        
+        return jsonify({
+            'status': 'ok', 
+            'data': technicians_data,
+            'total_technicians': len(technicians_data),
+            'inactive_technicians': len([t for t in technicians_data if t['no_activity']])
+        }), 200
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @dashboard_bp.route('/import_file', methods=['POST'])

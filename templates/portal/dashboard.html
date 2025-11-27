@@ -98,17 +98,31 @@
         </div>
     </div>
 
-    <div class="stat-card">
+    <div class="stat-card battery-card">
         <div class="stat-icon bg-teal">
             <i class="fas fa-battery-full"></i>
         </div>
+
         <div class="stat-content">
-            <p class="stat-label">Bateria >50%</p>
-            <h4 class="stat-value" id="batteryPercentage">0%</h4>
+            <p class="stat-label">Bateria <small class="click-hint"></small></p>
+
+            <div class="split-values">
+                <a href="https://vivaservicesai.com/portal_associacao/tracking/?battery_is_ok=true" class="split-item clickable-split">
+                    <span class="dot green"></span>
+                    <span class="split-text">OK:</span>
+                    <span class="split-val" id="batteryOkPercentage">0%</span>
+                </a>
+                <div class="split-divider"></div>
+                <a href="https://vivaservicesai.com/portal_associacao/tracking/?battery_is_ok=false" class="split-item clickable-split">
+                    <span class="dot red"></span>
+                    <span class="split-text">Baixa:</span>
+                    <span class="split-val" id="batteryNotOkPercentage">0%</span>
+                </a>
+            </div>
         </div>
     </div>
 
-    <div class="stat-card" data-alerts-card>
+    <a href="{{url_for('portal_alerts.render_alerts')}}?period=30" class="stat-card clickable" data-alerts-card>
         <div class="stat-icon bg-red">
             <i class="fas fa-bell"></i>
         </div>
@@ -116,8 +130,11 @@
             <p class="stat-label">Alertas</p>
             <h4 class="stat-value" id="kpiAlerts">{{ stats.alerts_period_count }}</h4>
         </div>
+        <div class="stat-arrow">
+            <i class="fas fa-chevron-right"></i>
+        </div>
         <span class="period-badge">30d</span>
-    </div>
+    </a>
 
     <div class="stat-card" id="cardCompressor" style="display: {{ 'flex' if stats.avg_compressor_on_time and stats.avg_compressor_on_time > 0 else 'none' }};">
         <div class="stat-icon bg-cyan">
@@ -200,7 +217,7 @@
     <!-- Temperatura por Hora (30d) - Line Chart -->
     <div class="chart-card">
         <div class="chart-header">
-            <h3>🌡️ Temperatura por Hora (30d)</h3>
+            <h3 id="temp_per_hour_label">🌡️ Temperatura por Hora (30d)</h3>
         </div>
         <div class="chart-body">
             <canvas id="tempLineChart" height="300"></canvas>
@@ -210,7 +227,7 @@
     <!-- Aberturas de Porta (30d) - Line Chart -->
     <div class="chart-card">
         <div class="chart-header">
-            <h3>🚪 Aberturas de Porta (30d)</h3>
+            <h3 id="door_open_hour_label">🚪 Aberturas de Porta (30d)</h3>
         </div>
         <div class="chart-body">
             <canvas id="doorLineChart" height="300"></canvas>
@@ -234,6 +251,19 @@
         </div>
         <div class="chart-body">
             <canvas id="temperatureChart" height="300"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Top 10 Ativos por Displacement Section -->
+<div class="card" style="margin: 2rem 0; width: 100%;">
+    <div class="card-header">
+        <h3 class="card-title">📊 Top 10 Ativos - Maior Deslocamento (últimas 24h)</h3>
+        <p class="card-subtitle" style="margin-top: 0.5rem; color: #6b7280; font-size: 0.875rem;">Segregado por Escritório de Vendas</p>
+    </div>
+    <div class="card-body" id="top10Container" style="padding: 2rem;">
+        <div class="top10-empty-state">
+            <p>Carregando dados...</p>
         </div>
     </div>
 </div>
@@ -338,6 +368,89 @@
      * 2. CLASSES DO SISTEMA
      * ============================================================================
      */
+
+    // --- Renderizador do Top 10 Ativos ---
+    class Top10AssetRenderer {
+        static render(top10Data) {
+            const container = document.getElementById('top10Container');
+            if (!container || !top10Data || top10Data.length === 0) {
+                if (container) {
+                    container.innerHTML = '<div class="top10-empty-state"><p>📭 Nenhum dado de deslocamento disponível nas últimas 24h</p></div>';
+                }
+                return;
+            }
+
+            let html = '';
+
+            // Itera sobre cada escritório de vendas em ordem de aparição no ranking global
+            top10Data.forEach((officeGroup) => {
+                const office = officeGroup.office;
+                const assets = officeGroup.assets;
+
+                html += `
+                    <div class="top10-office-section">
+                        <div class="top10-office-header">
+                            <h4 class="top10-office-name">🏢 ${office}</h4>
+                            <span class="top10-office-count">${assets.length} ativo(s)</span>
+                        </div>
+                        <div class="top10-assets-list">
+                `;
+
+                // Renderiza cada ativo em ordem de ranking global
+                assets.forEach((asset, index) => {
+                    const displacementColor = this.getDisplacementColor(asset.displacement_meter);
+                    const formattedTime = asset.start_time
+                        ? new Date(asset.start_time).toLocaleString('pt-BR', {
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        })
+                        : 'N/A';
+
+                    html += `
+                        <div class="top10-asset-row">
+                            <div class="top10-rank">
+                                <span class="badge badge-rank">#${asset.rank}</span>
+                            </div>
+                            <div class="top10-asset-info">
+                                <div class="top10-serial">
+                                    <span class="label">Serial:</span>
+                                    <span class="value">${asset.asset_serial_number}</span>
+                                </div>
+                                <div class="top10-time">
+                                    <span class="label">Último movimento:</span>
+                                    <span class="value">${formattedTime}</span>
+                                </div>
+                            </div>
+                            <div class="top10-displacement">
+                                <div class="displacement-bar">
+                                    <div class="displacement-bar-fill" style="width: ${Math.min((asset.displacement_meter / 1000) * 100, 100)}%; background-color: ${displacementColor};"></div>
+                                </div>
+                                <span class="displacement-value" style="color: ${displacementColor}; font-weight: 600;">
+                                    ${asset.displacement_meter.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} m
+                                </span>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += `
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        static getDisplacementColor(displacement) {
+            if (displacement >= 500) return '#dc2626'; // Vermelho - Alta atividade
+            if (displacement >= 300) return '#f97316'; // Laranja
+            if (displacement >= 100) return '#eab308'; // Amarelo
+            return '#22c55e'; // Verde - Baixa atividade
+        }
+    }
 
     // --- Gerenciador de Timezone ---
     // --- Gerenciador de Timezone (Versão Corrigida) ---
@@ -529,7 +642,20 @@
             // Atualiza label de texto
             const label = document.getElementById('periodLabel');
             if(label) label.textContent = `Últimos ${this.currentPeriod} dias`;
+
+            const labelTemp = document.getElementById('temp_per_hour_label');
+            if(labelTemp) labelTemp.textContent = `🌡️ Temperatura por Hora (${this.currentPeriod}d)`;
             
+            const labelDoor = document.getElementById('door_open_hour_label');
+            if(labelDoor) labelDoor.textContent = `🚪 Aberturas de Porta (${this.currentPeriod}d)`;
+
+            // Atualiza link do card de alertas
+            const alertsCard = document.querySelector('[data-alerts-card]');
+            if(alertsCard) {
+                const alertsUrl = `{{ url_for('portal_alerts.render_alerts') }}?period=${this.currentPeriod}`;
+                alertsCard.setAttribute('href', alertsUrl);
+            }
+
             // Atualiza as datas no parênteses (ex: 01 Nov - 30 Nov)
             const dates = document.getElementById('periodDates');
             if(dates) {
@@ -591,7 +717,7 @@
             setText('kpiTotalAssets', stats.total_assets);
             setText('kpiAssets24h', stats.assets_health_last_24h_count);
             setText('kpiAlerts', stats.alerts_period_count);
-            
+
             // Cards Opcionais (Verifica se o valor existe antes de tentar atualizar)
             if(stats.avg_compressor_on_time !== undefined) {
                 setText('kpiCompressor', stats.avg_compressor_on_time + '%');
@@ -609,16 +735,19 @@
             if(tempOkEl) tempOkEl.textContent = stats.temp_ok_percentage + '%';
             if(tempNotOkEl) tempNotOkEl.textContent = stats.temp_not_ok_percentage + '%';
 
-            // Bateria (manter cálculo local pois funciona corretamente)
+            // Bateria (OK e NOT OK)
             const totalBat = stats.good_battery_assets_count + stats.low_battery_assets_count + stats.critical_battery_assets_count;
-            const batPct = totalBat > 0 ? Math.round((stats.good_battery_assets_count / totalBat) * 100) : 0;
-            const batteryEl = document.getElementById('batteryPercentage');
-            if(batteryEl) batteryEl.textContent = batPct + '%';
+            const batOkPct = totalBat > 0 ? Math.round((stats.good_battery_assets_count / totalBat) * 100) : 0;
+            const batNotOkPct = totalBat > 0 ? Math.round(((stats.low_battery_assets_count + stats.critical_battery_assets_count) / totalBat) * 100) : 0;
+            const batteryOkEl = document.getElementById('batteryOkPercentage');
+            const batteryNotOkEl = document.getElementById('batteryNotOkPercentage');
+            if(batteryOkEl) batteryOkEl.textContent = batOkPct + '%';
+            if(batteryNotOkEl) batteryNotOkEl.textContent = batNotOkPct + '%';
 
             // ============================================================
             // 3. ATUALIZAÇÃO DE GRÁFICOS DE LINHA (COM TIMEZONE)
             // ============================================================
-            
+
             // A. Atualiza os Labels (Eixo X) dos gráficos globais
             if (window.hourlyTempChart) window.hourlyTempChart.data.labels = stats.hourly_temp_chart.labels;
             if (window.hourlyDoorChart) window.hourlyDoorChart.data.labels = stats.hourly_door_chart.labels;
@@ -636,16 +765,23 @@
             // ============================================================
             // 4. ATUALIZAÇÃO DE GRÁFICOS DE PIZZA
             // ============================================================
-            
+
             // Gráfico de Bateria
             this.updatePieChart(window.batteryChart, [
-                stats.good_battery_assets_count, 
-                stats.low_battery_assets_count, 
+                stats.good_battery_assets_count,
+                stats.low_battery_assets_count,
                 stats.critical_battery_assets_count
             ]);
 
             // Gráfico de Status de Temperatura
             this.updatePieChart(window.temperatureChart, stats.temperature_status_chart.data);
+
+            // ============================================================
+            // 5. ATUALIZAÇÃO DO TOP 10 ATIVOS
+            // ============================================================
+            if(stats.top10_assets) {
+                Top10AssetRenderer.render(stats.top10_assets);
+            }
         }
         
         // Helper para atualizar gráficos de linha Chart.js
@@ -706,10 +842,19 @@
             this.initImportModal();
             this.initCharts();
             this.initPercentages();
-            
+            this.initTop10();
+
             // Inicializa classes auxiliares
             window.timezoneConverter = new TimezoneConverter();
             window.periodSelector = new PeriodSelector();
+        },
+
+        // --- Inicialização do Top 10 Ativos ---
+        initTop10: function() {
+            const backendStats = {{ stats | tojson }};
+            if(backendStats.top10_assets) {
+                Top10AssetRenderer.render(backendStats.top10_assets);
+            }
         },
 
         // --- Lógica do Modal de Importação ---
@@ -888,11 +1033,14 @@
             if(tempOkEl) tempOkEl.textContent = backendStats.temp_ok_percentage + '%';
             if(tempNotOkEl) tempNotOkEl.textContent = backendStats.temp_not_ok_percentage + '%';
 
-            // Bateria
+            // Bateria (OK e NOT OK)
             const totalBat = backendStats.good_battery_assets_count + backendStats.low_battery_assets_count + backendStats.critical_battery_assets_count;
-            const batPct = totalBat > 0 ? Math.round((backendStats.good_battery_assets_count / totalBat) * 100) : 0;
-            const batteryEl = document.getElementById('batteryPercentage');
-            if(batteryEl) batteryEl.textContent = batPct + '%';
+            const batOkPct = totalBat > 0 ? Math.round((backendStats.good_battery_assets_count / totalBat) * 100) : 0;
+            const batNotOkPct = totalBat > 0 ? Math.round(((backendStats.low_battery_assets_count + backendStats.critical_battery_assets_count) / totalBat) * 100) : 0;
+            const batteryOkEl = document.getElementById('batteryOkPercentage');
+            const batteryNotOkEl = document.getElementById('batteryNotOkPercentage');
+            if(batteryOkEl) batteryOkEl.textContent = batOkPct + '%';
+            if(batteryNotOkEl) batteryNotOkEl.textContent = batNotOkPct + '%';
         },
 
         // --- Cálculo de KPIs (Para auto-refresh) ---
@@ -903,11 +1051,14 @@
             if(tempOkEl) tempOkEl.textContent = (s.temp_ok_percentage || 0) + '%';
             if(tempNotOkEl) tempNotOkEl.textContent = (s.temp_not_ok_percentage || 0) + '%';
 
-            // Bateria
+            // Bateria (OK e NOT OK)
             const totalBat = (s.good_battery_assets_count || 0) + (s.low_battery_assets_count || 0) + (s.critical_battery_assets_count || 0);
-            const batPct = totalBat > 0 ? Math.round(((s.good_battery_assets_count || 0) / totalBat) * 100) : 0;
-            const batteryEl = document.getElementById('batteryPercentage');
-            if(batteryEl) batteryEl.textContent = batPct + '%';
+            const batOkPct = totalBat > 0 ? Math.round(((s.good_battery_assets_count || 0) / totalBat) * 100) : 0;
+            const batNotOkPct = totalBat > 0 ? Math.round((((s.low_battery_assets_count || 0) + (s.critical_battery_assets_count || 0)) / totalBat) * 100) : 0;
+            const batteryOkEl = document.getElementById('batteryOkPercentage');
+            const batteryNotOkEl = document.getElementById('batteryNotOkPercentage');
+            if(batteryOkEl) batteryOkEl.textContent = batOkPct + '%';
+            if(batteryNotOkEl) batteryNotOkEl.textContent = batNotOkPct + '%';
         },
 
         // Helpers de Opções de Gráfico
