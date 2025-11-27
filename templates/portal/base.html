@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="{{ theme.primary }}">
     <meta name="description" content="Portal de Gerenciamento - Viva AI">
     <title>{% block title %}Portal de Gerenciamento {% endblock %} | VivaAI</title>
 
@@ -11,6 +12,52 @@
 
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Theme CSS variables (can be overridden via `theme` in Flask context) -->
+    <style>
+        :root {
+            /* Viva AI Brand Colors */
+            --primary: {{ theme.primary | default('#00C3FF') }};  /* Azul Elétrico */
+            --primary-dark: {{ theme.primary_dark | default('#4C3AFF') }}; /* Roxo Inteligência */
+            --accent: {{ theme.accent | default('#00F5B5') }};  /* Verde Ação */
+            --secondary: {{ theme.secondary | default('#008CFF') }};  /* Azul Neon */
+            --success: {{ theme.success | default('#00F5B5') }};  /* Verde Ação */
+            --danger: {{ theme.danger | default('#FFC93C') }};  /* Amarelo Atenção */
+            --warning: {{ theme.warning | default('#FFC93C') }};  /* Amarelo Atenção */
+            --light: {{ theme.light | default('#F5F5F7') }};
+            --darker: {{ theme.darker | default('#0A1F44') }};  /* Azul Profundo */
+            --border: {{ theme.border_color | default('#D0D0D0') }};
+            --bg-light: {{ theme.bg_light | default('#f5f5f5') }};
+            --text-dark: {{ theme.text_dark | default('#1C1C1E') }};
+            --text-gray: {{ theme.text_gray | default('#8E8E93') }};
+            --text-tertiary: {{ theme.text_tertiary | default('#C7C7CC') }};
+            --spacing-xs: {{ theme.spacing_xs | default('0.5rem') }};
+            --spacing-sm: {{ theme.spacing_sm | default('0.75rem') }};
+            --spacing-md: {{ theme.spacing_md | default('1rem') }};
+            --spacing-lg: {{ theme.spacing_lg | default('1.25rem') }};
+            --spacing-xl: {{ theme.spacing_xl | default('1.5rem') }};
+            --radius-sm: {{ theme.radius_sm | default('8px') }};
+            --radius-md: {{ theme.radius_md | default('12px') }};
+            --radius-lg: {{ theme.radius_lg | default('16px') }};
+            --radius: {{ theme.radius | default('12px') }};
+            /* Aliases for legacy css variables (for compatibility with static css) */
+            --color-primary: var(--primary);
+            --color-primary-hover: var(--primary-dark);
+            --color-primary-light: rgba(0, 195, 255, 0.1);
+            --color-secondary: var(--secondary);
+            --color-secondary-hover: var(--secondary);
+            --color-secondary-light: var(--light);
+            --color-success: var(--success);
+            --color-warning: var(--warning);
+            --color-danger: var(--danger);
+            --color-info: var(--accent);
+            --color-white: #ffffff;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+            --shadow-md: 0 4px 16px rgba(0,0,0,0.08);
+            /* Layout variables */
+            --header-height: 64px;
+        }
+    </style>
 
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}?v={{ range(1, 9999) | random }}">
@@ -46,9 +93,23 @@
 
                 <div class="sidebar-nav-section">
                     <div class="sidebar-nav-title">Rastreamento</div>
-                    <a href="{{ url_for('portal_tracking.render_tracking') }}" class="sidebar-nav-link {% if request.path.startswith('/portal_associacao/tracking') %}active{% endif %}">
+                    <a href="{{ url_for('portal_tracking.render_tracking') }}" class="sidebar-nav-link {% if request.path.startswith('/portal_associacao/tracking') and 'simple' not in request.path %}active{% endif %}">
                         <i class="fas fa-location-dot"></i>
                         <span>Rastreio</span>
+                    </a>
+                    {% if is_simple_tracking_authorized %}
+                    <a href="{{ url_for('portal_tracking.render_simple_tracking') }}" class="sidebar-nav-link {% if '/tracking/simple' in request.path %}active{% endif %}" style="padding-left: 40px; font-size: 13px; opacity: 0.8;">
+                        <i class="fas fa-arrow-right"></i>
+                        <span>Rastreio Simples</span>
+                    </a>
+                    {% endif %}
+                </div>
+
+                <div class="sidebar-nav-section">
+                    <div class="sidebar-nav-title">Monitoramento</div>
+                    <a href="{{ url_for('dashboard.render_technicians_page') }}" class="sidebar-nav-link {% if request.path.startswith('/portal_associacao/technicians') %}active{% endif %}">
+                        <i class="fas fa-user-cog"></i>
+                        <span>Técnicos</span>
                     </a>
                 </div>
 

@@ -1,0 +1,888 @@
+[2025-11-25 07:00:01] ============================================
+[2025-11-25 07:00:01] Iniciando scraping paralelo diário
+[2025-11-25 07:00:01] ============================================
+[2025-11-25 07:00:01] Venv ativado com sucesso
+[2025-11-25 07:00:01] Navegado para /home/vivaservicesai/htdocs/app
+[2025-11-25 07:00:01] Executando: python3 utils/scraping_parallel.py daily 2
+INICIANDO SCRAPING PARALELO (DAILY) - Max Workers: 2
+================================================================================
+Encontradas 2 contas para processar:
+  - ABI Brasil (Username: abib_493)
+  - Sorocaba Refrescos (Username: sorocaba_215)
+
+Iniciando processamento paralelo...
+
+================================================================================
+PROCESSANDO CLIENTE (DADOS DIÁRIOS): ABI Brasil (Username: abib_493)
+================================================================================
+Passo 1: Fazendo GET inicial para estabelecer sessao para abib_493...
+
+================================================================================
+PROCESSANDO CLIENTE (DADOS DIÁRIOS): Sorocaba Refrescos (Username: sorocaba_215)
+================================================================================
+Passo 1: Fazendo GET inicial para estabelecer sessao para sorocaba_215...
+GET Status: 200
+
+Passo 2: Fazendo POST com credenciais...
+GET Status: 200
+
+Passo 2: Fazendo POST com credenciais...
+Login Status: 302
+OK - Login bem-sucedido! Seguindo redirect...
+Login Status: 302
+OK - Login bem-sucedido! Seguindo redirect...
+Default Page Status: 200
+Login realizado com sucesso para ABI Brasil
+
+Buscando registros de saúde para ABI Brasil...
+
+============================================================
+Exportando registros de saúde dos dispositivos...
+============================================================
+Período: 11/23/2025 até 11/26/2025
+Enviando requisição para: https://portal.visioniot.net/Controllers/SmartDeviceHealthRecord.ashx?v=Wed%20Nov%2026%202025%2000%3A00%3A00%20GMT%20%28Brasilia%20Standard%20Time%29
+Tamanho do payload: 9754 caracteres
+Default Page Status: 200
+Login realizado com sucesso para Sorocaba Refrescos
+
+Buscando registros de saúde para Sorocaba Refrescos...
+
+============================================================
+Exportando registros de saúde dos dispositivos...
+============================================================
+Período: 11/23/2025 até 11/26/2025
+Enviando requisição para: https://portal.visioniot.net/Controllers/SmartDeviceHealthRecord.ashx?v=Wed%20Nov%2026%202025%2000%3A00%3A00%20GMT%20%28Brasilia%20Standard%20Time%29
+Tamanho do payload: 9754 caracteres
+
+Status: 200
+OK - Requisicao bem-sucedida!
+
+OK - Arquivo XLSX salvo: docs/health_events.xlsx
+Tamanho: 66993 bytes
+OK - Arquivo verificado e salvo com sucesso!
+OK - Arquivo de saúde salvo: docs/ABI_Brasil_health_events.xlsx
+
+Buscando registros de movimento para ABI Brasil...
+
+============================================================
+Exportando registros de movimento dos dispositivos...
+============================================================
+Periodo: 11/23/2025 ate 11/26/2025
+Enviando requisição para: https://portal.visioniot.net/Controllers/SmartDeviceMovement.ashx?v=Wed%20Nov%2026%202025%2000%3A00%3A00%20GMT%20%28Brasilia%20Standard%20Time%29
+Tamanho do payload: 6447 caracteres
+
+Status: 200
+OK - Requisicao bem-sucedida!
+
+OK - Arquivo XLSX salvo: docs/health_events.xlsx
+Tamanho: 226681 bytes
+OK - Arquivo verificado e salvo com sucesso!
+OK - Arquivo de saúde salvo: docs/Sorocaba_Refrescos_health_events.xlsx
+
+Buscando registros de movimento para Sorocaba Refrescos...
+
+============================================================
+Exportando registros de movimento dos dispositivos...
+============================================================
+Periodo: 11/23/2025 ate 11/26/2025
+Enviando requisição para: https://portal.visioniot.net/Controllers/SmartDeviceMovement.ashx?v=Wed%20Nov%2026%202025%2000%3A00%3A00%20GMT%20%28Brasilia%20Standard%20Time%29
+Tamanho do payload: 6447 caracteres
+
+Status: 200
+OK - Requisicao bem-sucedida!
+
+OK - Arquivo XLSX salvo: docs/movements.xlsx
+Tamanho: 197439 bytes
+OK - Arquivo verificado e salvo com sucesso!
+OK - Arquivo de movimento salvo: docs/ABI_Brasil_movements.xlsx
+
+Buscando alerts para ABI Brasil...
+
+============================================================
+Exportando dados de Alerts...
+============================================================
+Período: 11/23/2025 até 11/26/2025
+Enviando requisição para: https://portal.visioniot.net/Controllers/Alert.ashx?v=Wed%20Nov%2026%202025%2000%3A00%3A00%20GMT%20%28Brasilia%20Standard%20Time%29
+Tamanho do payload: 6561 caracteres
+
+Status: 200
+OK - Requisicao bem-sucedida!
+
+OK - Arquivo XLSX salvo: docs/movements.xlsx
+Tamanho: 235032 bytes
+OK - Arquivo verificado e salvo com sucesso!
+OK - Arquivo de movimento salvo: docs/Sorocaba_Refrescos_movements.xlsx
+
+Buscando alerts para Sorocaba Refrescos...
+
+============================================================
+Exportando dados de Alerts...
+============================================================
+Período: 11/23/2025 até 11/26/2025
+Enviando requisição para: https://portal.visioniot.net/Controllers/Alert.ashx?v=Wed%20Nov%2026%202025%2000%3A00%3A00%20GMT%20%28Brasilia%20Standard%20Time%29
+Tamanho do payload: 6561 caracteres
+
+Status: 200
+OK - Requisição bem-sucedida!
+
+OK - Arquivo XLSX salvo: docs/alerts.xlsx
+Tamanho: 9113 bytes
+OK - Arquivo verificado e salvo com sucesso!
+OK - Arquivo de alerts salvo: docs/ABI_Brasil_alerts.xlsx
+
+Buscando door statuses para ABI Brasil...
+
+============================================================
+Exportando dados de Door Statuses...
+============================================================
+Período: 11/23/2025 até 11/26/2025
+Enviando requisição para: https://portal.visioniot.net/Controllers/SmartDeviceDoorStatus.ashx?v=Wed%20Nov%2026%202025%2000%3A00%3A00%20GMT%20%28Brasilia%20Standard%20Time%29
+Tamanho do payload: 6933 caracteres
+
+Status: 200
+OK - Requisição bem-sucedida!
+
+OK - Arquivo XLSX salvo: docs/alerts.xlsx
+Tamanho: 8395 bytes
+OK - Arquivo verificado e salvo com sucesso!
+OK - Arquivo de alerts salvo: docs/Sorocaba_Refrescos_alerts.xlsx
+
+Buscando door statuses para Sorocaba Refrescos...
+
+============================================================
+Exportando dados de Door Statuses...
+============================================================
+Período: 11/23/2025 até 11/26/2025
+Enviando requisição para: https://portal.visioniot.net/Controllers/SmartDeviceDoorStatus.ashx?v=Wed%20Nov%2026%202025%2000%3A00%3A00%20GMT%20%28Brasilia%20Standard%20Time%29
+Tamanho do payload: 6933 caracteres
+
+Status: 200
+OK - Requisição bem-sucedida!
+
+OK - Arquivo CSV salvo: docs/door_statuses.csv
+Tamanho: 250500 bytes
+OK - Arquivo verificado e salvo com sucesso!
+OK - Arquivo de door statuses salvo: docs/ABI_Brasil_door_statuses.csv
+
+Buscando users para ABI Brasil...
+
+============================================================
+Exportando dados de Users...
+============================================================
+Enviando requisição para: https://portal.visioniot.net/Controllers/SecurityAppUser.ashx?v=Tue%20Nov%2025%202025%2007%3A00%3A52%20GMT%20%28Brasilia%20Standard%20Time%29
+Tamanho do payload: 4663 caracteres
+
+Status: 200
+OK - Requisição bem-sucedida!
+
+OK - Arquivo XLSX salvo: docs/users.xlsx
+Tamanho: 535790 bytes
+OK - Arquivo verificado e salvo com sucesso!
+OK - Arquivo de users salvo: docs/ABI_Brasil_users.xlsx
+
+Fazendo logout de ABI Brasil...
+
+============================================================
+Fazendo logout...
+============================================================
+Status: 200
+OK - Logout realizado com sucesso!
+OK - Cookies limpos da sessao
+
+============================================================
+DOWNLOAD DIÁRIO COMPLETO - ABI Brasil
+============================================================
+Health Events: docs/ABI_Brasil_health_events.xlsx
+Movements: docs/ABI_Brasil_movements.xlsx
+Alerts: docs/ABI_Brasil_alerts.xlsx
+Door Statuses: docs/ABI_Brasil_door_statuses.csv
+Users: docs/ABI_Brasil_users.xlsx
+
+Todos os dados diários de ABI Brasil foram baixados com sucesso!
+Para inserir no banco de dados, execute: python3 import_all_data.py
+
+>>> CONCLUSÃO: ABI Brasil finalizado com SUCESSO
+
+Status: 200
+OK - Requisição bem-sucedida!
+
+OK - Arquivo CSV salvo: docs/door_statuses.csv
+Tamanho: 581886 bytes
+OK - Arquivo verificado e salvo com sucesso!
+OK - Arquivo de door statuses salvo: docs/Sorocaba_Refrescos_door_statuses.csv
+
+Buscando users para Sorocaba Refrescos...
+
+============================================================
+Exportando dados de Users...
+============================================================
+Enviando requisição para: https://portal.visioniot.net/Controllers/SecurityAppUser.ashx?v=Tue%20Nov%2025%202025%2007%3A01%3A12%20GMT%20%28Brasilia%20Standard%20Time%29
+Tamanho do payload: 4663 caracteres
+
+Status: 200
+OK - Requisição bem-sucedida!
+
+OK - Arquivo XLSX salvo: docs/users.xlsx
+Tamanho: 40949 bytes
+OK - Arquivo verificado e salvo com sucesso!
+OK - Arquivo de users salvo: docs/Sorocaba_Refrescos_users.xlsx
+
+Fazendo logout de Sorocaba Refrescos...
+
+============================================================
+Fazendo logout...
+============================================================
+Status: 200
+OK - Logout realizado com sucesso!
+OK - Cookies limpos da sessao
+
+============================================================
+DOWNLOAD DIÁRIO COMPLETO - Sorocaba Refrescos
+============================================================
+Health Events: docs/Sorocaba_Refrescos_health_events.xlsx
+Movements: docs/Sorocaba_Refrescos_movements.xlsx
+Alerts: docs/Sorocaba_Refrescos_alerts.xlsx
+Door Statuses: docs/Sorocaba_Refrescos_door_statuses.csv
+Users: docs/Sorocaba_Refrescos_users.xlsx
+
+Todos os dados diários de Sorocaba Refrescos foram baixados com sucesso!
+Para inserir no banco de dados, execute: python3 import_all_data.py
+
+>>> CONCLUSÃO: Sorocaba Refrescos finalizado com SUCESSO
+
+================================================================================
+RESUMO FINAL - TODOS OS CLIENTES (DAILY)
+================================================================================
+ABI Brasil: ✓ SUCESSO
+Sorocaba Refrescos: ✓ SUCESSO
+
+Total processado: 2/2 clientes com sucesso
+✓ Todos os clientes processados com sucesso!
+
+============================================================
+INICIANDO IMPORTAÇÃO AUTOMÁTICA DOS DADOS
+============================================================
+✓ Importação automática concluída com sucesso!
+
+Saída da importação:
+
+================================================================================
+🚀 IMPORTAÇÃO EM LOTE OTIMIZADA (MULTIPROCESSING) - PORTAL ASSOCIAÇÃO
+================================================================================
+
+📂 Encontrados 10 arquivo(s) para importação.
+⚙️  Utilizando 4 processos paralelos.
+
+🚀 [PID 470836] Iniciando ABI_Brasil_movements.xlsx (Movement)...
+🚀 Iniciando importação para Movement...
+⚙️ Processando 1152 registros...
+✅ Processados 1152 registros válidos para inserção
+   ↳ Lote 1: 1152 registros processados.
+✅ Movement importado. Total processado (Insert/Update): 1152
+🔄 Atualizando Materialized Views...
+🚀 [PID 470836] Iniciando Sorocaba_Refrescos_users.xlsx (User)...
+🚀 Iniciando importação para User...
+⚙️ Processando 264 registros...
+✅ Processados 264 registros válidos para inserção
+   ↳ Lote 1: 264 registros processados.
+✅ User importado. Total processado (Insert/Update): 264
+🚀 [PID 470834] Iniciando ABI_Brasil_door_statuses.csv (DoorEvent)...
+🚀 Iniciando importação para DoorEvent...
+⚙️ Processando 186 registros...
+✅ Processados 0 registros válidos para inserção
+⚠️ Nenhum registro válido para importar.
+🚀 [PID 470834] Iniciando ABI_Brasil_users.xlsx (User)...
+🚀 Iniciando importação para User...
+⚙️ Processando 4690 registros...
+✅ Processados 4690 registros válidos para inserção
+   ↳ Lote 1: 4690 registros processados.
+✅ User importado. Total processado (Insert/Update): 4690
+🚀 [PID 470834] Iniciando Sorocaba_Refrescos_alerts.xlsx (Alert)...
+🚀 Iniciando importação para Alert...
+⚙️ Processando 4 registros...
+✅ Processados 4 registros válidos para inserção
+   ↳ Lote 1: 4 registros processados.
+✅ Alert importado. Total processado (Insert/Update): 4
+🔄 Atualizando Materialized Views...
+🚀 [PID 470835] Iniciando ABI_Brasil_health_events.xlsx (HealthEvent)...
+🚀 Iniciando importação para HealthEvent...
+⚙️ Processando 294 registros...
+✅ Processados 294 registros válidos para inserção
+   ↳ Lote 1: 294 registros processados.
+✅ HealthEvent importado. Total processado (Insert/Update): 294
+🔄 Atualizando Materialized Views...
+🚀 [PID 470835] Iniciando Sorocaba_Refrescos_movements.xlsx (Movement)...
+🚀 Iniciando importação para Movement...
+⚙️ Processando 1338 registros...
+✅ Processados 1338 registros válidos para inserção
+   ↳ Lote 1: 1338 registros processados.
+✅ Movement importado. Total processado (Insert/Update): 1338
+🔄 Atualizando Materialized Views...
+🚀 [PID 470833] Iniciando ABI_Brasil_alerts.xlsx (Alert)...
+🚀 Iniciando importação para Alert...
+⚙️ Processando 10 registros...
+✅ Processados 10 registros válidos para inserção
+   ↳ Lote 1: 10 registros processados.
+✅ Alert importado. Total processado (Insert/Update): 10
+🔄 Atualizando Materialized Views...
+🚀 [PID 470833] Iniciando Sorocaba_Refrescos_door_statuses.csv (DoorEvent)...
+🚀 Iniciando importação para DoorEvent...
+⚙️ Processando 158 registros...
+✅ Processados 0 registros válidos para inserção
+⚠️ Nenhum registro válido para importar.
+🚀 [PID 470833] Iniciando Sorocaba_Refrescos_health_events.xlsx (HealthEvent)...
+🚀 Iniciando importação para HealthEvent...
+⚙️ Processando 1072 registros...
+✅ Processados 1072 registros válidos para inserção
+   ↳ Lote 1: 1072 registros processados.
+✅ HealthEvent importado. Total processado (Insert/Update): 1072
+🔄 Atualizando Materialized Views...
+✅ ABI_Brasil_door_statuses.csv: Sucesso. (Arquivo deletado)
+✅ ABI_Brasil_users.xlsx: Sucesso. (Arquivo deletado)
+✅ ABI_Brasil_alerts.xlsx: Sucesso. (Arquivo deletado)
+✅ Sorocaba_Refrescos_door_statuses.csv: Sucesso. (Arquivo deletado)
+✅ ABI_Brasil_health_events.xlsx: Sucesso. (Arquivo deletado)
+✅ ABI_Brasil_movements.xlsx: Sucesso. (Arquivo deletado)
+✅ Sorocaba_Refrescos_users.xlsx: Sucesso. (Arquivo deletado)
+✅ Sorocaba_Refrescos_alerts.xlsx: Sucesso. (Arquivo deletado)
+✅ Sorocaba_Refrescos_movements.xlsx: Sucesso. (Arquivo deletado)
+✅ Sorocaba_Refrescos_health_events.xlsx: Sucesso. (Arquivo deletado)
+
+⏱️  Tempo total: 41.32 segundos
+📊 Resumo: 10/10 arquivos importados com sucesso
+
+🔄 Atualizando Materialized Views finais...
+✅ Materialized Views atualizadas.
+
+[2025-11-25 07:02:02] ✓ Scraping concluído com sucesso
+[2025-11-25 07:02:02] ============================================
+[2025-11-25 07:02:02] Scraping diário finalizado
+[2025-11-25 07:02:02] ============================================
+[2025-11-26 07:00:01] ============================================
+[2025-11-26 07:00:01] Iniciando scraping paralelo diário
+[2025-11-26 07:00:01] ============================================
+[2025-11-26 07:00:01] Venv ativado com sucesso
+[2025-11-26 07:00:01] Navegado para /home/vivaservicesai/htdocs/app
+[2025-11-26 07:00:01] Executando: python3 utils/scraping_parallel.py daily 2
+INICIANDO SCRAPING PARALELO (DAILY) - Max Workers: 2
+================================================================================
+Encontradas 3 contas para processar:
+  - ABI Brasil (Username: abib_493)
+  - Sorocaba Refrescos (Username: sorocaba_215)
+  - Fogel de Centroamerica, S.A. (Username: fgl_426)
+
+Iniciando processamento paralelo...
+
+================================================================================
+PROCESSANDO CLIENTE (DADOS DIÁRIOS): ABI Brasil (Username: abib_493)
+================================================================================
+Passo 1: Fazendo GET inicial para estabelecer sessao para abib_493...
+
+================================================================================
+PROCESSANDO CLIENTE (DADOS DIÁRIOS): Sorocaba Refrescos (Username: sorocaba_215)
+================================================================================
+Passo 1: Fazendo GET inicial para estabelecer sessao para sorocaba_215...
+GET Status: 200
+
+Passo 2: Fazendo POST com credenciais...
+GET Status: 200
+
+Passo 2: Fazendo POST com credenciais...
+Login Status: 302
+OK - Login bem-sucedido! Seguindo redirect...
+Login Status: 302
+OK - Login bem-sucedido! Seguindo redirect...
+Default Page Status: 200
+Login realizado com sucesso para Sorocaba Refrescos
+
+Buscando registros de saúde para Sorocaba Refrescos...
+
+============================================================
+Exportando registros de saúde dos dispositivos...
+============================================================
+Período: 11/24/2025 até 11/27/2025
+Enviando requisição para: https://portal.visioniot.net/Controllers/SmartDeviceHealthRecord.ashx?v=Thu%20Nov%2027%202025%2000%3A00%3A00%20GMT%20%28Brasilia%20Standard%20Time%29
+Tamanho do payload: 9754 caracteres
+Default Page Status: 200
+Login realizado com sucesso para ABI Brasil
+
+Buscando registros de saúde para ABI Brasil...
+
+============================================================
+Exportando registros de saúde dos dispositivos...
+============================================================
+Período: 11/24/2025 até 11/27/2025
+Enviando requisição para: https://portal.visioniot.net/Controllers/SmartDeviceHealthRecord.ashx?v=Thu%20Nov%2027%202025%2000%3A00%3A00%20GMT%20%28Brasilia%20Standard%20Time%29
+Tamanho do payload: 9754 caracteres
+
+Status: 200
+OK - Requisicao bem-sucedida!
+
+OK - Arquivo XLSX salvo: docs/health_events.xlsx
+Tamanho: 83782 bytes
+OK - Arquivo verificado e salvo com sucesso!
+OK - Arquivo de saúde salvo: docs/ABI_Brasil_health_events.xlsx
+
+Buscando registros de movimento para ABI Brasil...
+
+============================================================
+Exportando registros de movimento dos dispositivos...
+============================================================
+Periodo: 11/24/2025 ate 11/27/2025
+Enviando requisição para: https://portal.visioniot.net/Controllers/SmartDeviceMovement.ashx?v=Thu%20Nov%2027%202025%2000%3A00%3A00%20GMT%20%28Brasilia%20Standard%20Time%29
+Tamanho do payload: 6447 caracteres
+
+Status: 200
+OK - Requisicao bem-sucedida!
+
+OK - Arquivo XLSX salvo: docs/health_events.xlsx
+Tamanho: 606900 bytes
+OK - Arquivo verificado e salvo com sucesso!
+OK - Arquivo de saúde salvo: docs/Sorocaba_Refrescos_health_events.xlsx
+
+Buscando registros de movimento para Sorocaba Refrescos...
+
+============================================================
+Exportando registros de movimento dos dispositivos...
+============================================================
+Periodo: 11/24/2025 ate 11/27/2025
+Enviando requisição para: https://portal.visioniot.net/Controllers/SmartDeviceMovement.ashx?v=Thu%20Nov%2027%202025%2000%3A00%3A00%20GMT%20%28Brasilia%20Standard%20Time%29
+Tamanho do payload: 6447 caracteres
+
+Status: 200
+OK - Requisicao bem-sucedida!
+
+OK - Arquivo XLSX salvo: docs/movements.xlsx
+Tamanho: 259913 bytes
+OK - Arquivo verificado e salvo com sucesso!
+OK - Arquivo de movimento salvo: docs/ABI_Brasil_movements.xlsx
+
+Buscando alerts para ABI Brasil...
+
+============================================================
+Exportando dados de Alerts...
+============================================================
+Período: 11/24/2025 até 11/27/2025
+Enviando requisição para: https://portal.visioniot.net/Controllers/Alert.ashx?v=Thu%20Nov%2027%202025%2000%3A00%3A00%20GMT%20%28Brasilia%20Standard%20Time%29
+Tamanho do payload: 6561 caracteres
+
+Status: 200
+OK - Requisicao bem-sucedida!
+
+OK - Arquivo XLSX salvo: docs/movements.xlsx
+Tamanho: 617697 bytes
+OK - Arquivo verificado e salvo com sucesso!
+OK - Arquivo de movimento salvo: docs/Sorocaba_Refrescos_movements.xlsx
+
+Buscando alerts para Sorocaba Refrescos...
+
+============================================================
+Exportando dados de Alerts...
+============================================================
+Período: 11/24/2025 até 11/27/2025
+Enviando requisição para: https://portal.visioniot.net/Controllers/Alert.ashx?v=Thu%20Nov%2027%202025%2000%3A00%3A00%20GMT%20%28Brasilia%20Standard%20Time%29
+Tamanho do payload: 6561 caracteres
+
+Status: 200
+OK - Requisição bem-sucedida!
+
+OK - Arquivo XLSX salvo: docs/alerts.xlsx
+Tamanho: 9723 bytes
+OK - Arquivo verificado e salvo com sucesso!
+OK - Arquivo de alerts salvo: docs/Sorocaba_Refrescos_alerts.xlsx
+
+Buscando door statuses para Sorocaba Refrescos...
+
+============================================================
+Exportando dados de Door Statuses...
+============================================================
+Período: 11/24/2025 até 11/27/2025
+Enviando requisição para: https://portal.visioniot.net/Controllers/SmartDeviceDoorStatus.ashx?v=Thu%20Nov%2027%202025%2000%3A00%3A00%20GMT%20%28Brasilia%20Standard%20Time%29
+Tamanho do payload: 6933 caracteres
+
+Status: 200
+OK - Requisição bem-sucedida!
+
+OK - Arquivo XLSX salvo: docs/alerts.xlsx
+Tamanho: 10392 bytes
+OK - Arquivo verificado e salvo com sucesso!
+OK - Arquivo de alerts salvo: docs/ABI_Brasil_alerts.xlsx
+
+Buscando door statuses para ABI Brasil...
+
+============================================================
+Exportando dados de Door Statuses...
+============================================================
+Período: 11/24/2025 até 11/27/2025
+Enviando requisição para: https://portal.visioniot.net/Controllers/SmartDeviceDoorStatus.ashx?v=Thu%20Nov%2027%202025%2000%3A00%3A00%20GMT%20%28Brasilia%20Standard%20Time%29
+Tamanho do payload: 6933 caracteres
+
+Status: 200
+OK - Requisição bem-sucedida!
+
+OK - Arquivo CSV salvo: docs/door_statuses.csv
+Tamanho: 340722 bytes
+OK - Arquivo verificado e salvo com sucesso!
+OK - Arquivo de door statuses salvo: docs/ABI_Brasil_door_statuses.csv
+
+Buscando users para ABI Brasil...
+
+============================================================
+Exportando dados de Users...
+============================================================
+Enviando requisição para: https://portal.visioniot.net/Controllers/SecurityAppUser.ashx?v=Wed%20Nov%2026%202025%2007%3A00%3A49%20GMT%20%28Brasilia%20Standard%20Time%29
+Tamanho do payload: 4663 caracteres
+
+Status: 200
+OK - Requisição bem-sucedida!
+
+OK - Arquivo CSV salvo: docs/door_statuses.csv
+Tamanho: 1467490 bytes
+OK - Arquivo verificado e salvo com sucesso!
+OK - Arquivo de door statuses salvo: docs/Sorocaba_Refrescos_door_statuses.csv
+
+Buscando users para Sorocaba Refrescos...
+
+============================================================
+Exportando dados de Users...
+============================================================
+Enviando requisição para: https://portal.visioniot.net/Controllers/SecurityAppUser.ashx?v=Wed%20Nov%2026%202025%2007%3A01%3A04%20GMT%20%28Brasilia%20Standard%20Time%29
+Tamanho do payload: 4663 caracteres
+
+Status: 200
+OK - Requisição bem-sucedida!
+
+OK - Arquivo XLSX salvo: docs/users.xlsx
+Tamanho: 535723 bytes
+OK - Arquivo verificado e salvo com sucesso!
+OK - Arquivo de users salvo: docs/ABI_Brasil_users.xlsx
+
+Fazendo logout de ABI Brasil...
+
+============================================================
+Fazendo logout...
+============================================================
+
+Status: 200
+OK - Requisição bem-sucedida!
+
+OK - Arquivo XLSX salvo: docs/users.xlsx
+Tamanho: 40952 bytes
+OK - Arquivo verificado e salvo com sucesso!
+OK - Arquivo de users salvo: docs/Sorocaba_Refrescos_users.xlsx
+
+Fazendo logout de Sorocaba Refrescos...
+
+============================================================
+Fazendo logout...
+============================================================
+Status: 200
+OK - Logout realizado com sucesso!
+OK - Cookies limpos da sessao
+
+============================================================
+DOWNLOAD DIÁRIO COMPLETO - ABI Brasil
+============================================================
+Health Events: docs/ABI_Brasil_health_events.xlsx
+Movements: docs/ABI_Brasil_movements.xlsx
+Alerts: docs/ABI_Brasil_alerts.xlsx
+Door Statuses: docs/ABI_Brasil_door_statuses.csv
+Users: docs/ABI_Brasil_users.xlsx
+
+Todos os dados diários de ABI Brasil foram baixados com sucesso!
+Para inserir no banco de dados, execute: python3 import_all_data.py
+
+================================================================================
+PROCESSANDO CLIENTE (DADOS DIÁRIOS): Fogel de Centroamerica, S.A. (Username: fgl_426)
+================================================================================
+Passo 1: Fazendo GET inicial para estabelecer sessao para fgl_426...
+
+>>> CONCLUSÃO: ABI Brasil finalizado com SUCESSO
+Status: 200
+OK - Logout realizado com sucesso!
+OK - Cookies limpos da sessao
+
+============================================================
+DOWNLOAD DIÁRIO COMPLETO - Sorocaba Refrescos
+============================================================
+Health Events: docs/Sorocaba_Refrescos_health_events.xlsx
+Movements: docs/Sorocaba_Refrescos_movements.xlsx
+Alerts: docs/Sorocaba_Refrescos_alerts.xlsx
+Door Statuses: docs/Sorocaba_Refrescos_door_statuses.csv
+Users: docs/Sorocaba_Refrescos_users.xlsx
+
+Todos os dados diários de Sorocaba Refrescos foram baixados com sucesso!
+Para inserir no banco de dados, execute: python3 import_all_data.py
+
+>>> CONCLUSÃO: Sorocaba Refrescos finalizado com SUCESSO
+GET Status: 200
+
+Passo 2: Fazendo POST com credenciais...
+Login Status: 302
+OK - Login bem-sucedido! Seguindo redirect...
+Default Page Status: 200
+Login realizado com sucesso para Fogel de Centroamerica, S.A.
+
+Buscando registros de saúde para Fogel de Centroamerica, S.A....
+
+============================================================
+Exportando registros de saúde dos dispositivos...
+============================================================
+Período: 11/24/2025 até 11/27/2025
+Enviando requisição para: https://portal.visioniot.net/Controllers/SmartDeviceHealthRecord.ashx?v=Thu%20Nov%2027%202025%2000%3A00%3A00%20GMT%20%28Brasilia%20Standard%20Time%29
+Tamanho do payload: 9754 caracteres
+
+Status: 200
+OK - Requisicao bem-sucedida!
+
+OK - Arquivo XLSX salvo: docs/health_events.xlsx
+Tamanho: 9142 bytes
+OK - Arquivo verificado e salvo com sucesso!
+OK - Arquivo de saúde salvo: docs/Fogel_de_Centroamerica,_S.A._health_events.xlsx
+
+Buscando registros de movimento para Fogel de Centroamerica, S.A....
+
+============================================================
+Exportando registros de movimento dos dispositivos...
+============================================================
+Periodo: 11/24/2025 ate 11/27/2025
+Enviando requisição para: https://portal.visioniot.net/Controllers/SmartDeviceMovement.ashx?v=Thu%20Nov%2027%202025%2000%3A00%3A00%20GMT%20%28Brasilia%20Standard%20Time%29
+Tamanho do payload: 6447 caracteres
+
+Status: 200
+OK - Requisicao bem-sucedida!
+
+OK - Arquivo XLSX salvo: docs/movements.xlsx
+Tamanho: 6500 bytes
+OK - Arquivo verificado e salvo com sucesso!
+OK - Arquivo de movimento salvo: docs/Fogel_de_Centroamerica,_S.A._movements.xlsx
+
+Buscando alerts para Fogel de Centroamerica, S.A....
+
+============================================================
+Exportando dados de Alerts...
+============================================================
+Período: 11/24/2025 até 11/27/2025
+Enviando requisição para: https://portal.visioniot.net/Controllers/Alert.ashx?v=Thu%20Nov%2027%202025%2000%3A00%3A00%20GMT%20%28Brasilia%20Standard%20Time%29
+Tamanho do payload: 6561 caracteres
+
+Status: 200
+OK - Requisição bem-sucedida!
+
+OK - Arquivo XLSX salvo: docs/alerts.xlsx
+Tamanho: 6595 bytes
+OK - Arquivo verificado e salvo com sucesso!
+OK - Arquivo de alerts salvo: docs/Fogel_de_Centroamerica,_S.A._alerts.xlsx
+
+Buscando door statuses para Fogel de Centroamerica, S.A....
+
+============================================================
+Exportando dados de Door Statuses...
+============================================================
+Período: 11/24/2025 até 11/27/2025
+Enviando requisição para: https://portal.visioniot.net/Controllers/SmartDeviceDoorStatus.ashx?v=Thu%20Nov%2027%202025%2000%3A00%3A00%20GMT%20%28Brasilia%20Standard%20Time%29
+Tamanho do payload: 6933 caracteres
+
+Status: 200
+OK - Requisição bem-sucedida!
+
+OK - Arquivo CSV salvo: docs/door_statuses.csv
+Tamanho: 1314 bytes
+OK - Arquivo verificado e salvo com sucesso!
+OK - Arquivo de door statuses salvo: docs/Fogel_de_Centroamerica,_S.A._door_statuses.csv
+
+Buscando users para Fogel de Centroamerica, S.A....
+
+============================================================
+Exportando dados de Users...
+============================================================
+Enviando requisição para: https://portal.visioniot.net/Controllers/SecurityAppUser.ashx?v=Wed%20Nov%2026%202025%2007%3A01%3A34%20GMT%20%28Brasilia%20Standard%20Time%29
+Tamanho do payload: 4663 caracteres
+
+Status: 200
+OK - Requisição bem-sucedida!
+
+OK - Arquivo XLSX salvo: docs/users.xlsx
+Tamanho: 6863 bytes
+OK - Arquivo verificado e salvo com sucesso!
+OK - Arquivo de users salvo: docs/Fogel_de_Centroamerica,_S.A._users.xlsx
+
+Fazendo logout de Fogel de Centroamerica, S.A....
+
+============================================================
+Fazendo logout...
+============================================================
+Status: 200
+OK - Logout realizado com sucesso!
+OK - Cookies limpos da sessao
+
+============================================================
+DOWNLOAD DIÁRIO COMPLETO - Fogel de Centroamerica, S.A.
+============================================================
+Health Events: docs/Fogel_de_Centroamerica,_S.A._health_events.xlsx
+Movements: docs/Fogel_de_Centroamerica,_S.A._movements.xlsx
+Alerts: docs/Fogel_de_Centroamerica,_S.A._alerts.xlsx
+Door Statuses: docs/Fogel_de_Centroamerica,_S.A._door_statuses.csv
+Users: docs/Fogel_de_Centroamerica,_S.A._users.xlsx
+
+Todos os dados diários de Fogel de Centroamerica, S.A. foram baixados com sucesso!
+Para inserir no banco de dados, execute: python3 import_all_data.py
+
+>>> CONCLUSÃO: Fogel de Centroamerica, S.A. finalizado com SUCESSO
+
+================================================================================
+RESUMO FINAL - TODOS OS CLIENTES (DAILY)
+================================================================================
+ABI Brasil: ✓ SUCESSO
+Sorocaba Refrescos: ✓ SUCESSO
+Fogel de Centroamerica, S.A.: ✓ SUCESSO
+
+Total processado: 3/3 clientes com sucesso
+✓ Todos os clientes processados com sucesso!
+
+============================================================
+INICIANDO IMPORTAÇÃO AUTOMÁTICA DOS DADOS
+============================================================
+✓ Importação automática concluída com sucesso!
+
+Saída da importação:
+
+================================================================================
+🚀 IMPORTAÇÃO EM LOTE OTIMIZADA (MULTIPROCESSING) - PORTAL ASSOCIAÇÃO
+================================================================================
+
+📂 Encontrados 15 arquivo(s) para importação.
+⚙️  Utilizando 4 processos paralelos.
+
+🚀 [PID 535069] Iniciando ABI_Brasil_movements.xlsx (Movement)...
+🚀 Iniciando importação para Movement...
+⚙️ Processando 1508 registros...
+✅ Processados 1508 registros válidos para inserção
+   ↳ Lote 1: 1508 registros processados.
+✅ Movement importado. Total processado (Insert/Update): 1508
+🔄 Atualizando Materialized Views...
+🚀 [PID 535069] Iniciando Sorocaba_Refrescos_movements.xlsx (Movement)...
+🚀 Iniciando importação para Movement...
+⚙️ Processando 3747 registros...
+✅ Processados 3747 registros válidos para inserção
+   ↳ Lote 1: 3747 registros processados.
+✅ Movement importado. Total processado (Insert/Update): 3747
+🔄 Atualizando Materialized Views...
+🚀 [PID 535068] Iniciando ABI_Brasil_health_events.xlsx (HealthEvent)...
+🚀 Iniciando importação para HealthEvent...
+⚙️ Processando 380 registros...
+✅ Processados 380 registros válidos para inserção
+   ↳ Lote 1: 380 registros processados.
+✅ HealthEvent importado. Total processado (Insert/Update): 380
+🔄 Atualizando Materialized Views...
+🚀 [PID 535068] Iniciando Sorocaba_Refrescos_door_statuses.csv (DoorEvent)...
+🚀 Iniciando importação para DoorEvent...
+⚙️ Processando 1668 registros...
+✅ Processados 0 registros válidos para inserção
+⚠️ Nenhum registro válido para importar.
+🚀 [PID 535068] Iniciando Sorocaba_Refrescos_health_events.xlsx (HealthEvent)...
+🚀 Iniciando importação para HealthEvent...
+⚙️ Processando 2982 registros...
+✅ Processados 2982 registros válidos para inserção
+   ↳ Lote 1: 2982 registros processados.
+✅ HealthEvent importado. Total processado (Insert/Update): 2982
+🔄 Atualizando Materialized Views...
+🚀 [PID 535066] Iniciando ABI_Brasil_alerts.xlsx (Alert)...
+🚀 Iniciando importação para Alert...
+⚙️ Processando 16 registros...
+✅ Processados 16 registros válidos para inserção
+   ↳ Lote 1: 16 registros processados.
+✅ Alert importado. Total processado (Insert/Update): 16
+🔄 Atualizando Materialized Views...
+🚀 [PID 535066] Iniciando Fogel_de_Centroamerica,_S.A._movements.xlsx (Movement)...
+🚀 Iniciando importação para Movement...
+⚙️ Processando 0 registros...
+✅ Processados 0 registros válidos para inserção
+⚠️ Nenhum registro válido para importar.
+🚀 [PID 535066] Iniciando Fogel_de_Centroamerica,_S.A._users.xlsx (User)...
+🚀 Iniciando importação para User...
+⚙️ Processando 3 registros...
+✅ Processados 3 registros válidos para inserção
+   ↳ Lote 1: 3 registros processados.
+✅ User importado. Total processado (Insert/Update): 3
+🚀 [PID 535066] Iniciando Sorocaba_Refrescos_alerts.xlsx (Alert)...
+🚀 Iniciando importação para Alert...
+⚙️ Processando 9 registros...
+✅ Processados 9 registros válidos para inserção
+   ↳ Lote 1: 9 registros processados.
+✅ Alert importado. Total processado (Insert/Update): 9
+🔄 Atualizando Materialized Views...
+🚀 [PID 535067] Iniciando ABI_Brasil_door_statuses.csv (DoorEvent)...
+🚀 Iniciando importação para DoorEvent...
+⚙️ Processando 329 registros...
+✅ Processados 0 registros válidos para inserção
+⚠️ Nenhum registro válido para importar.
+🚀 [PID 535067] Iniciando ABI_Brasil_users.xlsx (User)...
+🚀 Iniciando importação para User...
+⚙️ Processando 4690 registros...
+✅ Processados 4690 registros válidos para inserção
+   ↳ Lote 1: 4690 registros processados.
+✅ User importado. Total processado (Insert/Update): 4690
+🚀 [PID 535067] Iniciando Fogel_de_Centroamerica,_S.A._alerts.xlsx (Alert)...
+🚀 Iniciando importação para Alert...
+⚙️ Processando 0 registros...
+✅ Processados 0 registros válidos para inserção
+⚠️ Nenhum registro válido para importar.
+🚀 [PID 535067] Iniciando Fogel_de_Centroamerica,_S.A._door_statuses.csv (DoorEvent)...
+🚀 Iniciando importação para DoorEvent...
+⚙️ Processando 0 registros...
+✅ Processados 0 registros válidos para inserção
+⚠️ Nenhum registro válido para importar.
+🚀 [PID 535067] Iniciando Fogel_de_Centroamerica,_S.A._health_events.xlsx (HealthEvent)...
+🚀 Iniciando importação para HealthEvent...
+⚙️ Processando 11 registros...
+✅ Processados 11 registros válidos para inserção
+   ↳ Lote 1: 11 registros processados.
+✅ HealthEvent importado. Total processado (Insert/Update): 11
+🔄 Atualizando Materialized Views...
+🚀 [PID 535067] Iniciando Sorocaba_Refrescos_users.xlsx (User)...
+🚀 Iniciando importação para User...
+⚙️ Processando 264 registros...
+✅ Processados 264 registros válidos para inserção
+   ↳ Lote 1: 264 registros processados.
+✅ User importado. Total processado (Insert/Update): 264
+✅ ABI_Brasil_door_statuses.csv: Sucesso. (Arquivo deletado)
+✅ ABI_Brasil_users.xlsx: Sucesso. (Arquivo deletado)
+✅ Fogel_de_Centroamerica,_S.A._alerts.xlsx: Sucesso. (Arquivo deletado)
+✅ Fogel_de_Centroamerica,_S.A._door_statuses.csv: Sucesso. (Arquivo deletado)
+✅ ABI_Brasil_alerts.xlsx: Sucesso. (Arquivo deletado)
+✅ Fogel_de_Centroamerica,_S.A._movements.xlsx: Sucesso. (Arquivo deletado)
+✅ Fogel_de_Centroamerica,_S.A._users.xlsx: Sucesso. (Arquivo deletado)
+✅ ABI_Brasil_health_events.xlsx: Sucesso. (Arquivo deletado)
+✅ Sorocaba_Refrescos_door_statuses.csv: Sucesso. (Arquivo deletado)
+✅ ABI_Brasil_movements.xlsx: Sucesso. (Arquivo deletado)
+✅ Fogel_de_Centroamerica,_S.A._health_events.xlsx: Sucesso. (Arquivo deletado)
+✅ Sorocaba_Refrescos_users.xlsx: Sucesso. (Arquivo deletado)
+✅ Sorocaba_Refrescos_movements.xlsx: Sucesso. (Arquivo deletado)
+✅ Sorocaba_Refrescos_health_events.xlsx: Sucesso. (Arquivo deletado)
+✅ Sorocaba_Refrescos_alerts.xlsx: Sucesso. (Arquivo deletado)
+
+⏱️  Tempo total: 18604.72 segundos
+📊 Resumo: 15/15 arquivos importados com sucesso
+
+🔄 Atualizando Materialized Views finais...
+✅ Materialized Views atualizadas.
+
+[2025-11-26 12:11:50] ✓ Scraping concluído com sucesso
+[2025-11-26 12:11:50] ============================================
+[2025-11-26 12:11:50] Scraping diário finalizado
+[2025-11-26 12:11:50] ============================================
+[2025-11-27 07:00:01] ============================================
+[2025-11-27 07:00:01] Iniciando scraping paralelo diário
+[2025-11-27 07:00:01] ============================================
+[2025-11-27 07:00:01] Venv ativado com sucesso
+[2025-11-27 07:00:01] Navegado para /home/vivaservicesai/htdocs/app
+[2025-11-27 07:00:01] Executando: python3 utils/scraping_parallel.py daily 2
+Traceback (most recent call last):
+  File "/home/vivaservicesai/htdocs/app/utils/scraping_parallel.py", line 13, in <module>
+    from utils.scraping import (
+ModuleNotFoundError: No module named 'utils.scraping'
+[2025-11-27 07:00:01] ✗ Scraping falhou com erro
+[2025-11-27 07:00:01] ============================================
+[2025-11-27 07:00:01] Scraping diário finalizado
+[2025-11-27 07:00:01] ============================================

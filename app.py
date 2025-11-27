@@ -12,7 +12,8 @@ from routes.portal.users import users_bp as portal_users_bp
 from routes.portal.outlets import outlets_bp as portal_outlets_bp
 from routes.portal.assets import assets_bp as portal_assets_bp
 from routes.portal.smartdevices import smartdevices_bp as portal_smartdevices_bp
-from routes.portal.tracking import tracking_bp as portal_tracking_bp
+from routes.portal.tracking import tracking_bp as portal_tracking_bp, SIMPLE_TRACKING_AUTHORIZED_CLIENTS
+from routes.portal.alerts import alerts_bp as portal_alerts_bp
 from utils.vision_accounts import create_accounts_for_all_clients
 from swagger import register_swagger
 
@@ -24,12 +25,50 @@ app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-secret-key")
 def inject_user():
     """Inject user information into template context"""
     user_data = {}
+    client_code = None
+
     if "user" in session:
         user = session["user"]
         user_data["user"] = user  # Add full user object
         user_data["user_name"] = f"{user.get('first_name', '')} {user.get('last_name', '')}".strip()
         user_data["user_email"] = user.get("email", "")
+        client_code = user.get("client")
+
+    # Add function to check if client has access to simple tracking
+    user_data["is_simple_tracking_authorized"] = client_code in SIMPLE_TRACKING_AUTHORIZED_CLIENTS
+
     return user_data
+
+
+@app.context_processor
+def inject_theme():
+    """Inject site theme variables into templates with Viva AI brand colors (can be overridden via environment variables)."""
+    theme = {
+        'primary': os.getenv('THEME_PRIMARY', '#00C3FF'),  # Azul Elétrico
+        'primary_dark': os.getenv('THEME_PRIMARY_DARK', '#4C3AFF'),  # Roxo Inteligência
+        'accent': os.getenv('THEME_ACCENT', '#00F5B5'),  # Verde Ação
+        'secondary': os.getenv('THEME_SECONDARY', '#008CFF'),  # Azul Neon
+        'success': os.getenv('THEME_SUCCESS', '#00F5B5'),  # Verde Ação
+        'danger': os.getenv('THEME_DANGER', '#FFC93C'),  # Amarelo Atenção
+        'warning': os.getenv('THEME_WARNING', '#FFC93C'),  # Amarelo Atenção
+        'light': os.getenv('THEME_LIGHT', '#F5F5F7'),
+        'darker': os.getenv('THEME_DARKER', '#0A1F44'),  # Azul Profundo
+        'border_color': os.getenv('THEME_BORDER', '#D0D0D0'),
+        'bg_light': os.getenv('THEME_BG_LIGHT', '#f5f5f5'),
+        'text_dark': os.getenv('THEME_TEXT_DARK', '#1C1C1E'),
+        'text_gray': os.getenv('THEME_TEXT_GRAY', '#8E8E93'),
+        'text_tertiary': os.getenv('THEME_TEXT_TERTIARY', '#C7C7CC'),
+        'spacing_xs': os.getenv('THEME_SPACING_XS', '0.5rem'),
+        'spacing_sm': os.getenv('THEME_SPACING_SM', '0.75rem'),
+        'spacing_md': os.getenv('THEME_SPACING_MD', '1rem'),
+        'spacing_lg': os.getenv('THEME_SPACING_LG', '1.25rem'),
+        'spacing_xl': os.getenv('THEME_SPACING_XL', '1.5rem'),
+        'radius_sm': os.getenv('THEME_RADIUS_SM', '8px'),
+        'radius_md': os.getenv('THEME_RADIUS_MD', '12px'),
+        'radius_lg': os.getenv('THEME_RADIUS_LG', '16px'),
+        'radius': os.getenv('THEME_RADIUS', '12px')
+    }
+    return {'theme': theme}
 
 # Middleware to handle _method override for PUT/DELETE via HTML forms
 @app.before_request
@@ -57,6 +96,7 @@ app.register_blueprint(portal_outlets_bp)
 app.register_blueprint(portal_assets_bp)
 app.register_blueprint(portal_smartdevices_bp)
 app.register_blueprint(portal_tracking_bp)
+app.register_blueprint(portal_alerts_bp)
 
 # Register Swagger documentation
 register_swagger(app)
@@ -150,7 +190,11 @@ def index():
         if destination == "portal":
             return redirect(url_for("dashboard.render_dashboard"))
         else:
-            return redirect(url_for("assets.list_assets"))
+            # Se cliente tem acesso ao simple tracking, redireciona para lá
+            if user.client in SIMPLE_TRACKING_AUTHORIZED_CLIENTS:
+                return redirect(url_for("portal_tracking.render_simple_tracking"))
+            else:
+                return redirect(url_for("assets.list_assets"))
 
     except Exception as e:
         print(f"[ERROR] Login error: {str(e)}")
@@ -172,4 +216,4 @@ if __name__ == "__main__":
     init_db()
     db_session = get_session()
     created, total = create_accounts_for_all_clients(db_session)
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=False, host='0.0.0.0', port=5000)

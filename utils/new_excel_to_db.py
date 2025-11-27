@@ -1,5 +1,5 @@
 import pandas as pd # Novo e principal import
-
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 import openpyxl
 
 import datetime
@@ -22,7 +22,7 @@ from datetime import datetime, timedelta, timezone
 
 from db.database import get_session
 
-from models.models import HealthEvent, User, Outlet, Asset, SmartDevice, Movement, DoorEvent, Alert, Client, SubClient, AlertsDefinition
+from models.models import HealthEvent, User, Outlet, Asset, SmartDevice, Movement, DoorEvent, Alert, Client, SubClient, AlertsDefinition, GhostAsset
 
 
 
@@ -1268,6 +1268,12 @@ DATE_COLUMNS = [
 
     # (created_on, modified_on already included above)
 
+
+
+    # GhostAsset
+
+    "reported_on",
+
 ]
 
 
@@ -1348,9 +1354,51 @@ BOOLEAN_COLUMNS = [
 
     "enable_pic_to_pog",
 
-    "disable_geo_data_collection"
+    "disable_geo_data_collection",
+
+
+
+    # GhostAsset
+
+    "is_commissioned"
 
 ]
+
+GHOSTASSET_COLUMN_MAPPING = {
+
+    "Id": "id",
+
+    "Serial Number": "serial_number",
+
+    "Asset Serial Number": "asset_serial_number",
+
+    "Equipment Number": "equipment_number",
+
+    "Mac Address": "mac_address",
+
+    "Latitude": "latitude",
+
+    "Longitude": "longitude",
+
+    "Address": "address",
+
+    "City": "city",
+
+    "Country": "country",
+
+    "Reported By": "reported_by",
+
+    "Reporter Client": "reporter_client",
+
+    "Reported On": "reported_on",
+
+    "Is Commissioned": "is_commissioned",
+
+    "ClientId": "client_id",
+
+    "Manufacturer": "manufacturer"
+
+}
 
 
 
@@ -1481,6 +1529,13 @@ MODEL_RULES = {
         "mapping": ALERTS_DEFINITION_COLUMN_MAPPING,
         "key_col": ["name", "client"],
         "special_sanitizers": {}
+    },
+
+    "GhostAsset": {
+        "model": GhostAsset,
+        "mapping": GHOSTASSET_COLUMN_MAPPING,
+        "key_col": "id",
+        "special_sanitizers": {}
     }
 
 }
@@ -1553,280 +1608,276 @@ def convert_excel_datetime_to_utc(date_string):
 
 
 
+def _bulk_upsert(session, model, rows, key_cols):
+    """
+    Realiza um UPSERT em lote usando PostgreSQL ON CONFLICT.
+    """
+    if not rows:
+        return 0
+
+    table = model.__table__
+    stmt = pg_insert(table).values(rows)
+
+    # Colunas para atualização (todas exceto as chaves primárias e created_on)
+    if isinstance(key_cols, str):
+        key_cols = [key_cols]
+        
+    update_cols = {
+        c.name: c 
+        for c in stmt.excluded 
+        if c.name not in key_cols and c.name != 'created_on'
+    }
+
+    if not update_cols:
+        stmt = stmt.on_conflict_do_nothing(index_elements=key_cols)
+    else:
+        stmt = stmt.on_conflict_do_update(
+            index_elements=key_cols,
+            set_=update_cols
+        )
+
+    result = session.execute(stmt)
+    return result.rowcount
+
+def _bulk_upsert(session, model, rows, key_cols):
+    """
+    Realiza um UPSERT em lote usando PostgreSQL ON CONFLICT.
+    """
+    if not rows:
+        return 0
+
+    table = model.__table__
+    stmt = pg_insert(table).values(rows)
+
+    # Colunas para atualização (todas exceto as chaves primárias e created_on)
+    if isinstance(key_cols, str):
+        key_cols = [key_cols]
+        
+    update_cols = {
+        c.name: c 
+        for c in stmt.excluded 
+        if c.name not in key_cols and c.name != 'created_on'
+    }
+
+    if not update_cols:
+        stmt = stmt.on_conflict_do_nothing(index_elements=key_cols)
+    else:
+        stmt = stmt.on_conflict_do_update(
+            index_elements=key_cols,
+            set_=update_cols
+        )
+
+    result = session.execute(stmt)
+    return result.rowcount
+
 def importar_dados_generico(db_session, model_name: str, file_path: str):
-
     """
-
-    Importa e atualiza dados de um arquivo Excel ou CSV de forma genérica.
-
+    Importa e atualiza dados de um arquivo Excel ou CSV de forma genérica usando Pandas e Bulk Upsert.
     """
-
     if model_name not in MODEL_RULES:
-
         print(f"❌ Regras de importação não encontradas para o modelo: {model_name}")
-
         return None
-
-
 
     rules = MODEL_RULES[model_name]
-
     ModelClass = rules['model']
-
     mapping = rules['mapping']
-
     key_col = rules['key_col']
 
-
-
     print(f"🚀 Iniciando importação para {model_name}...")
-
-   
-
+    
     file_ext = os.path.splitext(file_path)[1].lower()
-
-    headers = []
-
-    records_raw = []
-
-
-
-    # --- Lógica de Leitura (Detecção de Formato) ---
+    records_to_process = []
 
     try:
-
+        # --- Leitura Otimizada com Pandas ---
+        df = None
         if file_ext in ['.xlsx', '.xls']:
-
-            wb = openpyxl.load_workbook(file_path, read_only=True)  # read_only para performance
-
-            sheet = wb.active
-
-            headers = [cell.value for cell in sheet[1]]
-
-            records_raw = [row for row in sheet.iter_rows(min_row=2, values_only=True)]
-
-            print(f"📊 Lidos {len(records_raw)} registros do Excel")
-
-       
-
+            # Pandas lê Excel muito mais rápido
+            df = pd.read_excel(file_path)
         elif file_ext == '.csv':
+            # Tenta ler CSV com diferentes encodings e separadores
+            # Prioridade para engine python com detecção automática
+            try:
+                # Tentativa 1: Auto-detect com engine python (suporta UTF-16 melhor)
+                df = pd.read_csv(file_path, sep=None, engine='python', encoding='utf-16', on_bad_lines='skip')
+                if len(df.columns) <= 1:
+                     df = None # Falhou em detectar colunas
+            except:
+                df = None
 
-            # Tenta UTF-16 primeiro (mais comum nos arquivos do portal), depois UTF-8
-            encodings_to_try = ['utf-16', 'utf-8', 'latin-1']
-            records_raw = None
-            headers = None
-            
-            for enc in encodings_to_try:
-                try:
-                    with open(file_path, 'r', newline='', encoding=enc) as f:
-                        reader = csv.DictReader(f)
-                        headers_orig = list(reader.fieldnames) if reader.fieldnames else []
-                        
-                        if not headers_orig:
+            if df is None:
+                encodings = ['utf-16', 'utf-8', 'latin-1', 'cp1252']
+                separators = [',', ';', '\t', '|']
+                
+                for enc in encodings:
+                    for sep in separators:
+                        try:
+                            # engine='python' é mais robusto para detecção de separador
+                            temp_df = pd.read_csv(file_path, encoding=enc, sep=sep, on_bad_lines='skip', engine='python')
+                            
+                            # Verifica se parece ter funcionado (tem colunas mapeadas ou pelo menos várias colunas)
+                            temp_cols = [str(c).strip() for c in temp_df.columns]
+                            if any(c in mapping for c in temp_cols) or len(temp_cols) > 1:
+                                df = temp_df
+                                break
+                        except Exception:
                             continue
-                        
-                        # Se primeiro header é um título único, pula e relê
-                        if len(headers_orig) == 1:
-                            with open(file_path, 'r', newline='', encoding=enc) as f:
-                                f.readline()  # Pula linha 1
-                                reader = csv.DictReader(f)
-                                headers = list(reader.fieldnames) if reader.fieldnames else []
-                                records_raw_dicts = list(reader)
-                        else:
-                            headers = headers_orig
-                            records_raw_dicts = list(reader)
-                        
-                        # Converte de dicts para listas na ordem dos headers
-                        records_raw = []
-                        for row_dict in records_raw_dicts:
-                            row = [row_dict.get(h) for h in headers]
-                            records_raw.append(row)
-                        break  # Sucesso, sai do loop
-                        
-                except (UnicodeDecodeError, Exception):
-                    if enc == encodings_to_try[-1]:  # Última tentativa falhou
-                        raise
-                    continue  # Tenta próximo encoding
+                    if df is not None:
+                        break
             
-            if records_raw is None:
-                raise ValueError(f"Não foi possível ler o arquivo CSV: {file_path}")
-
-            # Sanitiza dados do CSV (strings vazias para None)
-
-            # O CSV lê tudo como string, precisamos converter strings vazias para None para serem tratadas.
-
-            records_raw = [[None if (isinstance(cell, str) and cell.strip() == '') else cell for cell in row] for row in records_raw]
-
+            if df is None:
+                # Última tentativa com padrão
+                try:
+                    df = pd.read_csv(file_path, encoding='utf-8', on_bad_lines='skip')
+                except:
+                    raise ValueError(f"Não foi possível ler o arquivo CSV: {file_path}")
         else:
-
             print(f"❌ Formato de arquivo não suportado: {file_path}")
-
             return None
 
-           
+        # Limpeza de Headers (Strip whitespace e caracteres estranhos de BOM)
+        df.columns = [str(c).strip().replace('\ufeff', '') for c in df.columns]
 
-        # Garante que os headers são strings limpas
-
-        headers = [h.strip() if isinstance(h, str) else h for h in headers]
-
-       
-
-    except Exception as e:
-
-        print(f"❌ Erro ao ler o arquivo {file_path}: {e}")
-
-        return None
-
-    # --- Fim Lógica de Leitura ---
-
-
-
-
-
-    # 🚀 OTIMIZAÇÃO: Processamento em lote mais eficiente
-    print(f"⚙️ Processando {len(records_raw)} registros...")
-    records_to_process = []
-    
-    # Cria mapa de headers uma única vez para otimizar acesso
-    header_mapping = {}
-    for i, header in enumerate(headers):
-        if header in mapping:
-            header_mapping[i] = mapping[header]
-
-    for row_raw in records_raw:
-        # Ignora linhas vazias rapidamente
-        if not any(row_raw[:2]):  # Verifica apenas primeiras 2 colunas
-            continue
-
-        data = {}
+        # Limpeza básica do DataFrame (NaN -> None)
+        # Converte para object para aceitar None em colunas numéricas/float
+        df = df.astype(object)
+        df = df.where(pd.notnull(df), None)
         
-        # Usa mapeamento pré-computado para acesso direto
-        for i, mapped_key in header_mapping.items():
-            if i >= len(row_raw):
-                continue
-                
-            value = row_raw[i]
+        # Mapeamento de colunas
+        valid_columns = [col for col in df.columns if col in mapping]
+        
+        if not valid_columns:
+            print(f"⚠️ Nenhuma coluna correspondente encontrada no arquivo {file_path}")
+            print(f"   Colunas encontradas: {list(df.columns)[:5]}...")
+            return None
+
+        # Renomeia as colunas do DataFrame para os nomes do banco
+        df_renamed = df[valid_columns].rename(columns={c: mapping[c] for c in valid_columns})
+        
+        # Converte para lista de dicionários para processamento
+        records_raw = df_renamed.to_dict('records')
+        
+        print(f"⚙️ Processando {len(records_raw)} registros...")
+
+        import math
+
+        for data in records_raw:
+            # Processamento de valores (datas, booleanos, sanitizers)
+            processed_data = {}
             
-            # --- 1. Tratamento de N/A e Nulls (otimizado) ---
-            if isinstance(value, str):
-                value_upper = value.strip().upper()
-                if value_upper in ["N/A", "NONE", "NULL", ""]:
-                    value = None
-            
-            # --- 2. Tratamento Específico ---
-            if mapped_key in rules['special_sanitizers']:
-                sanitizer_func = rules['special_sanitizers'][mapped_key]
-                value = sanitizer_func(value)
-           
-            # --- 3. Tratamento de Data/Hora ---
-            if mapped_key in DATE_COLUMNS and value is not None:
-                value = convert_excel_datetime_to_utc(value)
-           
-            # --- 4. Tratamento de Boolean (otimizado) ---
-            if mapped_key in BOOLEAN_COLUMNS and isinstance(value, str):
-                value_lower = value.strip().lower()
-                if value_lower == "yes":
-                    value = True
-                elif value_lower == "no":
-                    value = False
-                       
-            data[mapped_key] = value
-
-        if data:
-            records_to_process.append(data)
-
-    print(f"✅ Processados {len(records_to_process)} registros válidos")
-
-    # 🚀 DEDUPLICAÇÃO: Remove duplicatas dentro do arquivo pela chave primária
-    print(f"🔄 Deduplicando registros por chave primária...")
-    deduplicated = {}
-    for data in records_to_process:
-        if isinstance(key_col, list):
-            key_tuple = tuple(data.get(col) for col in key_col)
-            if all(v is not None for v in key_tuple):
-                deduplicated[key_tuple] = data
-        else:
-            key = data.get(key_col)
-            if key is not None:
-                deduplicated[key] = data
-    
-    records_to_process = list(deduplicated.values())
-    print(f"📊 Após deduplicação: {len(records_to_process)} registros únicos")
-
-
-
-
-
-
-    inserted_count = 0
-    updated_count = 0
-
-    # Lógica de Persistência (INSERT/UPDATE)
-    for data in records_to_process:
-        # Suporte para chaves compostas
-        if isinstance(key_col, list):
-            # Chave composta (ex: name + client)
-            key_values = {col: data.get(col) for col in key_col}
-            if any(v is None for v in key_values.values()):
-                continue
-            
-            # Constrói filtro para chave composta
-            filters = [getattr(ModelClass, col) == value for col, value in key_values.items()]
-            existing_record = db_session.query(ModelClass).filter(*filters).first()
-        else:
-            # Chave simples (comportamento original)
-            event_key = data.get(key_col)
-            if event_key is None:
-                continue
-            existing_record = db_session.query(ModelClass).filter(getattr(ModelClass, key_col) == event_key).first()
-
-        if existing_record:
             for key, value in data.items():
-                if value is not None:
-                    setattr(existing_record, key, value)
-            updated_count += 1
+                # Verifica se é nulo (NaN, NaT, None, etc) usando Pandas
+                if pd.isna(value) or value is None:
+                    continue
+                    
+                # Tratamento de strings vazias ou N/A
+                if isinstance(value, str):
+                    value_upper = value.strip().upper()
+                    if value_upper in ["N/A", "NONE", "NULL", ""]:
+                        continue # Pula valores nulos
+                
+                # Tratamento específico
+                if key in rules['special_sanitizers']:
+                    value = rules['special_sanitizers'][key](value)
+                
+                # Tratamento de Data
+                if key in DATE_COLUMNS:
+                    value = convert_excel_datetime_to_utc(value)
+                    # Verifica novamente se a conversão resultou em nulo/NaN/NaT
+                    if pd.isna(value) or value is None:
+                        continue
+                
+                # Tratamento de Boolean
+                if key in BOOLEAN_COLUMNS:
+                    if isinstance(value, str):
+                        value_lower = value.strip().lower()
+                        if value_lower == "yes":
+                            value = True
+                        elif value_lower == "no":
+                            value = False
+                    elif isinstance(value, (int, float)):
+                         value = bool(value)
+
+                processed_data[key] = value
+            
+            # Verifica se tem a chave primária
+            has_key = False
+            if isinstance(key_col, list):
+                if all(k in processed_data and processed_data[k] is not None for k in key_col):
+                    has_key = True
+            else:
+                if key_col in processed_data and processed_data[key_col] is not None:
+                    has_key = True
+            
+            if has_key:
+                records_to_process.append(processed_data)
+
+        print(f"✅ Processados {len(records_to_process)} registros válidos para inserção")
+
+        # Deduplicação em memória (mantém o último)
+        deduplicated = {}
+        for r in records_to_process:
+            if isinstance(key_col, list):
+                k = tuple(r[c] for c in key_col)
+            else:
+                k = r[key_col]
+            deduplicated[k] = r
+        
+        final_records = list(deduplicated.values())
+        
+        # Normalização: Garante que todos os registros tenham as mesmas chaves (preenche com None)
+        # Isso evita erros do SQLAlchemy quando dicionários têm chaves diferentes
+        if final_records:
+            all_keys = set().union(*(d.keys() for d in final_records))
+            for r in final_records:
+                for k in all_keys:
+                    if k not in r:
+                        r[k] = None
+
+        # Bulk Upsert
+        if final_records:
+            # Processa em lotes de 5000 para performance
+            batch_size = 5000
+            total_upserted = 0
+            
+            for i in range(0, len(final_records), batch_size):
+                batch = final_records[i:i + batch_size]
+                count = _bulk_upsert(db_session, ModelClass, batch, key_col)
+                total_upserted += count
+                print(f"   ↳ Lote {i//batch_size + 1}: {len(batch)} registros processados.")
+            
+            db_session.commit()
+            print(f"✅ {model_name} importado. Total processado (Insert/Update): {total_upserted}")
+            
+            # Refresh MVs
+            tables_requiring_mv_refresh = ["Movement", "HealthEvent", "DoorEvent", "Asset", "Alert", "SmartDevice"]
+            if model_name in tables_requiring_mv_refresh:
+                print(f"🔄 Atualizando Materialized Views...")
+                try:
+                    from sqlalchemy import text
+                    try:
+                        db_session.execute(text("REFRESH MATERIALIZED VIEW CONCURRENTLY mv_client_assets_report;"))
+                        db_session.execute(text("REFRESH MATERIALIZED VIEW CONCURRENTLY mv_dashboard_stats_main;"))
+                        db_session.execute(text("REFRESH MATERIALIZED VIEW CONCURRENTLY mv_asset_current_status;"))
+                    except:
+                         db_session.rollback()
+                         db_session.execute(text("REFRESH MATERIALIZED VIEW mv_client_assets_report;"))
+                         db_session.execute(text("REFRESH MATERIALIZED VIEW mv_dashboard_stats_main;"))
+                         db_session.execute(text("REFRESH MATERIALIZED VIEW mv_asset_current_status;"))
+                    
+                    db_session.commit()
+                except Exception as mv_error:
+                    print(f"⚠️ Erro ao atualizar MVs: {mv_error}")
+
+            return {'inserted': total_upserted, 'updated': 0, 'model': model_name}
         else:
-            new_record = ModelClass(**data)
-            db_session.add(new_record)
-            inserted_count += 1
+            print("⚠️ Nenhum registro válido para importar.")
+            return {'inserted': 0, 'updated': 0, 'model': model_name}
 
-           
-
-    # Commit Único
-    try:
-        db_session.commit()
-        print(f"✅ {model_name} importado com sucesso. Inseridos: {inserted_count}, Atualizados: {updated_count}.")
-       
-        # Refresh Materialized Views para tabelas que afetam as views
-        tables_requiring_mv_refresh = ["Movement", "HealthEvent", "DoorEvent", "Asset", "Alert", "SmartDevice"]
-        if model_name in tables_requiring_mv_refresh:
-            print(f"🔄 Atualizando Materialized Views devido a mudanças em {model_name}...")
-            try:
-                from sqlalchemy import text
-                db_session.execute(text("REFRESH MATERIALIZED VIEW mv_client_assets_report;"))
-                db_session.execute(text("REFRESH MATERIALIZED VIEW mv_dashboard_hourly_metrics;"))
-                db_session.execute(text("REFRESH MATERIALIZED VIEW mv_dashboard_stats_main;"))
-                db_session.commit()
-                print("✅ Materialized Views atualizadas com sucesso.")
-            except Exception as mv_error:
-                print(f"⚠️ Erro ao atualizar Materialized Views: {mv_error}")
-                # Não faz rollback pois os dados já foram commitados com sucesso
-       
-        # Retorna informações sobre a importação
-        return {
-            'inserted': inserted_count,
-            'updated': updated_count,
-            'model': model_name
-        }
-       
     except Exception as e:
         db_session.rollback()
-        print(f"❌ Erro ao comitar transação para {model_name}: {e}")
-        raise
-
-       
-
-# ----------------------------------------------------------------------
+        print(f"❌ Erro na importação de {model_name}: {e}")
+        return None
 
 
 

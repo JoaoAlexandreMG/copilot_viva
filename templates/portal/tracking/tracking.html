@@ -17,7 +17,7 @@
     .tracking-container {
         display: flex;
         gap: 20px;
-        height: calc(100vh - 180px);
+        min-height: calc(100vh - var(--header-height) - 40px);
     }
 
     .tracking-sidebar {
@@ -30,16 +30,18 @@
     }
 
     .tracking-map-container {
-        flex: 1;
+        flex: 1 1 auto;
         background: white;
         border-radius: 12px;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         overflow: hidden;
+        min-height: 500px;
     }
 
     #map {
         width: 100%;
         height: 100%;
+        min-height: 100%;
         border-radius: 12px;
     }
 
@@ -298,6 +300,14 @@
                         <option value="false">🔴 Fora do Padrão</option>
                     </select>
                 </div>
+                <div class="device-filter">
+                    <label style="font-size: 12px; font-weight: 600; color: #333; display: block; margin-bottom: 5px;">Bateria</label>
+                    <select id="filterBatteryIsOk" style="width: 100%; padding: 8px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 13px;">
+                        <option value="">Todos</option>
+                        <option value="true">🟢 > 50%</option>
+                        <option value="false">🔴 ≤ 50%</option>
+                    </select>
+                </div>
                 <button onclick="clearAdvancedFilters()" style="
                     width: 100%;
                     padding: 8px;
@@ -325,16 +335,16 @@
     <!-- Painel de Detalhes (Sidebar Direita) -->
     <div id="detailsPanel" style="
         position: fixed;
-        right: -500px;
+        right: calc(-1 * min(500px, 100vw));
         top: 0;
-        width: 500px;
-        height: 100vh;
+        width: min(500px, 100vw);
+        height: calc(100vh - var(--header-height));
         background: white;
         box-shadow: -2px 0 12px rgba(0, 0, 0, 0.15);
         overflow-y: auto;
         transition: right 0.3s ease;
         z-index: 1000;
-        border-left: 4px solid #667eea;
+        border-left: 4px solid var(--primary);
     ">
         <!-- Header com fechar -->
         <div style="position: sticky; top: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; color: white; z-index: 10;">
@@ -410,6 +420,7 @@
         is_missing: '{{ filters.is_missing }}',
         is_active: '{{ filters.is_active }}',
         temp_is_ok: '{{ filters.temp_is_ok }}',
+        battery_is_ok: '{{ filters.battery_is_ok }}',
         subclient: '{{ filters.subclient }}'
     };
 
@@ -443,7 +454,8 @@
                 is_online: document.getElementById('filterIsOnline')?.value?.trim() || '',
                 is_missing: document.getElementById('filterIsMissing')?.value?.trim() || '',
                 is_active: document.getElementById('filterIsActive')?.value?.trim() || '',
-                temp_is_ok: document.getElementById('filterTempIsOk')?.value?.trim() || ''
+                temp_is_ok: document.getElementById('filterTempIsOk')?.value?.trim() || '',
+                battery_is_ok: document.getElementById('filterBatteryIsOk')?.value?.trim() || ''
             };
             
             // CORREÇÃO: A lógica 'useOptimized' deve ser baseada no estado *atual*
@@ -456,7 +468,6 @@
                 // load_all=true carrega TODOS os assets para o mapa (sem paginação)
                 params.append('load_all', 'true');
                 url = `/portal_associacao/tracking/devices?${params.toString()}`;
-                // console.log('🚀 Usando API otimizada (MATERIALIZED VIEW) - Carregando TODOS os assets para o mapa');
             } else {
                 // Use SAME ENDPOINT but with filters applied
                 // load_all=true sempre para carregar TODOS para o mapa
@@ -471,7 +482,6 @@
                 if (subclient && subclient.trim() !== '') {
                     // NOTA: A view não tem filtro de subclient direto, 
                     // então vamos buscar por outlet que é relacionado
-                    // console.log(`🔍 Filtrando por subclient: ${subclient}`);
                 }
                 
                 // Adicionar filtros avançados (estes SÃO suportados pela view)
@@ -508,7 +518,10 @@
                 if (advancedFilters.temp_is_ok) {
                     params.append('temp_is_ok', advancedFilters.temp_is_ok);
                 }
-                
+                if (advancedFilters.battery_is_ok) {
+                    params.append('battery_is_ok', advancedFilters.battery_is_ok);
+                }
+
                 url = `/portal_associacao/tracking/devices?${params.toString()}`;
                 // console.log('🔍 Usando API com filtros aplicados no backend');
             }
@@ -649,8 +662,8 @@
 
             // Temperatura da MATERIALIZED VIEW - formatada corretamente
             let temperatureStatus = '';
-            if (device.latest_cabinet_temperature_c !== null && device.latest_cabinet_temperature_c !== undefined) {
-                const temp = parseFloat(device.latest_cabinet_temperature_c);
+            if (device.temperature_c !== null && device.temperature_c !== undefined) {
+                const temp = parseFloat(device.temperature_c);
                 const tempColor = temp < 0 ? '#5dade2' : temp <= 7 ? '#56ab2f' : '#e74c3c';
                 temperatureStatus = `<div class="device-info" style="color: ${tempColor};">🌡️ Temperatura: ${temp.toFixed(1)}°C</div>`;
             }
@@ -703,13 +716,13 @@
                     </div>
                     
                     <div class="device-info" style="margin-bottom: 4px;">
-                        🏪 Outlet: ${device.outlet || 'N/A'}
+                        ${device.outlet ? `🏪 Outlet: ${device.outlet}` : ''}
                     </div>
                     
                     ${device.sub_trade_channel ? `<div class="device-info" style="margin-bottom: 4px;">🏷️ Canal: ${device.sub_trade_channel}</div>` : ''}
                     
                     <div class="device-info" style="margin-bottom: 6px;">
-                        📍 Local: ${device.city || 'N/A'}${device.state ? ', ' + device.state : ''}${device.country ? ', ' + device.country : ''}
+                        ${device.city || device.state || device.country ? `📍 Local: ${device.city || ''}${device.state ? ', ' + device.state : ''}${device.country ? ', ' + device.country : ''}` : ''}
                     </div>
                     
                     ${temperatureStatus}
@@ -764,18 +777,12 @@
             }
 
             let markerColor = '#56ab2f'; // Verde padrão
-            
+
             if (device.is_missing) {
                 markerColor = '#e74c3c'; // Vermelho para perdidos
-            } else if (device.is_power_on === false) { // Checa se existe e é 'false'
-                markerColor = '#f39c12'; // Laranja para desligados
-            } else if (device.battery_level !== null && device.battery_level !== undefined && device.battery_level < 20) {
-                markerColor = '#e74c3c'; // Vermelho para bateria baixa
-            } else if (device.battery_level !== null && device.battery_level !== undefined && device.battery_level < 50) {
-                markerColor = '#f5576c'; // Rosa para bateria média
-            } else if (device.latest_cabinet_temperature_c !== null && device.latest_cabinet_temperature_c !== undefined && device.latest_cabinet_temperature_c > 10) {
+            } else if (device.temperature_c !== null && device.temperature_c !== undefined && device.temperature_c > 20) {
                 markerColor = '#e74c3c'; // Vermelho para temperatura alta
-            } else if (device.latest_cabinet_temperature_c !== null && device.latest_cabinet_temperature_c !== undefined && device.latest_cabinet_temperature_c > 5) {
+            } else if (device.temperature_c !== null && device.temperature_c !== undefined && device.temperature_c > 7) {
                 markerColor = '#f5576c'; // Rosa para temperatura moderada
             }
 
@@ -792,25 +799,13 @@
             // Adicionadas verificações ternárias para campos que podem não
             // existir na materialized view.
 
-            const batteryDisplay = (device.battery_level !== null && device.battery_level !== undefined && device.battery_level > 0)
-                ? `<div class="popup-info"><strong>Bateria:</strong> ${device.battery_level}% (${device.battery_status || 'N/A'})</div>`
-                : '';
-
-            const powerDisplay = (device.is_power_on !== null && device.is_power_on !== undefined)
-                ? `<div class="popup-info"><strong>Energia:</strong> ${device.is_power_on ? 'Ligado' : 'Desligado'}</div>`
-                : '';
-
             const missingDisplay = device.is_missing
                 ? `<div class="popup-info" style="color: #e74c3c;"><strong>Status:</strong> ⚠️ Perdido</div>`
                 : '';
 
-            const distanceDisplay = (device.distance_km !== null && device.distance_km !== undefined)
-                ? `<div class="popup-info"><strong>Distância:</strong> ${parseFloat(device.distance_km).toFixed(1)}km</div>`
-                : '';
-
             // Temperatura (Vem da View)
-            const temperatureDisplay = (device.latest_cabinet_temperature_c !== null && device.latest_cabinet_temperature_c !== undefined)
-                ? `<div class="popup-info"><strong>Temperatura:</strong> ${parseFloat(device.latest_cabinet_temperature_c).toFixed(1)}°C</div>`
+            const temperatureDisplay = (device.temperature_c !== null && device.temperature_c !== undefined)
+                ? `<div class="popup-info"><strong>Temperatura:</strong> ${parseFloat(device.temperature_c).toFixed(1)}°C</div>`
                 : '';
 
             // Estatísticas de porta (Vem da View)
@@ -824,18 +819,13 @@
 
             const popupContent = `
                 <div>
-                    <div class="popup-title">${device.asset_type || 'Asset'}</div>
+                    <div class="popup-title">${device.bottler_equipment_number || 'Asset'}</div>
                     <div class="popup-info"><strong>Serial:</strong> ${device.oem_serial_number || 'N/A'}</div>
                     <div class="popup-info"><strong>Outlet:</strong> ${device.outlet || 'N/A'}</div>
-                    ${device.outlet_code ? `<div class="popup-info"><strong>Código Outlet:</strong> ${device.outlet_code}</div>` : ''}
                     <div class="popup-info"><strong>Localidade:</strong> ${device.city || 'N/A'}${device.state ? ', ' + device.state : ''}</div>
-                    ${device.street ? `<div class="popup-info"><strong>Endereço:</strong> ${device.street}</div>` : ''}
                     <hr style="margin: 8px 0; border: none; border-top: 1px solid #e0e0e0;">
                     <div class="popup-info"><strong>Coordenadas:</strong> ${parseFloat(device.latitude).toFixed(6)}, ${parseFloat(device.longitude).toFixed(6)}</div>
-                    ${distanceDisplay}
                     ${temperatureDisplay}
-                    ${batteryDisplay}
-                    ${powerDisplay}
                     ${missingDisplay}
                     ${doorStatsDisplay}
                 </div>
@@ -1398,11 +1388,10 @@
         const statusActive = device.is_active ? '✅ Ativo' : '⚠️ Inativo';
         
         // Temperaturas com validação
-        const tempColor = (device.latest_cabinet_temperature_c && (device.latest_cabinet_temperature_c > 20 || device.latest_cabinet_temperature_c < 1)) ? '#e74c3c' : '#56ab2f';
-        const ambientTempColor = (device.latest_ambient_temperature_c && (device.latest_ambient_temperature_c > 35 || device.latest_ambient_temperature_c < 0)) ? '#e74c3c' : '#56ab2f';
-        
+        const tempColor = (device.temperature_c && (device.temperature_c > 20 || device.temperature_c < 1)) ? '#e74c3c' : '#56ab2f';
+
         // Bateria com cor
-        const batteryLevel = device.battery_level_percentage || device.latest_battery_level_percentage || device.battery_level || 0;
+        const batteryLevel = device.battery || 0;
         const batteryColor = batteryLevel < 20 ? '#e74c3c' : batteryLevel < 50 ? '#f39c12' : '#56ab2f';
         
         let html = `
@@ -1463,13 +1452,8 @@
                     <div style="background: #f8f9fa; padding: 15px; border-radius: 10px; border: 2px solid ${tempColor};">
                         <div style="font-size: 11px; color: #666; font-weight: 600; margin-bottom: 8px;">🌡️ TEMP. GABINETE</div>
                         <div style="font-size: 24px; font-weight: bold; color: ${tempColor};">
-                            ${device.latest_cabinet_temperature_c ? device.latest_cabinet_temperature_c.toFixed(1) : 'N/A'}°C
+                            ${device.temperature_c ? device.temperature_c.toFixed(1) : 'N/A'}°C
                         </div>
-                        ${device.latest_ambient_temperature_c ? 
-                            `<div style="font-size: 12px; color: #666; margin-top: 4px;">
-                                Ambiente: <span style="color: ${ambientTempColor}; font-weight: 600;">${device.latest_ambient_temperature_c.toFixed(1)}°C</span>
-                            </div>` : ''
-                        }
                     </div>
                 </div>
 
@@ -1511,21 +1495,7 @@
                                     ${device.smart_device_mac || 'N/A'}
                                 </div>
                             </div>
-                            <div>
-                                <div style="font-size: 11px; color: #999; font-weight: 600; margin-bottom: 4px;">Status Energia</div>
-                                <div style="font-size: 13px; color: #333;">
-                                    ${device.power_status || 'N/A'}
-                                </div>
-                            </div>
                         </div>
-                        ${device.asset_type || device.outlet_type ? 
-                            `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #dee2e6;">
-                                <div style="font-size: 11px; color: #999; font-weight: 600; margin-bottom: 4px;">Tipo/Modelo</div>
-                                <div style="font-size: 13px; color: #333;">
-                                    ${[device.asset_type, device.outlet_type].filter(Boolean).join(' - ') || 'N/A'}
-                                </div>
-                            </div>` : ''
-                        }
                     </div>
                 </div>
 
@@ -1561,36 +1531,9 @@
                     </div>` : ''
                 }
 
-                <!-- Status Detalhado -->
-                ${device.total_compressor_on_time_percent || device.avg_power_consumption_watt ? 
-                    `<div style="background: #f8f9fa; padding: 18px; border-radius: 12px; margin-bottom: 18px; border-left: 4px solid #e17055;">
-                        <div style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 12px; display: flex; align-items: center;">
-                            ⚙️ <span style="margin-left: 8px;">OPERAÇÃO</span>
-                        </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                            ${device.total_compressor_on_time_percent ? 
-                                `<div style="padding: 12px; background: #fff; border-radius: 6px;">
-                                    <div style="font-size: 11px; color: #999; font-weight: 600; margin-bottom: 4px;">Compressor ON</div>
-                                    <div style="font-size: 16px; font-weight: bold; color: #e17055;">
-                                        ${parseFloat(device.total_compressor_on_time_percent).toFixed(1)}%
-                                    </div>
-                                </div>` : ''
-                            }
-                            ${device.avg_power_consumption_watt ? 
-                                `<div style="padding: 12px; background: #fff; border-radius: 6px;">
-                                    <div style="font-size: 11px; color: #999; font-weight: 600; margin-bottom: 4px;">Consumo Médio</div>
-                                    <div style="font-size: 16px; font-weight: bold; color: #e17055;">
-                                        ${parseFloat(device.avg_power_consumption_watt).toFixed(0)}W
-                                    </div>
-                                </div>` : ''
-                            }
-                        </div>
-                    </div>` : ''
-                }
-
                 <!-- Botões de Ação -->
                 <div style="margin-top: 20px;">
-                    <a href="https://www.google.com/maps?q=${device.latest_latitude},${device.latest_longitude}" target="_blank" style="
+                    <a href="https://www.google.com/maps?q=${device.latitude},${device.longitude}" target="_blank" style="
                         display: block;
                         padding: 12px;
                         background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
@@ -1654,7 +1597,7 @@
         const statusMissing = device.is_missing ? '⚠️ Perdido' : '✅ Normal';
         const statusActive = device.is_active ? '✅ Ativo' : '⚠️ Inativo';
         
-        const tempColor = (device.latest_cabinet_temperature_c > 20 || device.latest_cabinet_temperature_c < 1) ? '#e74c3c' : '#56ab2f';
+        const tempColor = (device.temperature_c > 20 || device.temperature_c < 1) ? '#e74c3c' : '#56ab2f';
         
         let html = `
             <!-- Informações Principais -->
@@ -1672,7 +1615,7 @@
                 <div style="display: grid; grid-template-columns: 1fr; gap: 10px;">
                     <div>
                         <div style="font-size: 11px; color: #999; font-weight: 600; margin-bottom: 3px;">Temperatura</div>
-                        <div style="font-size: 14px; font-weight: 600; color: ${tempColor};">${device.latest_cabinet_temperature_c ? device.latest_cabinet_temperature_c.toFixed(1) : 'N/A'}°C</div>
+                        <div style="font-size: 14px; font-weight: 600; color: ${tempColor};">${device.temperature_c ? device.temperature_c.toFixed(1) : 'N/A'}°C</div>
                     </div>
                 </div>
             </div>
@@ -1729,7 +1672,7 @@
 
             <!-- Botão Google Maps -->
             <div style="margin-bottom: 15px;">
-                <a href="https://www.google.com/maps?q=${device.latest_latitude},${device.latest_longitude}" target="_blank" style="
+                <a href="https://www.google.com/maps?q=${device.latitude},${device.longitude}" target="_blank" style="
                     display: block;
                     padding: 10px;
                     background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
@@ -1833,7 +1776,8 @@
         document.getElementById('filterIsMissing').value = '';
         document.getElementById('filterIsActive').value = '';
         document.getElementById('filterTempIsOk').value = '';
-        
+        document.getElementById('filterBatteryIsOk').value = '';
+
         // Limpar também o subclient
         document.getElementById('subclientFilter').value = '';
         currentSubclient = '';
@@ -1861,7 +1805,8 @@
             'filterIsOnline',
             'filterIsMissing',
             'filterIsActive',
-            'filterTempIsOk'
+            'filterTempIsOk',
+            'filterBatteryIsOk'
         ];
         
         advancedFilterInputs.forEach(inputId => {
@@ -1947,6 +1892,10 @@
             document.getElementById('filterTempIsOk').value = initialFilters.temp_is_ok;
             hasUrlFilters = true;
         }
+        if (initialFilters.battery_is_ok) {
+            document.getElementById('filterBatteryIsOk').value = initialFilters.battery_is_ok;
+            hasUrlFilters = true;
+        }
         if (initialFilters.subclient) {
             // O subclient será preenchido após carregar a lista
             currentSubclient = initialFilters.subclient;
@@ -1959,7 +1908,6 @@
             const icon = document.getElementById('filterToggleIcon');
             panel.style.display = 'block';
             icon.textContent = '▲';
-            console.log('🔍 Filtros aplicados da URL, carregando dados...');
         }
 
         // // Event listener para busca por texto
@@ -2018,7 +1966,7 @@
     // Função para atualizar a URL com os filtros atuais
     function updateUrlWithFilters() {
         const params = new URLSearchParams();
-        
+
         const filters = {
             bottler_equipment_number: document.getElementById('filterBottlerEquipmentNumber')?.value?.trim() || '',
             oem_serial_number: document.getElementById('filterOemSerialNumber')?.value?.trim() || '',
@@ -2031,6 +1979,7 @@
             is_missing: document.getElementById('filterIsMissing')?.value?.trim() || '',
             is_active: document.getElementById('filterIsActive')?.value?.trim() || '',
             temp_is_ok: document.getElementById('filterTempIsOk')?.value?.trim() || '',
+            battery_is_ok: document.getElementById('filterBatteryIsOk')?.value?.trim() || '',
             subclient: currentSubclient
         };
         
@@ -2045,12 +1994,5 @@
         const newUrl = params.toString() ? `${window.location.pathname}?${params.toString()}` : window.location.pathname;
         window.history.replaceState({}, '', newUrl);
     }
-
-    // Recarregar dispositivos a cada 60 segundos (mantém na página atual)
-    // Auto-refresh ativo:
-    setInterval(() => {
-        const isFiltering = (currentSearchTerm.trim() !== '' || currentSubclient.trim() !== '');
-        loadDevices(currentPage, currentSearchTerm, currentSubclient, !isFiltering);
-    }, 60000);
 </script>
 {% endblock %}

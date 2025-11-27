@@ -592,3 +592,39 @@ class AlertsDefinition(Base):
     created_by = Column(String(100))
     modified_on = Column(DateTime(timezone=True))
     modified_by = Column(String(100))
+
+class MovementsFindHub(Base):
+    __tablename__ = 'movements_find_hub'
+
+    id = Column(BigInteger, primary_key=True)
+    client = Column(String)
+    smart_device_number = Column(String(255))
+    latitude = Column(String(50))
+    longitude = Column(String(50))
+    accuracy_meter = Column(Float)
+    gps_source = Column(String(50))
+    start_time = Column(DateTime(timezone=True))
+    created_on = Column(DateTime(timezone=True))
+
+class GhostAsset(Base):
+    __tablename__ = 'ghost_assets'
+
+    id = Column(BigInteger, primary_key=True)
+    serial_number = Column(String(100))
+    asset_serial_number = Column(String(100))
+    equipment_number = Column(String(100))
+    mac_address = Column(String(100))
+    latitude = Column(Float)
+    longitude = Column(Float)
+    address = Column(Text)
+    city = Column(String(100))
+    country = Column(String(100))
+    reported_by = Column(String(150))
+    reporter_client = Column(String(150))
+    reported_on = Column(DateTime(timezone=True))
+    is_commissioned = Column(Boolean)
+    client_id = Column(Integer)
+    manufacturer = Column(String(150))
+    created_by = Column(String(50), default='import')
+    modified_on = Column(DateTime(timezone=True))
+    modified_by = Column(String(50), default='import')

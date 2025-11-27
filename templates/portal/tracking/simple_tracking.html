@@ -1,0 +1,987 @@
+{% extends "portal/base.html" %}
+
+{% block title %}Rastreio Simples - Movimentos{% endblock %}
+{% block page_title %}Rastreio Simples - Movimentos{% endblock %}
+
+{% block breadcrumb %}
+<span class="breadcrumb-separator">/</span>
+<span class="breadcrumb-item">Rastreio Simples</span>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+<style>
+    /* Theme CSS variables are defined globally in portal/base.html and can be overridden.
+       This template inherits those variables to keep consistent identity visuals. */
+
+    .simple-tracking-container {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    /* ===== FILTER SECTION ===== */
+    .filter-section {
+        background: white;
+        padding: 1.5rem;
+        border-radius: var(--radius);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .filter-section h3 {
+        margin: 0 0 1rem 0;
+        font-size: 1.1rem;
+        color: var(--text-dark);
+    }
+
+    .filter-form {
+        display: grid;
+        grid-template-columns: 1fr auto auto;
+        gap: 1rem;
+        align-items: flex-end;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .form-group label {
+        font-weight: 600;
+        color: var(--text-dark);
+        font-size: 0.9rem;
+    }
+
+    .form-group input,
+    .form-group select {
+        padding: 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        font-size: 1rem;
+        transition: border-color 0.2s, box-shadow 0.2s;
+        font-family: inherit;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .btn-search,
+    .btn-reset {
+        padding: 0.75rem 1.25rem;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 0.95rem;
+        transition: background-color 0.2s, box-shadow 0.2s, transform 0.2s;
+        display: -webkit-inline-flex;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        white-space: nowrap;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        user-select: none;
+    }
+
+    .btn-search {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+        color: white;
+    }
+
+    .btn-search:hover {
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        -webkit-transform: translateY(-2px);
+        transform: translateY(-2px);
+    }
+
+    .btn-reset {
+        background: var(--bg-light);
+        color: var(--text-dark);
+        border: 1px solid var(--border-color);
+    }
+
+    .btn-reset:hover {
+        background: #e0e0e0;
+    }
+
+    /* ===== ALERT INFO ===== */
+    .alert-info {
+        padding: 1rem;
+        background: #e7f3ff;
+        border-left: 4px solid #2196F3;
+        border-radius: 6px;
+        color: #0c5aa0;
+        font-size: 0.95rem;
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+
+    .alert-info i {
+        flex-shrink: 0;
+        margin-top: 0.25rem;
+    }
+
+    /* ===== MAIN CONTENT ===== */
+    .tracking-content {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        min-height: 500px;
+    }
+
+    /* ===== MAP SECTION ===== */
+    .map-section {
+        background: white;
+        border-radius: var(--radius);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        position: relative;
+    }
+
+
+    #simpleMap {
+        width: 100%;
+        height: 100%;
+        min-height: 400px;
+        z-index: 1 !important;
+    }
+
+    /* Fix Leaflet z-index issues */
+    .leaflet-container {
+        z-index: 1 !important;
+    }
+
+    .leaflet-pane {
+        z-index: 1 !important;
+    }
+
+    /* Ensure header stays on top */
+    header,
+    .header,
+    .navbar,
+    .top-bar,
+    .sidebar {
+        z-index: 100 !important;
+    }
+
+    /* ===== DATA SECTION ===== */
+    .data-section {
+        background: white;
+        padding: 1.5rem;
+        border-radius: var(--radius);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .stats-bar {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+        flex-shrink: 0;
+    }
+
+    .stat-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1rem;
+        background: var(--bg-light);
+        border-radius: 6px;
+        font-size: 0.9rem;
+    }
+
+    .stat-label {
+        color: var(--text-gray);
+        font-weight: 500;
+    }
+
+    .stat-value {
+        color: var(--primary);
+        font-weight: 600;
+    }
+
+    /* ===== TABLE ===== */
+    .table-wrapper {
+        overflow: auto;
+        flex: 1;
+        border-radius: 6px;
+        border: 1px solid var(--border-color);
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.95rem;
+    }
+
+    thead {
+        background: var(--bg-light);
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    th {
+        padding: 0.75rem;
+        text-align: left;
+        font-weight: 600;
+        color: var(--text-dark);
+        border-bottom: 2px solid var(--border-color);
+    }
+
+    td {
+        padding: 0.75rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    tbody tr {
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+
+    tbody tr:hover {
+        background-color: var(--bg-light);
+    }
+
+    tbody tr.selected {
+        background-color: #e8f0fe;
+        border-left: 3px solid var(--primary);
+    }
+
+    /* ===== PAGINATION ===== */
+    .pagination-section {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--border-color);
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .pagination {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .pagination a,
+    .pagination span {
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+        font-size: 0.9rem;
+        min-width: 36px;
+        text-align: center;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        user-select: none;
+        display: -webkit-inline-flex;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .pagination a:hover {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+
+    .pagination .active {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+
+    .pagination .disabled {
+        color: #ccc;
+        cursor: not-allowed;
+    }
+
+    /* ===== STATES ===== */
+    .loading {
+        text-align: center;
+        padding: 3rem 1.5rem;
+        color: var(--text-gray);
+    }
+
+    .spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid var(--primary);
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        -webkit-animation: spin 1s linear infinite;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 1rem;
+    }
+
+    @-webkit-keyframes spin {
+        0% { -webkit-transform: rotate(0deg); }
+        100% { -webkit-transform: rotate(360deg); }
+    }
+
+    @keyframes spin {
+        0% { -webkit-transform: rotate(0deg); transform: rotate(0deg); }
+        100% { -webkit-transform: rotate(360deg); transform: rotate(360deg); }
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1.5rem;
+        color: #999;
+    }
+
+    .empty-state-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+
+    .empty-state-text {
+        font-size: 1.1rem;
+        margin-bottom: 0.5rem;
+        color: var(--text-gray);
+    }
+
+    .error-message {
+        padding: 1rem;
+        background: #fff3cd;
+        border-left: 4px solid #ff6b6b;
+        border-radius: 6px;
+        color: #856404;
+        margin-bottom: 1rem;
+    }
+
+    .location-link {
+        color: var(--primary);
+        text-decoration: none;
+        cursor: pointer;
+        display: -webkit-inline-flex;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        transition: color 0.2s, text-decoration 0.2s;
+    }
+
+    .location-link:hover {
+        color: var(--primary-dark);
+        text-decoration: underline;
+    }
+
+    /* ===== BACK BUTTON ===== */
+    .back-button-container {
+        display: none;
+    }
+
+    .back-button {
+        display: -webkit-inline-flex;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.25rem;
+        background: var(--primary);
+        color: white;
+        border-radius: 6px;
+        text-decoration: none;
+        font-weight: 600;
+        transition: background-color 0.2s, box-shadow 0.2s, transform 0.2s;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        user-select: none;
+    }
+
+    .back-button:hover {
+        background: var(--primary-dark);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        -webkit-transform: translateY(-2px);
+        transform: translateY(-2px);
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 1200px) {
+        .filter-form {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+
+    @media (max-width: 768px) {
+        /* Hide mobile menu toggle */
+        .mobile-menu-toggle {
+            display: none !important;
+        }
+
+        /* Show back button on mobile */
+        .back-button-container {
+            display: block !important;
+        }
+
+        .simple-tracking-container {
+            gap: 0.75rem;
+        }
+
+        .filter-section {
+            padding: 1rem;
+        }
+
+        .filter-form {
+            grid-template-columns: 1fr;
+            gap: 0.75rem;
+        }
+
+        .form-group input,
+        .form-group select {
+            font-size: 16px; /* Prevents zoom on iOS */
+        }
+
+        .btn-search,
+        .btn-reset {
+            width: 100%;
+            justify-content: center;
+            padding: 1rem;
+            font-size: 1rem;
+        }
+
+        .tracking-content {
+            grid-template-columns: 1fr;
+            min-height: auto;
+        }
+
+        .map-section {
+            min-height: 350px;
+            order: -1; /* Mapa primeiro no mobile */
+        }
+
+        #simpleMap {
+            min-height: 350px;
+        }
+
+        .data-section {
+            padding: 1rem;
+            min-height: auto;
+        }
+
+        .stats-bar {
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .stat-item {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.85rem;
+            flex: 1;
+            min-width: 150px;
+        }
+
+        table {
+            font-size: 0.85rem;
+        }
+
+        th, td {
+            padding: 0.6rem;
+        }
+
+        .pagination-section {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0.75rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+        }
+
+        .pagination {
+            justify-content: center;
+        }
+
+        #paginationInfo {
+            text-align: center;
+            font-size: 0.85rem;
+        }
+
+        .alert-info {
+            font-size: 0.85rem;
+            padding: 0.75rem;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .back-button {
+            width: 100%;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .filter-section {
+            padding: 0.75rem;
+        }
+
+        .form-group label {
+            font-size: 0.85rem;
+        }
+
+        .form-group input,
+        .form-group select {
+            padding: 0.65rem;
+            font-size: 16px;
+        }
+
+        .stats-bar {
+            flex-direction: column;
+        }
+
+        .stat-item {
+            width: 100%;
+            min-width: unset;
+        }
+
+        .table-wrapper {
+            border-radius: 4px;
+        }
+
+        th, td {
+            padding: 0.5rem;
+            font-size: 0.75rem;
+        }
+
+        .pagination a,
+        .pagination span {
+            padding: 0.4rem 0.6rem;
+            font-size: 0.8rem;
+            min-width: 32px;
+        }
+
+        .empty-state {
+            padding: 2rem 1rem;
+        }
+
+        .empty-state-icon {
+            font-size: 2.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="simple-tracking-container">
+    <!-- Back Button (Mobile Only) -->
+    <div style="display: none;" class="back-button-container">
+        <a href="/" class="back-button" title="Voltar ao login">
+            <i class="fas fa-arrow-left"></i> <span>Voltar</span>
+        </a>
+    </div>
+
+    <!-- Alert Info -->
+    <div class="alert-info">
+        <i class="fas fa-info-circle"></i>
+        <span>Rastreio simplificado de movimentos. Visualize o histórico de movimentos dos seus ativos nos últimos 30 dias.</span>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="filter-section">
+        <h3>Filtros (Últimos 30 dias)</h3>
+        <form class="filter-form" id="filterForm" onsubmit="return searchMovements(event)">
+            <div class="form-group">
+                <label for="device_number">Número do Smart Device</label>
+                <input type="text" id="device_number" name="device_number" placeholder="Ex: SD123456" autocomplete="off">
+            </div>
+
+            <button type="submit" class="btn-search" title="Buscar movimentos">
+                <i class="fas fa-search"></i> <span>Buscar</span>
+            </button>
+
+            <button type="button" class="btn-reset" title="Limpar filtros" onclick="resetFilters()">
+                <i class="fas fa-redo"></i> <span>Limpar</span>
+            </button>
+        </form>
+    </div>
+
+    <!-- Tracking Content: Map + Table -->
+    <div class="tracking-content">
+        <!-- Map Section -->
+        <div class="map-section">
+            <div id="simpleMap" role="application" aria-label="Mapa de rastreamento"></div>
+        </div>
+
+        <!-- Data Section -->
+        <div class="data-section">
+            <!-- Stats Bar -->
+            <div class="stats-bar" id="statsBar" style="display: none;">
+                <div class="stat-item">
+                    <span class="stat-label">Total de Movimentos:</span>
+                    <span class="stat-value" id="totalMovements">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Página:</span>
+                    <span class="stat-value" id="currentPage">1</span>
+                </div>
+            </div>
+
+            <!-- Loading State -->
+            <div id="loadingSpinner" class="loading" style="display: none;">
+                <div class="spinner" aria-hidden="true"></div>
+                <p>Carregando dados...</p>
+            </div>
+
+            <!-- Empty State -->
+            <div id="emptyState" class="empty-state" style="display: none;">
+                <div class="empty-state-icon">📍</div>
+                <div class="empty-state-text">Nenhum movimento encontrado</div>
+                <small>Tente ajustar os filtros de busca</small>
+            </div>
+
+            <!-- Error Message -->
+            <div id="errorMessage" class="error-message" style="display: none;" role="alert"></div>
+
+            <!-- Table Wrapper -->
+            <div class="table-wrapper" id="tableWrapper" style="display: none;">
+                <table id="movementsTable" role="grid" aria-label="Movimentos registrados">
+                    <thead>
+                        <tr>
+                            <th scope="col">Data/Hora</th>
+                            <th scope="col">Smart Device</th>
+                            <th scope="col">Precisão (m)</th>
+                            <th scope="col">Google Maps</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            <div class="pagination-section" id="paginationSection" style="display: none;">
+                <nav class="pagination" id="paginationControls" aria-label="Paginação de resultados"></nav>
+                <span id="paginationInfo" aria-live="polite"></span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script>
+    // ===== STATE MANAGEMENT =====
+    function cssVar(name, fallback) {
+        const v = getComputedStyle(document.documentElement).getPropertyValue(name);
+        return (v && v.trim()) || fallback || '';
+    }
+
+    const appState = {
+        currentPage: 1,
+        currentData: null,
+        map: null,
+        markers: null,
+        mapInitialized: false,
+        deviceMarkers: {},
+        selectedDeviceNumber: null,
+        isLoading: false,
+        colors: [cssVar('--primary', '#667eea'), cssVar('--primary-dark', '#764ba2'), cssVar('--accent', '#f093fb'), '#f5576c', '#4facfe']
+    };
+
+    // ===== MAP INITIALIZATION =====
+    function initializeMap() {
+        if (appState.mapInitialized) return;
+
+        // Check if mobile
+        const isMobile = window.innerWidth <= 768;
+
+        appState.map = L.map('simpleMap', {
+            scrollWheelZoom: !isMobile // Disable scroll zoom on mobile
+        }).setView([-10, -55], 4);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(appState.map);
+
+        appState.markers = L.markerClusterGroup({
+            maxClusterRadius: 50,
+            iconCreateFunction: (cluster) => {
+                const size = cluster.getChildCount();
+                const bgColor = size < 10 ? appState.colors[0] : size < 100 ? appState.colors[1] : appState.colors[2];
+                const iconSize = size < 10 ? 40 : size < 100 ? 50 : 60;
+
+                return L.divIcon({
+                    html: `<div style="background-color: ${bgColor}; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; border-radius: 50%;"><span style="color: white; font-weight: bold; font-size: ${size < 10 ? 14 : 16}px;">${size}</span></div>`,
+                    className: 'marker-cluster',
+                    iconSize: L.point(iconSize, iconSize)
+                });
+            }
+        });
+
+        appState.map.addLayer(appState.markers);
+        appState.mapInitialized = true;
+    }
+
+    // ===== MAP MARKERS =====
+    function addMarkersToMap(data) {
+        if (!appState.mapInitialized) initializeMap();
+
+        appState.markers.clearLayers();
+        appState.deviceMarkers = {};
+
+        if (!data || data.length === 0) return;
+
+        data.forEach((movement, index) => {
+            if (movement.latitude && movement.longitude) {
+                const color = appState.colors[index % appState.colors.length];
+                const icon = L.divIcon({
+                    html: `<div style="background-color: ${color}; border: 3px solid white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">📍</div>`,
+                    className: 'custom-marker',
+                    iconSize: [30, 30],
+                    iconAnchor: [15, 30],
+                    popupAnchor: [0, -30]
+                });
+
+                const marker = L.marker([movement.latitude, movement.longitude], { icon }).addTo(appState.markers);
+                const movementDate = new Date(movement.start_time).toLocaleString('pt-BR');
+                marker.bindPopup(`
+                    <strong>${movement.smart_device_number}</strong><br>
+                    Data: ${movementDate}<br>
+                    Precisão: ${movement.accuracy_meter ? movement.accuracy_meter.toFixed(2) : '-'} m<br>
+                    <a href="https://maps.google.com/?q=${movement.latitude},${movement.longitude}" target="_blank">Ver no Google Maps</a>
+                `);
+
+                appState.deviceMarkers[movement.smart_device_number] = {
+                    marker: marker,
+                    data: movement
+                };
+            }
+        });
+
+        if (appState.markers.getLayers().length > 0) {
+            appState.map.fitBounds(appState.markers.getBounds().pad(0.1));
+        }
+    }
+
+    // ===== TABLE INTERACTION =====
+    function focusOnDevice(deviceNumber) {
+        if (!appState.deviceMarkers[deviceNumber]) return;
+
+        const { marker, data } = appState.deviceMarkers[deviceNumber];
+        appState.selectedDeviceNumber = deviceNumber;
+
+        // Update table selection
+        document.querySelectorAll('#tableBody tr').forEach(row => {
+            row.classList.remove('selected');
+        });
+
+        const selectedRow = document.querySelector(`#tableBody tr[data-device="${deviceNumber}"]`);
+        if (selectedRow) {
+            selectedRow.classList.add('selected');
+            selectedRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        // Focus on map
+        appState.map.setView([parseFloat(data.latitude), parseFloat(data.longitude)], 15);
+        marker.openPopup();
+    }
+
+    // ===== FORM HANDLERS =====
+    function searchMovements(event) {
+        if (event) event.preventDefault();
+        appState.currentPage = 1;
+        fetchMovements();
+    }
+
+    function resetFilters() {
+        document.getElementById('filterForm').reset();
+        appState.currentPage = 1;
+        appState.selectedDeviceNumber = null;
+        fetchMovements();
+    }
+
+    // ===== DATA FETCHING =====
+    function fetchMovements() {
+        if (appState.isLoading) return;
+
+        const deviceNumber = document.getElementById('device_number').value.trim();
+
+        const params = new URLSearchParams();
+        if (deviceNumber) params.append('device_number', deviceNumber);
+        params.append('days', 30); // Fixo em 30 dias
+        params.append('page', appState.currentPage);
+        params.append('limit', 50);
+
+        const url = `/portal_associacao/tracking/simple/movements?${params.toString()}`;
+
+        // Show loading state
+        appState.isLoading = true;
+        hideAllStates();
+        document.getElementById('loadingSpinner').style.display = 'block';
+
+        fetch(url)
+            .then(response => {
+                if (!response.ok) throw new Error('Erro na resposta do servidor');
+                return response.json();
+            })
+            .then(data => {
+                appState.currentData = data;
+                displayMovements(data);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showError('Erro ao carregar dados: ' + error.message);
+            })
+            .finally(() => {
+                appState.isLoading = false;
+            });
+    }
+
+    // ===== DATA DISPLAY =====
+    function displayMovements(data) {
+        document.getElementById('loadingSpinner').style.display = 'none';
+
+        if (!data.data || data.data.length === 0) {
+            document.getElementById('emptyState').style.display = 'block';
+            appState.selectedDeviceNumber = null;
+            return;
+        }
+
+        appState.selectedDeviceNumber = null;
+
+        // Update stats
+        document.getElementById('totalMovements').textContent = data.pagination.total;
+        document.getElementById('currentPage').textContent = data.pagination.page;
+        document.getElementById('statsBar').style.display = 'flex';
+
+        // Populate table
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = '';
+
+        data.data.forEach(movement => {
+            const row = document.createElement('tr');
+            row.setAttribute('data-device', movement.smart_device_number);
+
+            const movementDate = new Date(movement.start_time).toLocaleString('pt-BR');
+            const accuracy = movement.accuracy_meter ? movement.accuracy_meter.toFixed(2) : '-';
+
+            let locationCell = '-';
+            if (movement.latitude && movement.longitude) {
+                locationCell = `<a class="location-link" href="https://maps.google.com/?q=${movement.latitude},${movement.longitude}" target="_blank">
+                    <i class="fas fa-map-marker-alt"></i> Acessar
+                </a>`;
+            }
+
+            row.innerHTML = `
+                <td>${movementDate}</td>
+                <td>${movement.smart_device_number}</td>
+                <td>${accuracy}</td>
+                <td>${locationCell}</td>
+            `;
+
+            row.addEventListener('click', (e) => {
+                if (e.target.closest('.location-link')) return;
+                focusOnDevice(movement.smart_device_number);
+            });
+
+            tbody.appendChild(row);
+        });
+
+        document.getElementById('tableWrapper').style.display = 'block';
+        addMarkersToMap(data.data);
+        updatePagination(data.pagination);
+    }
+
+    // ===== PAGINATION =====
+    function updatePagination(pagination) {
+        const controls = document.getElementById('paginationControls');
+        controls.innerHTML = '';
+
+        // Previous
+        if (pagination.has_prev) {
+            const btn = document.createElement('a');
+            btn.textContent = '← Anterior';
+            btn.href = '#';
+            btn.onclick = (e) => { e.preventDefault(); goToPage(pagination.page - 1); };
+            controls.appendChild(btn);
+        } else {
+            const span = document.createElement('span');
+            span.textContent = '← Anterior';
+            span.className = 'disabled';
+            controls.appendChild(span);
+        }
+
+        // Page numbers
+        for (let i = Math.max(1, pagination.page - 2); i <= Math.min(pagination.pages, pagination.page + 2); i++) {
+            const btn = document.createElement('a');
+            btn.textContent = i;
+            btn.href = '#';
+            if (i === pagination.page) {
+                btn.className = 'active';
+            } else {
+                btn.onclick = (e) => { e.preventDefault(); goToPage(i); };
+            }
+            controls.appendChild(btn);
+        }
+
+        // Next
+        if (pagination.has_next) {
+            const btn = document.createElement('a');
+            btn.textContent = 'Próximo →';
+            btn.href = '#';
+            btn.onclick = (e) => { e.preventDefault(); goToPage(pagination.page + 1); };
+            controls.appendChild(btn);
+        } else {
+            const span = document.createElement('span');
+            span.textContent = 'Próximo →';
+            span.className = 'disabled';
+            controls.appendChild(span);
+        }
+
+        // Info
+        const start = (pagination.page - 1) * pagination.per_page + 1;
+        const end = Math.min(pagination.page * pagination.per_page, pagination.total);
+        document.getElementById('paginationInfo').textContent = `Mostrando ${start} a ${end} de ${pagination.total}`;
+
+        document.getElementById('paginationSection').style.display = 'flex';
+    }
+
+    function goToPage(page) {
+        appState.currentPage = page;
+        fetchMovements();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // ===== HELPERS =====
+    function hideAllStates() {
+        document.getElementById('loadingSpinner').style.display = 'none';
+        document.getElementById('tableWrapper').style.display = 'none';
+        document.getElementById('emptyState').style.display = 'none';
+        document.getElementById('errorMessage').style.display = 'none';
+        document.getElementById('paginationSection').style.display = 'none';
+        document.getElementById('statsBar').style.display = 'none';
+    }
+
+    function showError(message) {
+        hideAllStates();
+        const errorDiv = document.getElementById('errorMessage');
+        errorDiv.textContent = message;
+        errorDiv.style.display = 'block';
+    }
+
+    // ===== INITIALIZATION =====
+    document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(initializeMap, 100);
+        fetchMovements();
+    });
+</script>
+{% endblock %}

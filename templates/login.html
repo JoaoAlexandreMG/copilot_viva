@@ -5,6 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Asset Manager</title>
     <style>
+        :root {
+            --primary: {{ theme.primary | default('#667eea') }};
+            --primary-dark: {{ theme.primary_dark | default('#764ba2') }};
+            --accent: {{ theme.accent | default('#00D4FF') }};
+            --border-color: {{ theme.border_color | default('#e1e5e9') }};
+            --bg-light: {{ theme.bg_light | default('#f5f5f5') }};
+            --text-dark: {{ theme.text_dark | default('#333') }};
+            --text-gray: {{ theme.text_gray | default('#666') }};
+        }
         * {
             margin: 0;
             padding: 0;
@@ -13,7 +22,7 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
             height: 100vh;
             display: flex;
             align-items: center;
@@ -37,12 +46,12 @@
         .login-title {
             font-size: 1.8rem;
             font-weight: 700;
-            color: #333;
+            color: var(--text-dark);
             margin-bottom: 0.5rem;
         }
 
         .login-subtitle {
-            color: #666;
+            color: var(--text-gray);
             font-size: 0.9rem;
         }
 
@@ -54,13 +63,13 @@
             display: block;
             margin-bottom: 0.5rem;
             font-weight: 600;
-            color: #333;
+            color: var(--text-dark);
         }
 
         input[type="text"] {
             width: 100%;
             padding: 0.75rem;
-            border: 2px solid #e1e5e9;
+            border: 2px solid var(--border-color);
             border-radius: 8px;
             font-size: 1rem;
             transition: border-color 0.3s ease;
@@ -68,13 +77,13 @@
 
         input[type="text"]:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: var(--primary);
         }
 
         .login-btn {
             width: 100%;
             padding: 0.875rem;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
             color: white;
             border: none;
             border-radius: 8px;
@@ -95,12 +104,14 @@
         }
 
         .error-message {
-            background: #fee;
-            color: #c33;
-            padding: 0.75rem;
-            border-radius: 8px;
-            margin-bottom: 1rem;
-            font-size: 0.9rem;
+            background: #fee !important;
+            color: #c00 !important;
+            padding: 0.75rem !important;
+            border-radius: 8px !important;
+            margin-bottom: 1rem !important;
+            font-size: 0.9rem !important;
+            display: block !important;
+            border: 1px solid #fcc;
         }
 
         .loading {
@@ -177,24 +188,24 @@
         .device-info {
             margin-top: 0.75rem;
             padding: 0.5rem 0.75rem;
-            background: #f0f4ff;
-            border: 1px solid #e0e7ff;
+            background: rgba(0,0,0,0.02);
+            border: 1px solid var(--border-color);
             border-radius: 8px;
             font-size: 0.85rem;
-            color: #4f46e5;
+            color: var(--primary);
             text-align: center;
         }
 
         .device-info.mobile {
-            background: #f0f9ff;
-            border-color: #bae6fd;
-            color: #0369a1;
+            background: rgba(0,0,0,0.02);
+            border-color: var(--border-color);
+            color: var(--primary-dark);
         }
 
         .device-info.desktop {
-            background: #f0fdf4;
-            border-color: #bbf7d0;
-            color: #166534;
+            background: rgba(0,0,0,0.02);
+            border-color: var(--border-color);
+            color: var(--text-dark);
         }
 
         @keyframes pulse {
@@ -247,7 +258,6 @@
             <span class="location-icon" id="locationIcon">📍</span>
             <span id="locationText">Obtendo localização...</span>
         </div>
-        </form>
     </div>
 
     <script>
@@ -475,11 +485,20 @@
                         isAuthenticating = false;
 
                         // Extrair e exibir mensagem de erro
-                        const errorMatch = data.match(/<div class="error-message">\s*(.*?)\s*<\/div>/s);
-                        if (errorMatch) {
-                            const errorDiv = document.querySelector('.error-message') || createErrorElement();
-                            errorDiv.textContent = errorMatch[1];
+                        const errorMatch = data.match(/<div class="error-message">([\s\S]*?)<\/div>/);
+                        if (errorMatch && errorMatch[1]) {
+                            const errorMessage = errorMatch[1].trim();
+                            let errorDiv = document.querySelector('.error-message');
+
+                            if (!errorDiv) {
+                                errorDiv = createErrorElement();
+                            }
+
+                            errorDiv.textContent = errorMessage;
                             errorDiv.style.display = 'block';
+                            console.log('[DEBUG] Erro exibido:', errorMessage);
+                        } else {
+                            console.log('[DEBUG] Erro detectado mas mensagem não encontrada. Data length:', data.length);
                         }
                     } else {
                         // Sucesso na verificação - fazer login automático com destino baseado no dispositivo

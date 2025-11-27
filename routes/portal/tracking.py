@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, session, redirect, url_for, jsonify
-from models.models import DoorEvent, AlertsDefinition
+from models.models import DoorEvent, AlertsDefinition, MovementsFindHub
 from db.database import get_session
 from .decorators import require_authentication
 from sqlalchemy import text
@@ -8,6 +8,11 @@ import unicodedata
 from datetime import datetime, timedelta
 
 tracking_bp = Blueprint("portal_tracking", __name__, url_prefix="/portal_associacao/tracking")
+
+# Clients autorizados para usar a seção de Rastreio Simples
+SIMPLE_TRACKING_AUTHORIZED_CLIENTS = {
+    'Fogel de Centroamerica, S.A.'
+}
 
 
 def remover_special_caracteres(text):
@@ -196,7 +201,7 @@ def get_assets_optimized():
 
     try:
         # 1. Construir query SQL com filtros dinâmicos
-        where_clauses = ["client = :client"]
+        where_clauses = ["client = :client AND last_movement_time IS NOT NULL"]
         params = {'client': client_code}
         
         # Coletar parâmetros de filtro
@@ -210,6 +215,7 @@ def get_assets_optimized():
         is_online = request.args.get('is_online', '').strip().lower()
         is_active = request.args.get('is_active', '').strip().lower()
         is_missing = request.args.get('is_missing', '').strip().lower()
+        battery_is_ok = request.args.get('battery_is_ok', '').strip().lower()
         temp_is_ok = request.args.get('temp_is_ok', '').strip().lower()
         load_all = request.args.get('load_all', 'false').strip().lower() == 'true'
         
@@ -248,28 +254,63 @@ def get_assets_optimized():
         elif is_online in ('false', '0', 'no'):
             where_clauses.append("is_online = false")
         
+        # Fetch gps_displacement_threshold once (used for is_missing filter)
+        gps_displacement_threshold = 300  # Default value
+        if is_missing in ('true', '1', 'yes', 'false', '0', 'no'):
+            query = """
+            SELECT gps_displacement_threshold
+            FROM alerts_definition
+            WHERE type='GPS Displacement' and client=:client
+            LIMIT 1
+            """
+            result = db_session.execute(text(query), {'client': client_code}).fetchone()
+            gps_displacement_threshold = result[0] if result else 300
+
         if is_missing in ('true', '1', 'yes'):
-            where_clauses.append("is_missing = true")
+            where_clauses.append("displacement_meter > :gps_displacement_threshold")
+            params['gps_displacement_threshold'] = gps_displacement_threshold
         elif is_missing in ('false', '0', 'no'):
-            where_clauses.append("is_missing = false")
+            where_clauses.append("displacement_meter <= :gps_displacement_threshold")
+            params['gps_displacement_threshold'] = gps_displacement_threshold
 
         if is_active in ('true', '1', 'yes'):
-            where_clauses.append("is_active = true")
+            where_clauses.append("last_movement_time>= NOW() - INTERVAL '24 hours'")
         elif is_active in ('false', '0', 'no'):
-            where_clauses.append("is_active = false")
+            where_clauses.append("last_movement_time< NOW() - INTERVAL '24 hours'")
         
+        temp_alert_definition_sql = text("""
+        SELECT vco.applied_min, vco.applied_max
+        FROM mv_client_overview vco
+        WHERE vco.client = :client
+        """)
+        temp_alert_definition = db_session.execute(temp_alert_definition_sql, {"client": client_code}).fetchone()
+    
+        # Definir limites de temperatura (usados no SQL dinâmico)
+        temp_min = temp_alert_definition.applied_min if temp_alert_definition and temp_alert_definition.applied_min is not None else 0
+        temp_max = temp_alert_definition.applied_max if temp_alert_definition and temp_alert_definition.applied_max is not None else 7
+
+
         if temp_is_ok in ('true', '1', 'yes'):
-            where_clauses.append("temp_is_ok = true")
+            where_clauses.append("temperature_c BETWEEN :temp_min AND :temp_max")
+            params['temp_min'] = temp_min
+            params['temp_max'] = temp_max
         elif temp_is_ok in ('false', '0', 'no'):
-            # CORREÇÃO: Só mostrar devices com temperatura RUIM, não os sem temperatura
-            where_clauses.append("(temp_is_ok = false AND latest_cabinet_temperature_c IS NOT NULL)")
+            where_clauses.append("(temperature_c <:temp_min OR temperature_c >:temp_max) AND temperature_c IS NOT NULL")
+            params['temp_min'] = temp_min
+            params['temp_max'] = temp_max
+
+        if battery_is_ok in ('true', '1', 'yes'):
+            where_clauses.append("battery > 50")
+        elif battery_is_ok in ('false', '0', 'no'):
+            where_clauses.append("battery <= 50 AND battery IS NOT NULL")
+            
         
         
         # Construir a query WHERE
         where_sql = " AND ".join(where_clauses)
         
         # 2. Buscar COUNT total de assets para paginação
-        sql_count = text(f"SELECT COUNT(*) as total FROM mv_client_assets_report WHERE {where_sql}")
+        sql_count = text(f"SELECT COUNT(*) as total FROM mv_asset_current_status WHERE {where_sql}")
         total_count = db_session.execute(sql_count, params).scalar() or 0
         
         # 3. Paginação para a LISTA
@@ -279,7 +320,7 @@ def get_assets_optimized():
         total_pages = (total_count + items_per_page - 1) // items_per_page
         
         # 4. Buscar os assets da página ATUAL para a LISTA (paginado)
-        sql_list = text(f"SELECT * FROM mv_client_assets_report WHERE {where_sql} LIMIT :limit OFFSET :offset")
+        sql_list = text(f"SELECT * FROM mv_asset_current_status WHERE {where_sql} LIMIT :limit OFFSET :offset")
         params['limit'] = items_per_page
         params['offset'] = list_offset
         result_list = db_session.execute(sql_list, params)
@@ -287,8 +328,8 @@ def get_assets_optimized():
         list_data = []
         for row in result_list:
             asset_data = dict(row._mapping)
-            lat = asset_data.pop('latest_latitude', None)
-            lon = asset_data.pop('latest_longitude', None)
+            lat = asset_data.pop('latitude', None)
+            lon = asset_data.pop('longitude', None)
             asset_data['latitude'] = lat
             asset_data['longitude'] = lon
             asset_data['has_location'] = bool(lat and lon)
@@ -297,12 +338,12 @@ def get_assets_optimized():
         # 5. Se load_all=true, buscar TODOS os assets para o MAPA (sem paginação)
         map_data = []
         if load_all:
-            sql_map = text(f"SELECT * FROM mv_client_assets_report WHERE {where_sql}")
+            sql_map = text(f"SELECT * FROM mv_asset_current_status WHERE {where_sql}")
             result_map = db_session.execute(sql_map, params)
             for row in result_map:
                 asset_data = dict(row._mapping)
-                lat = asset_data.pop('latest_latitude', None)
-                lon = asset_data.pop('latest_longitude', None)
+                lat = asset_data.pop('latitude', None)
+                lon = asset_data.pop('longitude', None)
                 asset_data['latitude'] = lat
                 asset_data['longitude'] = lon
                 asset_data['has_location'] = bool(lat and lon)
@@ -336,7 +377,9 @@ def get_assets_optimized():
             'country': country,
             'is_online': is_online,
             'is_missing': is_missing,
-            'is_active': is_active
+            'is_active': is_active,
+            'temp_is_ok': temp_is_ok,
+            'battery_is_ok': battery_is_ok
         }
         active_filters = {k: v for k, v in active_filters.items() if v}
         
@@ -377,7 +420,7 @@ def get_asset_details(serial_number):
     client_code = session.get("user", {}).get("client")
 
     try:
-        # 1. Dados básicos do asset (mv_client_assets_report)
+        # 1. Dados básicos do asset (mv_asset_current_status)
         basic_sql = text("""
             SELECT
                 client,
@@ -390,16 +433,10 @@ def get_asset_details(serial_number):
                 country,
                 sub_client,
                 smart_device_mac,
-                latest_cabinet_temperature_c,
-                is_online,
-                is_missing,
-                temp_is_ok,
-                latest_latitude,
-                latest_longitude,
-                door_event_average_morning,
-                door_event_average_afternoon,
-                door_event_average_night
-            FROM mv_client_assets_report
+                temperature_c,
+                latitude,
+                longitude
+            FROM mv_asset_current_status
             WHERE client = :client AND oem_serial_number = :serial
         """)
         
@@ -484,7 +521,7 @@ def get_asset_details(serial_number):
             stats_data = dict(stats_result._mapping)
             asset_details.update({
                 'has_recent_movement_24h': stats_data.get('has_recent_movement_24h'),
-                'latest_battery_from_stats': stats_data.get('latest_battery'),
+                'battery_from_stats': stats_data.get('battery'),
                 'latest_temperature_from_stats': stats_data.get('latest_temperature_c')
             })
 
@@ -698,5 +735,116 @@ def get_asset_analytics(serial_number):
     except Exception as e:
         print(f"[ERROR] Erro em get_asset_analytics: {str(e)}")
         return jsonify({"error": "Erro ao buscar analytics", "details": str(e)}), 500
+    finally:
+        db_session.close()
+
+# ==================== SIMPLE TRACKING - MOVEMENTS FIND HUB ====================
+
+def is_client_authorized_for_simple_tracking(client_code):
+    """Verifica se o cliente tem acesso ao rastreio simples."""
+    return client_code in SIMPLE_TRACKING_AUTHORIZED_CLIENTS
+
+@tracking_bp.route("/simple", methods=["GET"])
+@require_authentication
+def render_simple_tracking():
+    """
+    Renderiza página simples de rastreio com dados da tabela movements_find_hub.
+    Apenas clientes autorizados têm acesso.
+    """
+    try:
+        client_code = session.get("user", {}).get("client")
+
+        # Verificar se cliente tem acesso
+        if not is_client_authorized_for_simple_tracking(client_code):
+            print(f"[WARNING] Cliente não autorizado para rastreio simples: {client_code}")
+            return redirect(url_for("dashboard.render_dashboard"))
+
+        return render_template("portal/tracking/simple_tracking.html")
+    except Exception as e:
+        print(f"[ERROR] Error rendering simple tracking page: {str(e)}")
+        return redirect(url_for("dashboard.render_dashboard"))
+
+@tracking_bp.route("/simple/movements", methods=["GET"])
+@require_authentication
+def get_simple_movements():
+    """
+    Retorna dados simples de movimentos da tabela movements_find_hub.
+    Parâmetros de busca suportados:
+    - device_number: Número do smart device
+    - days: Número de dias a buscar (padrão: 30)
+    - page: Número da página (padrão: 1)
+    - limit: Quantidade por página (padrão: 50)
+    """
+    client_code = session.get("user", {}).get("client")
+
+    # Verificar se cliente tem acesso
+    if not is_client_authorized_for_simple_tracking(client_code):
+        return jsonify({"error": "Acesso não autorizado"}), 403
+
+    db_session = get_session()
+
+    try:
+        # Coletar parâmetros
+        device_number = request.args.get('device_number', '').strip()
+        days = request.args.get('days', 30, type=int)
+        page = request.args.get('page', 1, type=int)
+        limit = request.args.get('limit', 50, type=int)
+
+        # Construir query base
+        query = db_session.query(MovementsFindHub).filter(
+            MovementsFindHub.client == client_code
+        )
+
+        # Aplicar filtros
+        if device_number:
+            query = query.filter(
+                MovementsFindHub.smart_device_number.ilike(f"%{device_number}%")
+            )
+
+        # Filtrar por data
+        if days:
+            cutoff_date = datetime.utcnow() - timedelta(days=days)
+            query = query.filter(MovementsFindHub.start_time >= cutoff_date)
+
+        # Ordenar por data descrescente
+        query = query.order_by(MovementsFindHub.start_time.desc())
+
+        # Contar total
+        total_count = query.count()
+
+        # Paginação
+        offset = (page - 1) * limit
+        movements = query.offset(offset).limit(limit).all()
+
+        # Serializar dados
+        data = []
+        for movement in movements:
+            data.append({
+                'id': movement.id,
+                'smart_device_number': movement.smart_device_number,
+                'latitude': movement.latitude,
+                'longitude': movement.longitude,
+                'start_time': movement.start_time.isoformat() if movement.start_time else None,
+                'accuracy_meter': movement.accuracy_meter
+            })
+
+        # Calcular páginas
+        total_pages = (total_count + limit - 1) // limit
+
+        return jsonify({
+            "data": data,
+            "pagination": {
+                "page": page,
+                "pages": total_pages,
+                "total": total_count,
+                "per_page": limit,
+                "has_prev": page > 1,
+                "has_next": page < total_pages
+            }
+        })
+
+    except Exception as e:
+        print(f"[ERROR] Erro em get_simple_movements: {str(e)}")
+        return jsonify({"error": "Erro ao buscar movimentos", "details": str(e)}), 500
     finally:
         db_session.close()
