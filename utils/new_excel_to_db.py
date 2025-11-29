@@ -1621,41 +1621,10 @@ def _bulk_upsert(session, model, rows, key_cols):
     # Colunas para atualização (todas exceto as chaves primárias e created_on)
     if isinstance(key_cols, str):
         key_cols = [key_cols]
-        
+
     update_cols = {
-        c.name: c 
-        for c in stmt.excluded 
-        if c.name not in key_cols and c.name != 'created_on'
-    }
-
-    if not update_cols:
-        stmt = stmt.on_conflict_do_nothing(index_elements=key_cols)
-    else:
-        stmt = stmt.on_conflict_do_update(
-            index_elements=key_cols,
-            set_=update_cols
-        )
-
-    result = session.execute(stmt)
-    return result.rowcount
-
-def _bulk_upsert(session, model, rows, key_cols):
-    """
-    Realiza um UPSERT em lote usando PostgreSQL ON CONFLICT.
-    """
-    if not rows:
-        return 0
-
-    table = model.__table__
-    stmt = pg_insert(table).values(rows)
-
-    # Colunas para atualização (todas exceto as chaves primárias e created_on)
-    if isinstance(key_cols, str):
-        key_cols = [key_cols]
-        
-    update_cols = {
-        c.name: c 
-        for c in stmt.excluded 
+        c.name: c
+        for c in stmt.excluded
         if c.name not in key_cols and c.name != 'created_on'
     }
 
@@ -1696,26 +1665,36 @@ def importar_dados_generico(db_session, model_name: str, file_path: str):
             df = pd.read_excel(file_path)
         elif file_ext == '.csv':
             # Tenta ler CSV com diferentes encodings e separadores
-            # Prioridade para engine python com detecção automática
-            try:
-                # Tentativa 1: Auto-detect com engine python (suporta UTF-16 melhor)
-                df = pd.read_csv(file_path, sep=None, engine='python', encoding='utf-16', on_bad_lines='skip')
-                if len(df.columns) <= 1:
-                     df = None # Falhou em detectar colunas
-            except:
-                df = None
+            # Nota: Para UTF-16, não usar sep=None (auto-detect) pois não funciona bem
+            df = None
 
+            # Tentativa 1: Encodings que suportam BOM + separadores comuns
+            encodings = ['utf-16', 'utf-8', 'latin-1', 'cp1252']
+            separators = [',', ';', '\t', '|']
+
+            for enc in encodings:
+                for sep in separators:
+                    try:
+                        # engine='python' é mais robusto
+                        temp_df = pd.read_csv(file_path, encoding=enc, sep=sep, on_bad_lines='skip', engine='python')
+
+                        # Verifica se parece ter funcionado (tem colunas mapeadas ou pelo menos várias colunas)
+                        temp_cols = [str(c).strip() for c in temp_df.columns]
+                        if any(c in mapping for c in temp_cols) or len(temp_cols) > 1:
+                            df = temp_df
+                            break
+                    except Exception:
+                        continue
+                if df is not None:
+                    break
+
+            # Se ainda não encontrou, tenta UTF-16 com skiprows (para arquivos com título extra)
             if df is None:
-                encodings = ['utf-16', 'utf-8', 'latin-1', 'cp1252']
-                separators = [',', ';', '\t', '|']
-                
-                for enc in encodings:
-                    for sep in separators:
+                for skiprows in [1, 2]:
+                    for sep in [',', ';']:
                         try:
-                            # engine='python' é mais robusto para detecção de separador
-                            temp_df = pd.read_csv(file_path, encoding=enc, sep=sep, on_bad_lines='skip', engine='python')
-                            
-                            # Verifica se parece ter funcionado (tem colunas mapeadas ou pelo menos várias colunas)
+                            temp_df = pd.read_csv(file_path, encoding='utf-16', sep=sep, on_bad_lines='skip',
+                                                 engine='python', skiprows=skiprows)
                             temp_cols = [str(c).strip() for c in temp_df.columns]
                             if any(c in mapping for c in temp_cols) or len(temp_cols) > 1:
                                 df = temp_df
@@ -1724,9 +1703,9 @@ def importar_dados_generico(db_session, model_name: str, file_path: str):
                             continue
                     if df is not None:
                         break
-            
+
             if df is None:
-                # Última tentativa com padrão
+                # Última tentativa com padrão UTF-8
                 try:
                     df = pd.read_csv(file_path, encoding='utf-8', on_bad_lines='skip')
                 except:
