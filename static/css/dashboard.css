@@ -56,21 +56,18 @@ a.stat-card.clickable:hover { background-color: #fafafa; }
 }
 
 .stat-label {
-    font-size: 0.8rem;
+    font-size: var(--text-xs);
     color: var(--atlas-gray-medium);
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     margin: 0 0 0.25rem 0;
 }
 
 .stat-value {
-    font-size: 1.6rem;
-    font-weight: 700;
-    background: linear-gradient(135deg, var(--atlas-black-tech) 0%, var(--atlas-gray-pro) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    font-size: var(--text-3xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--atlas-black-tech);
     margin: 0;
     line-height: 1.2;
 }
@@ -97,10 +94,10 @@ a.stat-card.clickable:hover { background-color: #fafafa; }
     right: 12px;
     background: linear-gradient(135deg, rgba(0, 195, 255, 0.1) 0%, rgba(0, 140, 255, 0.05) 100%);
     color: var(--atlas-blue-electric);
-    font-size: 0.65rem;
-    font-weight: 700;
+    font-size: var(--text-xs);
+    font-weight: var(--font-weight-bold);
     padding: 4px 8px;
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     border: 1px solid rgba(0, 195, 255, 0.2);
     text-transform: uppercase;
     pointer-events: none; /* O clique passa através dele */
@@ -188,14 +185,14 @@ a.stat-card.clickable:hover { background-color: #fafafa; }
 }
 
 .split-text {
-    font-size: 0.75rem;
+    font-size: var(--text-xs);
     color: var(--atlas-gray-medium);
-    font-weight: 500;
+    font-weight: var(--font-weight-medium);
 }
 
 .split-val {
-    font-size: 1.1rem;
-    font-weight: 700;
+    font-size: var(--text-xl);
+    font-weight: var(--font-weight-bold);
     color: var(--atlas-black-tech);
 }
 
@@ -289,7 +286,7 @@ a.stat-card.clickable:hover { background-color: #fafafa; }
 }
 
 .timezone-label {
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
     color: var(--atlas-black-tech);
     display: flex;
     align-items: center;
@@ -362,8 +359,8 @@ a.stat-card.clickable:hover { background-color: #fafafa; }
     border-radius: var(--radius-sm);
     background: transparent;
     color: var(--atlas-white);
-    font-weight: 600;
-    font-size: 14px;
+    font-weight: var(--font-weight-semibold);
+    font-size: var(--text-sm);
     cursor: pointer;
     transition: all var(--transition-base);
     display: flex;
@@ -460,12 +457,9 @@ a.stat-card.clickable:hover { background-color: #fafafa; }
 
 .chart-header h3 {
     margin: 0;
-    font-size: 1.1rem;
-    font-weight: 600;
-    background: linear-gradient(135deg, var(--atlas-black-tech) 0%, var(--atlas-gray-pro) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    font-size: var(--text-lg);
+    font-weight: var(--font-weight-bold);
+    color: var(--atlas-black-tech);
 }
 
 .chart-body {
@@ -496,9 +490,22 @@ a.stat-card.clickable:hover { background-color: #fafafa; }
     TOP 10 ATIVOS - MODERN PROFESSIONAL DESIGN
     ================================================================== */
 
-.card-header { padding: 1.5rem; border-bottom: 1px solid #e2e8f0; }
-.card-title { margin: 0; font-size: 1.1rem; font-weight: 600; color: #333; }
-.card-body { padding: 1.5rem; }
+.card-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--color-border-light);
+    background: linear-gradient(135deg, rgba(255,255,255,0.5) 0%, rgba(248,248,250,0.3) 100%);
+}
+
+.card-title {
+    margin: 0;
+    font-size: var(--text-lg);
+    font-weight: var(--font-weight-bold);
+    color: var(--atlas-black-tech);
+}
+
+.card-body {
+    padding: 1.5rem;
+}
 
 .dashboard-cards {
     display: grid;
@@ -557,15 +564,15 @@ a.stat-card.clickable:hover { background-color: #fafafa; }
     100% { transform: rotate(360deg); }
 }
 
-/* TOP 10 CONTAINER - ATLAS DARK TECH THEME */
+/* TOP 10 CONTAINER - ATLAS LIGHT THEME */
 .top10-container {
-    background: linear-gradient(135deg, #1F1F23 0%, #15151a 100%);
+    background: var(--atlas-white);
     border-radius: 16px;
     overflow: hidden;
-    box-shadow: 0 8px 32px rgba(0, 195, 255, 0.15), 0 0 1px rgba(0, 195, 255, 0.2);
+    box-shadow: var(--shadow-sm);
     margin: 2.5rem 0;
-    border: 1px solid rgba(0, 195, 255, 0.2);
-    transition: all 0.3s ease;
+    border: 1px solid var(--color-border-light);
+    transition: all var(--transition-base);
     position: relative;
 }
 
@@ -576,19 +583,19 @@ a.stat-card.clickable:hover { background-color: #fafafa; }
     left: 0;
     right: 0;
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(0, 195, 255, 0.4), transparent);
+    background: linear-gradient(90deg, transparent, rgba(0, 195, 255, 0.2), transparent);
 }
 
 .top10-container:hover {
-    box-shadow: 0 12px 48px rgba(0, 195, 255, 0.25), 0 0 2px rgba(0, 195, 255, 0.3);
-    border-color: rgba(0, 195, 255, 0.4);
+    box-shadow: var(--shadow-md);
+    border-color: rgba(0, 195, 255, 0.2);
 }
 
 /* HEADER */
 .top10-header {
     padding: 2rem;
-    background: linear-gradient(180deg, rgba(10, 31, 68, 0.5) 0%, rgba(31, 31, 35, 0.3) 100%);
-    border-bottom: 1px solid rgba(0, 195, 255, 0.15);
+    background: linear-gradient(135deg, rgba(255,255,255,0.5) 0%, rgba(248,248,250,0.3) 100%);
+    border-bottom: 1px solid var(--color-border-light);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -601,34 +608,30 @@ a.stat-card.clickable:hover { background-color: #fafafa; }
 
 .top10-title {
     margin: 0 0 0.5rem 0;
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: #FFFFFF;
-    letter-spacing: -0.5px;
+    font-size: var(--text-2xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--atlas-black-tech);
+    letter-spacing: -0.3px;
     text-transform: uppercase;
-    background: linear-gradient(135deg, #FFFFFF 0%, #00C3FF 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
 }
 
 .top10-subtitle {
     margin: 0;
-    font-size: 0.95rem;
-    color: #6D6D73;
-    font-weight: 500;
-    letter-spacing: 0.5px;
+    font-size: var(--text-sm);
+    color: var(--atlas-gray-medium);
+    font-weight: var(--font-weight-regular);
+    letter-spacing: 0.3px;
 }
 
 .top10-badge {
-    background: linear-gradient(135deg, #00C3FF 0%, #008CFF 100%);
-    color: #0B0B0D;
+    background: linear-gradient(135deg, var(--atlas-blue-electric) 0%, var(--atlas-blue-neon) 100%);
+    color: var(--atlas-black-tech);
     padding: 0.75rem 1.5rem;
-    border-radius: 12px;
-    font-weight: 800;
-    font-size: 0.9rem;
+    border-radius: var(--radius-md);
+    font-weight: var(--font-weight-bold);
+    font-size: var(--text-sm);
     white-space: nowrap;
-    box-shadow: 0 8px 24px rgba(0, 195, 255, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    box-shadow: var(--shadow-glow);
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }

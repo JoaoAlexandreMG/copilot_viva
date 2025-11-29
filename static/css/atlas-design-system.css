@@ -3,6 +3,9 @@
    Dark Tech Futuristic Palette for VivaAI Portal
    ============================================================================ */
 
+/* Import Inter Font Family */
+@import url('https://rsms.me/inter/inter.css');
+
 :root {
     /* ========== PRIMARY COLORS (ATLAS PALETTE) ========== */
 
@@ -107,13 +110,32 @@
     --shadow-purple: 0 8px 24px rgba(76, 58, 255, 0.15);
     --shadow-yellow: 0 8px 24px rgba(255, 201, 60, 0.15);
 
-    /* ========== TYPOGRAPHY ========== */
+    /* ========== TYPOGRAPHY - INTER FONT ========== */
 
-    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
                  'Helvetica Neue', Arial, sans-serif, 'Apple Color Emoji';
     --font-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono',
                  Consolas, 'Courier New', monospace;
-    --font-display: 'Segoe UI', Roboto, sans-serif;
+    --font-display: 'Inter', 'Segoe UI', Roboto, sans-serif;
+
+    /* ========== INTER FONT WEIGHTS ========== */
+    --font-weight-light: 300;       /* Light - Rodapés, legendas */
+    --font-weight-regular: 400;     /* Regular - Textos e parágrafos */
+    --font-weight-medium: 500;      /* Medium - Subtítulos */
+    --font-weight-semibold: 600;    /* SemiBold - Destaques */
+    --font-weight-bold: 700;        /* Bold - Títulos */
+    --font-weight-black: 900;       /* Black - Headlines fortes */
+
+    /* ========== TYPOGRAPHY SIZES ========== */
+    --text-xs: 0.75rem;             /* 12px - Rodapé, legendas */
+    --text-sm: 0.875rem;            /* 14px - Texto pequeno */
+    --text-base: 1rem;              /* 16px - Texto padrão */
+    --text-lg: 1.125rem;            /* 18px - Texto grande */
+    --text-xl: 1.25rem;             /* 20px - Destaques */
+    --text-2xl: 1.5rem;             /* 24px - Subtítulos */
+    --text-3xl: 1.875rem;           /* 30px - Subtítulos */
+    --text-4xl: 2.25rem;            /* 36px - Títulos de página */
+    --text-5xl: 3rem;               /* 48px - Títulos de página */
 
     /* ========== TRANSITIONS & ANIMATIONS ========== */
 
