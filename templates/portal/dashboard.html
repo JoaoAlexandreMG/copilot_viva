@@ -160,58 +160,6 @@
 
 </div>
 
-<!-- Import Section with Button -->
-<div class="import-section">
-    <div class="import-section-header">
-        <h3 class="import-section-title">
-            <i class="fas fa-upload"></i> Gerenciamento de Dados
-        </h3>
-        <p class="import-section-desc">Importe arquivos de dados para atualizar informações da plataforma</p>
-    </div>
-    <button id="openImportModal" class="btn-import-primary">
-        <i class="fas fa-upload"></i> Importar Arquivo
-    </button>
-</div>
-
-<!-- Import Modal -->
-<div id="importModal" class="import-modal" style="display:none;">
-    <div class="import-modal-overlay"></div>
-    <div class="import-modal-content">
-        <div class="import-modal-header">
-            <h2>Importar Arquivo de Dados</h2>
-            <button id="closeImportX" class="import-modal-close">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        
-        <div class="import-modal-body">
-            <div class="import-file-zone">
-                <div class="import-file-icon">
-                    <i class="fas fa-file-upload"></i>
-                </div>
-                <p class="import-file-title">Selecione um arquivo para importar</p>
-                <p class="import-file-desc">Arquivos suportados: CSV, XLSX</p>
-                <label for="importFileInput" class="import-file-input-label">
-                    <input type="file" id="importFileInput" accept=".csv,.xlsx" class="import-file-input" />
-                    <span class="import-file-input-text">Clique ou arraste um arquivo</span>
-                </label>
-                <p id="importFileName" class="import-file-name" style="display:none;"></p>
-            </div>
-
-            <div id="importFeedback" class="import-feedback" style="display:none;"></div>
-        </div>
-
-        <div class="import-modal-footer">
-            <button id="startImport" class="import-btn-start" disabled>
-                <i class="fas fa-play"></i> Iniciar Importação
-            </button>
-            <button id="closeImport" class="import-btn-cancel">
-                <i class="fas fa-times"></i> Fechar
-            </button>
-        </div>
-    </div>
-</div>
-
 <!-- Charts Section - 2x2 Grid -->
 <div class="charts-grid">
     <!-- Temperatura por Hora (30d) - Line Chart -->
@@ -334,7 +282,6 @@
      */
     const APP_CONFIG = {
         urls: {
-            import: "{{ url_for('dashboard.import_file') }}",
             stats: "{{ url_for('dashboard.get_dashboard_stats') }}"
         },
         stats: {
@@ -839,7 +786,6 @@
      */
     const DashboardManager = {
         init: function() {
-            this.initImportModal();
             this.initCharts();
             this.initPercentages();
             this.initTop10();
@@ -855,95 +801,6 @@
             if(backendStats.top10_assets) {
                 Top10AssetRenderer.render(backendStats.top10_assets);
             }
-        },
-
-        // --- Lógica do Modal de Importação ---
-        initImportModal: function() {
-            const modal = document.getElementById('importModal');
-            const input = document.getElementById('importFileInput');
-            const btnStart = document.getElementById('startImport');
-            const feedback = document.getElementById('importFeedback');
-            const fileNameDisplay = document.getElementById('importFileName');
-            const zone = document.querySelector('.import-file-zone');
-
-            if (!modal) return;
-
-            const closeModal = () => {
-                modal.style.display = 'none';
-                input.value = '';
-                fileNameDisplay.style.display = 'none';
-                feedback.style.display = 'none';
-                btnStart.disabled = true;
-            };
-
-            // Event Listeners
-            document.getElementById('openImportModal').onclick = () => {
-                modal.style.display = 'flex';
-                closeModal(); // Reset visual state but keep display flex
-                modal.style.display = 'flex';
-            };
-            document.getElementById('closeImport').onclick = closeModal;
-            document.getElementById('closeImportX').onclick = closeModal;
-            document.querySelector('.import-modal-overlay').onclick = closeModal;
-
-            // File Handling
-            const handleFile = (file) => {
-                if (file) {
-                    fileNameDisplay.textContent = `📄 ${file.name}`;
-                    fileNameDisplay.style.display = 'block';
-                    btnStart.disabled = false;
-                }
-            };
-
-            input.onchange = (e) => handleFile(e.target.files[0]);
-
-            // Drag & Drop
-            zone.ondragover = (e) => { e.preventDefault(); zone.classList.add('dragover'); };
-            zone.ondragleave = () => zone.classList.remove('dragover');
-            zone.ondrop = (e) => {
-                e.preventDefault();
-                zone.classList.remove('dragover');
-                if (e.dataTransfer.files.length) {
-                    input.files = e.dataTransfer.files;
-                    handleFile(e.dataTransfer.files[0]);
-                }
-            };
-
-            // Upload Action
-            btnStart.onclick = async () => {
-                const file = input.files[0];
-                if (!file) return;
-
-                btnStart.disabled = true;
-                feedback.innerHTML = '<div class="import-feedback-loading">⏳ Processando...</div>';
-                feedback.style.display = 'block';
-
-                const formData = new FormData();
-                formData.append('file', file);
-
-                try {
-                    const res = await fetch(APP_CONFIG.urls.import, { method: 'POST', body: formData });
-                    const data = await res.json();
-
-                    if (res.ok && data.status === 'ok') {
-                        const { inserted = 0, updated = 0 } = data.result || {};
-                        feedback.innerHTML = `
-                            <div class="import-feedback-success">
-                                <strong>✅ Sucesso!</strong>
-                                <div class="import-stats">
-                                    <p><span class="stat-label">Novos:</span> <span class="stat-value">${inserted}</span></p>
-                                    <p><span class="stat-label">Atualizados:</span> <span class="stat-value">${updated}</span></p>
-                                </div>
-                            </div>`;
-                        setTimeout(closeModal, 4000);
-                    } else {
-                        throw new Error(data.message || 'Erro desconhecido');
-                    }
-                } catch (err) {
-                    feedback.innerHTML = `<div class="import-feedback-error">❌ ${err.message}</div>`;
-                    btnStart.disabled = false;
-                }
-            };
         },
 
         // --- Inicialização dos Gráficos ---
