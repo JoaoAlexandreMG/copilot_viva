@@ -1,0 +1,214 @@
+/* ============================================================================
+   ATLAS DESIGN SYSTEM - GLOBAL THEME
+   Dark Tech Futuristic Palette for VivaAI Portal
+   ============================================================================ */
+
+:root {
+    /* ========== PRIMARY COLORS (ATLAS PALETTE) ========== */
+
+    /* Dark Tech Foundation */
+    --atlas-black-tech: #0B0B0D;           /* Preto Grafite - Primary Text */
+    --atlas-gray-pro: #1F1F23;             /* Cinza Profissional - UI/Cards BG */
+    --atlas-gray-medium: #6D6D73;          /* Cinza Médio - Secondary Text/Labels */
+    --atlas-white: #FFFFFF;                /* Branco Puro - Contrast/Light Text */
+
+    /* Electric Blue - Main Brand Color */
+    --atlas-blue-electric: #00C3FF;        /* Azul Elétrico - Primary Accent */
+    --atlas-blue-neon: #008CFF;            /* Azul Neon - Secondary Accent */
+    --atlas-blue-deep: #0A1F44;            /* Azul Profundo - Dark Backgrounds */
+
+    /* Support Colors */
+    --atlas-green: #00F5B5;                /* Verde Ação - Success/Care Actions */
+    --atlas-purple: #4C3AFF;               /* Roxo Inteligência - Oracle/AI Features */
+    --atlas-yellow: #FFC93C;               /* Amarelo Atenção - Warnings/Alerts */
+
+    /* ========== SEMANTIC COLOR MAPPING ========== */
+
+    /* States */
+    --color-success: var(--atlas-green);
+    --color-warning: var(--atlas-yellow);
+    --color-danger: var(--atlas-yellow);
+    --color-info: var(--atlas-blue-electric);
+    --color-alert: var(--atlas-yellow);
+
+    /* UI Elements */
+    --color-primary: var(--atlas-blue-electric);
+    --color-primary-hover: var(--atlas-blue-neon);
+    --color-primary-light: rgba(0, 195, 255, 0.1);
+    --color-primary-lighter: rgba(0, 195, 255, 0.05);
+
+    --color-secondary: var(--atlas-gray-pro);
+    --color-secondary-hover: var(--atlas-gray-medium);
+    --color-secondary-light: var(--atlas-white);
+
+    --color-background: var(--atlas-white);
+    --color-background-dark: var(--atlas-gray-pro);
+    --color-background-darker: var(--atlas-black-tech);
+
+    --color-text: var(--atlas-black-tech);
+    --color-text-secondary: var(--atlas-gray-medium);
+    --color-text-light: var(--atlas-white);
+    --color-text-inverse: var(--atlas-white);
+
+    --color-border: var(--atlas-gray-pro);
+    --color-border-light: rgba(0, 0, 0, 0.1);
+    --color-border-electric: rgba(0, 195, 255, 0.2);
+
+    --color-white: var(--atlas-white);
+    --color-black: var(--atlas-black-tech);
+
+    /* ========== EXTENDED PALETTE ========== */
+
+    /* Grayscale */
+    --color-gray-50: #F9F9FB;
+    --color-gray-100: #F3F3F5;
+    --color-gray-200: #E8E8EB;
+    --color-gray-300: #D1D1D5;
+    --color-gray-400: #9C9CA3;
+    --color-gray-500: var(--atlas-gray-medium);
+    --color-gray-600: #55555D;
+    --color-gray-700: #3D3D43;
+    --color-gray-800: var(--atlas-gray-pro);
+    --color-gray-900: var(--atlas-black-tech);
+
+    /* ========== SPACING SYSTEM ========== */
+    --spacing-xs: 0.25rem;     /* 4px */
+    --spacing-sm: 0.5rem;      /* 8px */
+    --spacing-md: 1rem;        /* 16px */
+    --spacing-lg: 1.5rem;      /* 24px */
+    --spacing-xl: 2rem;        /* 32px */
+    --spacing-2xl: 2.5rem;     /* 40px */
+    --spacing-3xl: 3rem;       /* 48px */
+
+    /* ========== BORDER RADIUS ========== */
+    --radius-xs: 4px;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --radius-full: 9999px;
+
+    /* ========== SHADOWS & GLOWS ========== */
+
+    /* Regular Shadows */
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.15);
+    --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.2);
+
+    /* Electric Blue Glow */
+    --shadow-glow: 0 8px 32px rgba(0, 195, 255, 0.15), 0 0 1px rgba(0, 195, 255, 0.2);
+    --shadow-glow-lg: 0 12px 48px rgba(0, 195, 255, 0.25);
+    --shadow-glow-subtle: 0 0 12px rgba(0, 195, 255, 0.1);
+
+    /* Color Shadows */
+    --shadow-green: 0 8px 24px rgba(0, 245, 181, 0.15);
+    --shadow-purple: 0 8px 24px rgba(76, 58, 255, 0.15);
+    --shadow-yellow: 0 8px 24px rgba(255, 201, 60, 0.15);
+
+    /* ========== TYPOGRAPHY ========== */
+
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+                 'Helvetica Neue', Arial, sans-serif, 'Apple Color Emoji';
+    --font-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono',
+                 Consolas, 'Courier New', monospace;
+    --font-display: 'Segoe UI', Roboto, sans-serif;
+
+    /* ========== TRANSITIONS & ANIMATIONS ========== */
+
+    --transition-fast: 100ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-base: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slower: 500ms cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* ========== LAYOUT ========== */
+
+    --header-height: 64px;
+    --sidebar-width: 260px;
+    --sidebar-width-collapsed: 80px;
+    --max-content-width: 1400px;
+
+    /* ========== Z-INDEX STACK ========== */
+
+    --z-dropdown: 100;
+    --z-sticky: 150;
+    --z-fixed: 200;
+    --z-modal-backdrop: 300;
+    --z-modal: 310;
+    --z-popover: 320;
+    --z-tooltip: 330;
+    --z-notification: 350;
+}
+
+/* ========== DARK MODE SUPPORT ========== */
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --color-background: var(--atlas-gray-pro);
+        --color-background-dark: var(--atlas-black-tech);
+        --color-background-darker: #101012;
+
+        --color-text: var(--atlas-white);
+        --color-text-secondary: var(--atlas-gray-medium);
+        --color-text-light: var(--atlas-gray-medium);
+
+        --color-border: rgba(255, 255, 255, 0.1);
+        --color-border-light: rgba(255, 255, 255, 0.05);
+
+        --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+        --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.3);
+    }
+}
+
+/* ========== UTILITY CLASSES ========== */
+
+/* Text Colors */
+.text-primary { color: var(--color-primary); }
+.text-secondary { color: var(--color-secondary); }
+.text-success { color: var(--color-success); }
+.text-warning { color: var(--color-warning); }
+.text-danger { color: var(--color-danger); }
+.text-muted { color: var(--color-text-secondary); }
+.text-inverse { color: var(--color-text-inverse); }
+
+/* Background Colors */
+.bg-primary { background-color: var(--color-primary); }
+.bg-secondary { background-color: var(--color-secondary); }
+.bg-success { background-color: var(--color-success); }
+.bg-warning { background-color: var(--color-warning); }
+.bg-danger { background-color: var(--color-danger); }
+.bg-light { background-color: var(--atlas-white); }
+.bg-dark { background-color: var(--atlas-gray-pro); }
+
+/* Borders */
+.border-primary { border-color: var(--color-primary); }
+.border-electric { border-color: var(--color-border-electric); }
+.border-light { border-color: var(--color-border-light); }
+
+/* Shadows */
+.shadow-sm { box-shadow: var(--shadow-sm); }
+.shadow-md { box-shadow: var(--shadow-md); }
+.shadow-lg { box-shadow: var(--shadow-lg); }
+.shadow-glow { box-shadow: var(--shadow-glow); }
+.shadow-glow-lg { box-shadow: var(--shadow-glow-lg); }
+
+/* Animations */
+.fade-in { animation: fadeIn var(--transition-base) ease-in-out; }
+.slide-up { animation: slideUp var(--transition-base) ease-out; }
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
