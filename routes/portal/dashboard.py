@@ -1,14 +1,9 @@
 from flask import Blueprint, render_template, session, redirect, url_for, request, jsonify
 from sqlalchemy import text
-from pathlib import Path
 from models.models import Asset, AlertsDefinition, User
 from .decorators import require_authentication
 from db.database import get_session
 from datetime import datetime, timezone
-from sqlalchemy import text
-import os
-import tempfile
-from utils.new_excel_to_db import importar_dados_generico
 
 dashboard_bp = Blueprint("dashboard", __name__, url_prefix="/portal_associacao")
 
@@ -487,98 +482,3 @@ def get_technicians_activity_api():
         traceback.print_exc()
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
-@dashboard_bp.route('/import_file', methods=['POST'])
-@require_authentication
-def import_file():
-    """Endpoint para importar um único arquivo enviado via formulário.
-    Usa o novo sistema de importação genérica do utils/new_excel_to_db.py
-    Retorna JSON com o resultado (inserted, updated, read)
-    """
-    try:
-        file = request.files.get('file')
-        if not file:
-            return jsonify({'status': 'error', 'message': 'No file uploaded'}), 400
-
-        filename = file.filename
-        if not filename:
-            return jsonify({'status': 'error', 'message': 'No filename provided'}), 400
-
-        # Save to a temp file
-        
-        suffix = Path(filename).suffix
-        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
-        file.save(tmp.name)
-        tmp.close()
-
-
-        
-
-        # Detect model type based on filename patterns
-        name_normalized = filename.lower().replace(' ', '').replace('-', '').replace('_', '')
-        
-        # Map filename patterns to model names
-        file_patterns = {
-            'HealthEvent': ['health'],
-            'Movement': ['movements'],
-            'SmartDevice': ['smart', 'devices'],
-            'User': ['users'],
-            'Client': ['client'],
-            'Asset': ['assets'],
-            'Outlet': ['outlet'],
-            'Alert': ['alerts'],
-            'AlertsDefinition': ['definition'],
-            'DoorEvent': ['door', 'status']
-        }
-
-        detected_model = None
-        detection_log = []
-        
-        # Try to detect based on filename patterns
-        for model_name, patterns in file_patterns.items():
-            if any(pattern in name_normalized for pattern in patterns):
-                detected_model = model_name
-                detection_log.append(f"filename_pattern_match: {model_name} via {patterns}")
-                break
-
-        db_session = get_session()
-        try:
-            # Use the new generic import function
-            result = importar_dados_generico(db_session, detected_model, tmp.name)
-            
-            if result and (result.get('inserted', 0) > 0 or result.get('updated', 0) > 0):
-                return jsonify({
-                    'status': 'ok', 
-                    'result': {'inserted': result.get('inserted', 0), 'updated': result.get('updated', 0)},
-                    'model': detected_model,
-                    'detection': detection_log,
-                    'filename': filename
-                }), 200
-            elif result:
-                return jsonify({
-                    'status': 'warning', 
-                    'message': 'Import completed but no data was inserted or updated',
-                    'result': {'inserted': result.get('inserted', 0), 'updated': result.get('updated', 0)},
-                    'model': detected_model,
-                    'detection': detection_log,
-                    'filename': filename
-                }), 200
-            else:
-                return jsonify({
-                    'status': 'error', 
-                    'message': 'Import failed - check file format and content',
-                    'model': detected_model,
-                    'detection': detection_log,
-                    'filename': filename
-                }), 400
-                
-        finally:
-            try:
-                os.remove(tmp.name)
-            except Exception:
-                pass
-            db_session.close()
-            
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return jsonify({'status': 'error', 'message': str(e)}), 500
