@@ -1,9 +1,10 @@
 from flask import Blueprint, render_template, session, redirect, url_for, request, jsonify
+from sqlalchemy import text
 from pathlib import Path
 from models.models import Asset, AlertsDefinition, User
 from .decorators import require_authentication
 from db.database import get_session
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from sqlalchemy import text
 import os
 import tempfile
@@ -106,12 +107,54 @@ def get_technicians_activity(client):
     db_session.close()
     return technicians_data
 
+def process_hourly_data(raw_data, key, now):
+    """
+    Processa o array JSONB (com agregação horária) em um array de 24 pontos.
+    Preenche as horas que faltam com 0.
+    """
+    if not raw_data:
+        return [0.0] * 24, []
+        
+    # Mapeia a hora para o valor (e garante que seja float)
+    data_by_hour = {item['hour']: float(item[key]) for item in raw_data if item and key in item}
+    
+    hourly_array = [0.0] * 24
+    current_date = now.strftime("%Y-%m-%d")
+    hourly_data_with_timestamps = []
+
+    for h in range(24):
+        value = data_by_hour.get(h, 0.0)
+        
+        # Filtro de Sanidade para Temperatura (reproduzindo a lógica SQL)
+        if key == 'avg_temp' and not (-30 <= value <= 20):
+             value = 0.0 
+             
+        hourly_array[h] = value
+
+        # Mantém a estrutura de raw_data_with_timestamps para o frontend
+        timestamp_utc = f"{current_date}T{h:02d}:00:00Z"
+        
+        # Ajusta o nome da chave para manter a compatibilidade com o retorno final
+        key_name = "temp" if key == 'avg_temp' else "door"
+        
+        # O objeto de timestamps precisa incluir ambas as chaves (temp e door)
+        # Como estamos processando apenas um dado por vez, só incluímos o valor relevante.
+        # No frontend, você precisará combinar estas duas listas se precisar de uma única lista com 'temp' e 'door'.
+        # Para fins de compatibilidade com a estrutura anterior, retornaremos a lista de timestamps, mas o front-end
+        # provavelmente só precisa dos arrays [0..23].
+        
+        hourly_data_with_timestamps.append({
+            "hour": h,
+            "timestamp_utc": timestamp_utc,
+            key_name: value
+        })
+            
+    return hourly_array, hourly_data_with_timestamps
+
 def stats_for_dashboard(days=30):
     """
-    Calcula as principais estatísticas para o dashboard de forma otimizada.
-    
-    - Consulta a MV para dados de gráficos horários.
-    - Usa uma query dinâmica para os status de Bateria e Temperatura (devido aos limites de Alerta).
+    Calcula as principais estatísticas para o dashboard de forma otimizada, 
+    consultando apenas a Materialized View (MV) mv_client_overview.
     
     Args:
         days: Número de dias para filtrar (30 ou 7)
@@ -119,72 +162,46 @@ def stats_for_dashboard(days=30):
     db_session = get_session()
     
     # 1. Filtro e Parâmetros
-    # O cliente deve ser obtido do contexto da sessão do usuário
     client = session.get("user", {}).get("client") 
     if not client:
         return {}
     
-    # Parâmetros de tempo (para as queries que precisam de filtro temporal)
     now = datetime.now(timezone.utc)
-    period_start = now - timedelta(days=days)
 
-    # 2. Obter Definições Dinâmicas de Alerta
-    temp_alert_definition_sql = text("""
-        SELECT vco.applied_min, vco.applied_max
-        FROM mv_client_overview vco
-        WHERE vco.client = :client
+    # 2. Query 1: Obter TODOS os status e dados horários da MV otimizada
+    # Esta query substitui as Queries 2, 3 e 4 anteriores.
+    status_and_counts_sql = text("""
+        SELECT
+            total_assets_count,
+            alerts_30d,
+            alerts_7d,
+            active_assets_24h_count AS assets_health_last_24h_count,
+            count_battery_ok AS good_battery_assets_count,
+            count_battery_low AS low_battery_assets_count,
+            count_battery_critical AS critical_battery_assets_count,
+            count_temp_ok AS ok_temperatures_count,
+            count_temp_low AS below_temperatures_count,
+            count_temp_high AS above_temperatures_count,
+            applied_min AS temp_min,
+            applied_max AS temp_max,
+            avg_compressor_percent_30d,
+            avg_compressor_percent_7d,
+            avg_consumption_watt_30d,
+            avg_consumption_watt_7d,
+            hourly_temp_data_30d,
+            hourly_temp_data_7d,
+            hourly_door_data_30d,
+            hourly_door_data_7d
+        FROM mv_client_overview
+        WHERE client = :client
     """)
-    temp_alert_definition = db_session.execute(temp_alert_definition_sql, {"client": client}).fetchone()
     
-    # Definir limites de temperatura (usados no SQL dinâmico)
-    temp_min = temp_alert_definition.applied_min if temp_alert_definition and temp_alert_definition.applied_min is not None else 0
-    temp_max = temp_alert_definition.applied_max if temp_alert_definition and temp_alert_definition.applied_max is not None else 7
-
-    # 3. Query 1: Status Dinâmicos e Contagens usando MVs otimizadas
-    # Usar mv_dashboard_stats_main para dados de bateria e mv_client_assets_report para temperatura
-    status_and_counts_sql = text(f"""
-        SELECT 
-            -- Totais
-            (SELECT COUNT(*) FROM mv_asset_current_status WHERE client = :client) AS total_assets,
-            (SELECT COUNT(id) FROM alerts WHERE client = :client AND alert_at >= :period_start) AS alerts_period_count,
-            (SELECT COUNT(*) FROM mv_asset_current_status WHERE client = :client AND last_movement_time >= (now() AT TIME ZONE 'UTC' - INTERVAL '24 hours')) AS assets_health_last_24h_count,
-        
-            -- Status de Bateria usando mv_dashboard_stats_main
-            (SELECT count_battery_ok FROM mv_client_overview WHERE client = :client) AS good_battery_assets_count,
-            (SELECT count_battery_low FROM mv_client_overview WHERE client = :client) AS low_battery_assets_count,
-            (SELECT count_battery_critical FROM mv_client_overview WHERE client = :client) AS critical_battery_assets_count,
-            (SELECT count_temp_ok FROM mv_client_overview WHERE client = :client) AS ok_temperatures_count,
-            (SELECT count_temp_low FROM mv_client_overview WHERE client = :client) AS below_temperatures_count,
-            (SELECT count_temp_high FROM mv_client_overview WHERE client = :client) AS above_temperatures_count,
-            (SELECT total_assets_monitored FROM mv_client_overview WHERE client = :client) AS total_with_temperature,
-    
-            -- Estatísticas de consumo e compressor (usando health_events para dados mais recentes, com filtro de temperatura)
-            (SELECT 
-                CASE 
-                    WHEN :days = 30 THEN avg_compressor_percent_30d 
-                    ELSE avg_compressor_percent_7d 
-                END 
-             FROM mv_client_overview WHERE client = :client) AS avg_compressor_on_time,
-            (SELECT 
-                CASE 
-                    WHEN :days = 30 THEN avg_consumption_watt_30d 
-                    ELSE avg_consumption_watt_7d 
-                END 
-             FROM mv_client_overview WHERE client = :client) AS avg_power_consumption;
-            """)
-    
-    status_results = db_session.execute(
-        status_and_counts_sql, 
-        {   "days": days,
-            "client": client, 
-            "period_start": period_start, 
-            "temp_min": temp_min, 
-            "temp_max": temp_max
-        }
-    ).fetchone()
+    status_results = db_session.execute(status_and_counts_sql, {"client": client}).fetchone()
     
     if not status_results:
-        # Retorna um dicionário vazio ou com zeros se o cliente não tiver dados
+        # Se o cliente não tem dados na MV, retorna zero
+        temp_min = 0
+        temp_max = 7
         return {
             "total_assets": 0,
             "assets_health_last_24h_count": 0,
@@ -194,109 +211,52 @@ def stats_for_dashboard(days=30):
             "good_battery_assets_count": 0, "low_battery_assets_count": 0, "critical_battery_assets_count": 0,
             "avg_compressor_on_time": 0,
             "avg_power_consumption": 0,
-            "hourly_temp_chart": {"labels": [f"{h:02d}:00" for h in range(24)], "data": [0] * 24},
-            "hourly_door_chart": {"labels": [f"{h:02d}:00" for h in range(24)], "data": [0] * 24},
+            "hourly_temp_chart": {"labels": [f"{h:02d}:00" for h in range(24)], "data": [0] * 24, "raw_data": []},
+            "hourly_door_chart": {"labels": [f"{h:02d}:00" for h in range(24)], "data": [0] * 24, "raw_data": []},
             "temperature_status_chart": {"labels": [f'OK ({temp_min}°C-{temp_max}°C)', f'Acima (>{temp_max}°C)', f'Abaixo (<{temp_min}°C)'], "data": [0, 0, 0]},
         }
 
-    # 4. Query 2: Dados Horários (Consultando diretamente health_events já que MV não existe)
-    # Usar filtro de período baseado nos dias solicitados
+    # --- 3. Extração e Seleção Dinâmica (7 ou 30 dias) ---
+    
+    temp_min = status_results.temp_min if status_results.temp_min is not None else 0
+    temp_max = status_results.temp_max if status_results.temp_max is not None else 7
+
     if days == 7:
-        period_filter = "event_time >= NOW() - INTERVAL '7 days'"
-    else:
-        period_filter = "event_time >= NOW() - INTERVAL '30 days'"
+        raw_temp_data = status_results.hourly_temp_data_7d
+        raw_door_data = status_results.hourly_door_data_7d
+        alerts_period_count = status_results.alerts_7d
+        avg_compressor_on_time = status_results.avg_compressor_percent_7d
+        avg_power_consumption = status_results.avg_consumption_watt_7d
+    else: # days == 30 (padrão)
+        raw_temp_data = status_results.hourly_temp_data_30d
+        raw_door_data = status_results.hourly_door_data_30d
+        alerts_period_count = status_results.alerts_30d
+        avg_compressor_on_time = status_results.avg_compressor_percent_30d
+        avg_power_consumption = status_results.avg_consumption_watt_30d
+        
+    # --- 4. Processamento de Dados de Gráfico ---
     
-    hourly_data_sql = text(f"""
-        SELECT
-            EXTRACT(HOUR FROM event_time)::integer AS hour_num,
-            AVG(temperature_c) AS hourly_avg_temp
-        FROM
-            health_events
-        WHERE
-            client = :client
-            AND {period_filter}
-            AND temperature_c IS NOT NULL
-            AND temperature_c >= -30 AND temperature_c <= 20
-        GROUP BY
-            EXTRACT(HOUR FROM event_time)
-        ORDER BY
-            EXTRACT(HOUR FROM event_time)
-    """)
-    hourly_data = db_session.execute(hourly_data_sql, {"client": client}).fetchall()
-    # Query separada para dados de porta
-    door_data_sql = text(f"""
-        SELECT
-            hour_in_day::integer AS hour_num,
-            avg(door_count) AS hourly_door_count
-        FROM
-            door
-        WHERE
-            client = :client
-            AND {period_filter.replace("event_time", "open_event_time")}
-        GROUP BY
-            hour_in_day
-        ORDER BY
-            hour_in_day;
-        """)
-    door_data = db_session.execute(door_data_sql, {"client": client}).fetchall() # Assuming 'Sorocaba Refrescos' is replaced by :client
-
-    # 5. Processamento Python (Preenchimento e Formatação)
+    # Processa os dados de temperatura (lista JSONB -> array de 24 pontos)
+    hourly_temp_data, hourly_temp_raw_timestamps = process_hourly_data(raw_temp_data, 'avg_temp', now)
     
-    # Mapeamento e Preenchimento de Horas
-    temp_by_hour = {f"{row.hour_num:02d}:00": row.hourly_avg_temp for row in hourly_data}
-    door_by_hour = {f"{row.hour_num:02d}:00": row.hourly_door_count for row in door_data}
+    # Processa os dados de porta (lista JSONB -> array de 24 pontos)
+    hourly_door_data, hourly_door_raw_timestamps = process_hourly_data(raw_door_data, 'avg_door_count', now)
     
-    # Criar labels simples para o eixo X (fixos)
-    hourly_labels = [f"{h:02d}:00" for h in range(24)]
+    # --- 5. Cálculo de Métricas de Temperatura ---
     
-    # Criar dados horários com timestamps UTC para conversão de timezone
-    current_date = now.strftime("%Y-%m-%d")
-    hourly_data_with_timestamps = []
-    for h in range(24):
-        timestamp_utc = f"{current_date}T{h:02d}:00:00Z"
-        temp_value = temp_by_hour.get(f"{h:02d}:00", 0) or 0
-        door_value = door_by_hour.get(f"{h:02d}:00", 0) or 0
-        hourly_data_with_timestamps.append({
-            "hour": h,
-            "timestamp_utc": timestamp_utc,
-            "temp": float(temp_value) if temp_value else 0,
-            "door": float(door_value) if door_value else 0
-        })
-    
-    # Os dados serão processados no frontend baseado no timezone selecionado
-    hourly_temp_data = [0] * 24  # Placeholder inicial
-    hourly_door_data = [0] * 24  # Placeholder inicial
-
-    # Processar dados para valores iniciais (UTC)
-    for i in range(24):
-        label = f"{i:02d}:00"
-        # Temperatura: aplicar filtro de sanidade aqui também
-        avg_temp = temp_by_hour.get(label)
-        if avg_temp is not None and -30 <= avg_temp <= 20:  # Filtro de sanidade (-30°C a 20°C)
-            hourly_temp_data[i] = float(avg_temp)
-        else:
-            hourly_temp_data[i] = 0  # Valor padrão para dados inválidos
-
-        # Porta:
-        avg_doors = door_by_hour.get(label)
-        if avg_doors is not None and avg_doors > 0:
-            hourly_door_data[i] = float(avg_doors)
-
-    # Status de Temperatura para Gráfico
-    # Usar contagem direta da MV para Not OK (que já considera apenas com temperatura)
     ok_temperatures_count = int(status_results.ok_temperatures_count or 0)
     above_temperatures_count = int(status_results.above_temperatures_count or 0)
     below_temperatures_count = int(status_results.below_temperatures_count or 0)
+    
     not_ok_temperatures_count = above_temperatures_count + below_temperatures_count
     
-    # Total de ativos COM temperatura (OK + Not OK direto da MV)
-    total_with_temperature = int(status_results.total_with_temperature or 0)
-    
+    # total_with_temperature é agora calculado pela soma das categorias (já que o WHERE macs.temperature_c IS NOT NULL foi removido do SELECT principal)
+    total_with_temperature = ok_temperatures_count + not_ok_temperatures_count 
+
     # Calcular percentuais corretos
     temp_ok_percentage = round((ok_temperatures_count / total_with_temperature) * 100) if total_with_temperature > 0 else 0
     temp_not_ok_percentage = round((not_ok_temperatures_count / total_with_temperature) * 100) if total_with_temperature > 0 else 0
     
-    # Ajustar para somar 100% exatamente
     if temp_ok_percentage + temp_not_ok_percentage != 100 and total_with_temperature > 0:
         temp_not_ok_percentage = 100 - temp_ok_percentage
     
@@ -311,7 +271,8 @@ def stats_for_dashboard(days=30):
         below_temperatures_count
     ]
 
-    # 7. Query 3: Top 10 Ativos por Displacement (últimas 24h) - COM RANKING NA QUERY
+    # 6. Query 3: Top 10 Ativos por Displacement (últimas 24h) - MANTIDA
+    # Esta query não pode ser materializada pois requer dados de movimento (movements) recentes
     top10_sql = text("""
         SELECT
             a.sales_office,
@@ -322,7 +283,6 @@ def stats_for_dashboard(days=30):
                 ORDER BY r.displacement_meter DESC
             ) as global_rank
         FROM (
-            -- 1. Subconsulta para encontrar o movimento mais recente
             SELECT
                 asset_serial_number,
                 displacement_meter,
@@ -348,22 +308,19 @@ def stats_for_dashboard(days=30):
 
     top10_results = db_session.execute(top10_sql, {"client": client}).fetchall()
 
-    # Processar resultados mantendo a ordem global do ranking (1-10)
-    # Usar um dicionário para agrupamento, mas retornar como array para garantir ordem
+    # Processamento Top 10 (mantido inalterado)
     top10_by_office = {}
-
     for row in top10_results:
         office = row.sales_office or "Sem Escritório"
         if office not in top10_by_office:
             top10_by_office[office] = []
         top10_by_office[office].append({
-            "rank": int(row.global_rank),  # Rank global vindo do SQL (1-10)
+            "rank": int(row.global_rank),
             "asset_serial_number": row.asset_serial_number,
             "displacement_meter": float(row.displacement_meter) if row.displacement_meter else 0,
             "start_time": row.start_time.isoformat() if row.start_time else None
         })
 
-    # Converter para array de offices ordenado pela ordem de aparição do primeiro asset de cada office no ranking global
     top10_data = []
     for office in sorted(top10_by_office.keys(), key=lambda o: min(asset["rank"] for asset in top10_by_office[o])):
         top10_data.append({
@@ -371,20 +328,22 @@ def stats_for_dashboard(days=30):
             "assets": sorted(top10_by_office[office], key=lambda a: a["rank"])
         })
 
-    # 6. Retorno Final
+    # 7. Retorno Final
+    hourly_labels = [f"{h:02d}:00" for h in range(24)]
+    
     return {
         # Período de referência
         "period_days": days,
 
         # Métricas de Cartão (Totais e Contagens)
-        "total_assets": int(status_results.total_assets or 0),
+        "total_assets": int(status_results.total_assets_count or 0),
         "assets_health_last_24h_count": int(status_results.assets_health_last_24h_count or 0),
-        "alerts_period_count": int(status_results.alerts_period_count or 0),
+        "alerts_period_count": int(alerts_period_count or 0), # Dinâmico (7/30d)
 
         # Métricas de Temperatura (Contagens e Percentuais)
         "ok_temperatures_count": ok_temperatures_count,
         "not_ok_temperatures_count": not_ok_temperatures_count,
-        "total_with_temperature": total_with_temperature,
+        "total_with_temperature": total_with_temperature, # Calculado pela soma das categorias
         "temp_ok_percentage": temp_ok_percentage,
         "temp_not_ok_percentage": temp_not_ok_percentage,
 
@@ -393,20 +352,20 @@ def stats_for_dashboard(days=30):
         "low_battery_assets_count": int(status_results.low_battery_assets_count or 0),
         "critical_battery_assets_count": int(status_results.critical_battery_assets_count or 0),
 
-        # Novas Estatísticas
-        "avg_compressor_on_time": round(status_results.avg_compressor_on_time, 2) if status_results.avg_compressor_on_time else 0,
-        "avg_power_consumption": round(status_results.avg_power_consumption, 2) if status_results.avg_power_consumption else 0,
+        # Estatísticas de Consumo (Dinâmico 7/30d)
+        "avg_compressor_on_time": round(avg_compressor_on_time, 2) if avg_compressor_on_time else 0,
+        "avg_power_consumption": round(avg_power_consumption, 2) if avg_power_consumption else 0,
 
-        # Dados para Gráficos (MV)
+        # Dados para Gráficos (MV - Dinâmico 7/30d)
         "hourly_temp_chart": {
             "labels": hourly_labels,
             "data": hourly_temp_data,
-            "raw_data": hourly_data_with_timestamps  # Dados com timestamps para conversão
+            "raw_data": hourly_temp_raw_timestamps # Mantido para compatibilidade de timezone no frontend
         },
         "hourly_door_chart": {
             "labels": hourly_labels,
             "data": hourly_door_data,
-            "raw_data": hourly_data_with_timestamps  # Dados com timestamps para conversão
+            "raw_data": hourly_door_raw_timestamps # Mantido para compatibilidade de timezone no frontend
         },
         "temperature_status_chart": {
             "labels": temp_status_labels,
