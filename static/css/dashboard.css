@@ -370,12 +370,9 @@ a.stat-card.clickable:hover { background-color: #fafafa; }
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-/* Posicionamento do card do Top 10 - Largura total */
-.card:has(#top10Container) {
-    width: 100%;
-    max-width: 100%;
-    margin: 2rem 0;
-}
+/* ==================================================================
+    TOP 10 ATIVOS - MODERN PROFESSIONAL DESIGN
+    ================================================================== */
 
 .card-header { padding: 1.5rem; border-bottom: 1px solid #e2e8f0; }
 .card-title { margin: 0; font-size: 1.1rem; font-weight: 600; color: #333; }
@@ -416,11 +413,7 @@ a.stat-card.clickable:hover { background-color: #fafafa; }
 .dashboard-card-title { margin: 0 0 0.25rem 0; font-size: 1rem; font-weight: 600; color: #333; }
 .dashboard-card-subtitle { margin: 0; font-size: 0.85rem; color: #999; }
 
-
-/* ==================================================================
-    6. LOADING UTILS
-    ================================================================== */
-
+/* LOADING */
 .loading-overlay {
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
@@ -442,298 +435,441 @@ a.stat-card.clickable:hover { background-color: #fafafa; }
     100% { transform: rotate(360deg); }
 }
 
-/* ==================================================================
-    7. TOP 10 ATIVOS POR DISPLACEMENT (PROFESSIONAL DESIGN)
-    ================================================================== */
+/* TOP 10 CONTAINER */
+.top10-container {
+    background: white;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    margin: 2.5rem 0;
+    border: 1px solid #f0f1f3;
+    transition: box-shadow 0.3s ease;
+}
+
+.top10-container:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+/* HEADER */
+.top10-header {
+    padding: 2rem;
+    background: linear-gradient(135deg, #f8fafb 0%, #f0f4f8 100%);
+    border-bottom: 1px solid #e8ecf1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 2rem;
+}
+
+.top10-header-content {
+    flex: 1;
+}
+
+.top10-title {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #0f172a;
+    letter-spacing: -0.5px;
+}
+
+.top10-subtitle {
+    margin: 0;
+    font-size: 0.95rem;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.top10-badge {
+    background: linear-gradient(135deg, #00C3FF 0%, #008CFF 100%);
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(0, 195, 255, 0.25);
+}
+
+/* BODY */
+.top10-body {
+    padding: 2rem;
+}
 
 .top10-empty-state {
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-height: 220px;
+    min-height: 300px;
     color: #94a3b8;
-    font-size: 1rem;
-    font-weight: 500;
+    text-align: center;
+    gap: 1rem;
+}
+
+.top10-empty-icon {
+    width: 60px;
+    height: 60px;
+    color: #cbd5e1;
+    opacity: 0.5;
 }
 
 .top10-empty-state p {
     margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #475569;
 }
 
-/* Office Section Container */
-.top10-office-section {
-    margin-bottom: 3rem;
-    padding: 0;
+.top10-empty-state span {
+    font-size: 0.95rem;
+    color: #94a3b8;
 }
 
-.top10-office-section:last-child {
+/* OFFICE GROUP */
+.top10-office-group {
+    margin-bottom: 2.5rem;
+}
+
+.top10-office-group:last-child {
     margin-bottom: 0;
 }
 
-/* Office Header - Modern Style */
-.top10-office-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1.5rem 0 1.2rem 0;
-    border-bottom: 3px solid #f0f4f8;
+.top10-office-header-modern {
     margin-bottom: 1.5rem;
-    position: relative;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #e8ecf1;
 }
 
-.top10-office-header::after {
-    content: '';
-    position: absolute;
-    bottom: -3px;
-    left: 0;
-    height: 3px;
-    width: 80px;
-    background: linear-gradient(90deg, #00C3FF 0%, #008CFF 100%);
-    border-radius: 2px;
+.top10-office-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
 }
 
 .top10-office-name {
     margin: 0;
-    font-size: 1.15rem;
+    font-size: 1.2rem;
     font-weight: 700;
-    color: #1e293b;
-    letter-spacing: -0.5px;
+    color: #0f172a;
+    letter-spacing: -0.3px;
 }
 
-.top10-office-count {
-    background: linear-gradient(135deg, #0A1F44 0%, #1a3a6d 100%);
-    color: #00C3FF;
-    padding: 0.45rem 1rem;
-    border-radius: 24px;
-    font-size: 0.75rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.6px;
-    border: 1.5px solid rgba(0, 195, 255, 0.25);
-    box-shadow: 0 2px 8px rgba(0, 195, 255, 0.12);
-    backdrop-filter: blur(10px);
+.top10-assets-count {
+    background: linear-gradient(135deg, rgba(76, 58, 255, 0.1), rgba(0, 195, 255, 0.1));
+    color: #4C3AFF;
+    padding: 0.5rem 1rem;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    display: inline-block;
 }
 
-/* Assets List */
-.top10-assets-list {
-    display: flex;
-    flex-direction: column;
-    gap: 1.2rem;
-}
-
-/* Asset Row - Premium Card */
-.top10-asset-row {
+/* ASSETS GRID */
+.top10-assets-grid {
     display: grid;
-    grid-template-columns: 58px 1fr 220px;
-    gap: 1.75rem;
-    padding: 1.5rem 1.75rem;
-    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    gap: 1rem;
+}
+
+/* ASSET CARD */
+.top10-asset-card {
+    display: grid;
+    grid-template-columns: 70px 1fr 220px;
+    gap: 1.5rem;
+    align-items: center;
+    padding: 1.25rem 1.5rem;
+    background: #fafbfc;
+    border: 1px solid #e8ecf1;
+    border-radius: 12px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.top10-asset-card:hover {
+    background: white;
+    border-color: #00C3FF;
+    box-shadow: 0 8px 24px rgba(0, 195, 255, 0.15);
+    transform: translateY(-2px);
+}
+
+/* RANK */
+.top10-card-rank {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.rank-number {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 60px;
+    height: 60px;
     border-radius: 14px;
-    border: 1.5px solid #e8eef7;
-    align-items: center;
-    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-    overflow: hidden;
-}
-
-.top10-asset-row::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(0, 195, 255, 0.3), transparent);
-}
-
-.top10-asset-row:hover {
-    background: linear-gradient(135deg, #ffffff 0%, #f0f7ff 100%);
-    border-color: #a3e4ff;
-    box-shadow: 0 12px 32px rgba(0, 195, 255, 0.2);
-    transform: translateY(-3px);
-}
-
-/* Rank Badge - Premium */
-.top10-rank {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.badge-rank {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 54px;
-    height: 54px;
-    background: linear-gradient(135deg, #00C3FF 0%, #008CFF 100%);
-    color: #0A1F44;
-    border-radius: 12px;
-    font-size: 0.95rem;
     font-weight: 900;
+    font-size: 1.1rem;
     letter-spacing: -1px;
-    box-shadow: 0 6px 20px rgba(0, 195, 255, 0.4);
-    position: relative;
+    transition: all 0.3s ease;
 }
 
-.badge-rank::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: 12px;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, transparent 100%);
-    pointer-events: none;
+.rank-gold {
+    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+    color: #78350f;
+    box-shadow: 0 6px 20px rgba(251, 191, 36, 0.3);
 }
 
-/* Asset Info */
-.top10-asset-info {
+.rank-gold .rank-number:hover {
+    transform: scale(1.08);
+}
+
+.rank-silver {
+    background: linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%);
+    color: #374151;
+    box-shadow: 0 6px 20px rgba(209, 213, 219, 0.4);
+}
+
+.rank-silver .rank-number:hover {
+    transform: scale(1.08);
+}
+
+.rank-bronze {
+    background: linear-gradient(135deg, #fdba74 0%, #fb923c 100%);
+    color: #7c2d12;
+    box-shadow: 0 6px 20px rgba(251, 146, 60, 0.3);
+}
+
+.rank-bronze .rank-number:hover {
+    transform: scale(1.08);
+}
+
+.rank-default {
+    background: linear-gradient(135deg, #00C3FF 0%, #008CFF 100%);
+    color: white;
+    box-shadow: 0 6px 20px rgba(0, 195, 255, 0.3);
+}
+
+.rank-default .rank-number:hover {
+    transform: scale(1.08);
+}
+
+/* CARD CONTENT */
+.top10-card-content {
     display: flex;
     flex-direction: column;
-    gap: 0.7rem;
-    justify-content: center;
+    gap: 0.8rem;
 }
 
-.top10-serial,
-.top10-time {
+.top10-asset-serial,
+.top10-asset-time {
     display: flex;
-    gap: 0.9rem;
-    align-items: center;
+    flex-direction: column;
+    gap: 0.25rem;
 }
 
-.top10-asset-info .label {
+.serial-label,
+.time-label {
+    font-size: 0.75rem;
     font-weight: 700;
-    color: #64748b;
-    font-size: 0.8rem;
     text-transform: uppercase;
-    letter-spacing: 0.4px;
-    min-width: 75px;
+    letter-spacing: 0.5px;
+    color: #94a3b8;
 }
 
-.top10-asset-info .value {
-    color: #1e293b;
+.serial-value,
+.time-value {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #0f172a;
+    font-family: 'Menlo', 'Monaco', monospace;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-weight: 600;
-    font-family: 'Courier New', monospace;
-    font-size: 0.9rem;
-    letter-spacing: 0.2px;
 }
 
-/* Displacement Section */
-.top10-displacement {
+/* DISPLACEMENT */
+.top10-displacement-section {
     display: flex;
     flex-direction: column;
-    gap: 0.9rem;
-    justify-content: center;
+    gap: 0.75rem;
     align-items: flex-end;
 }
 
+.displacement-bar-container {
+    width: 100%;
+    max-width: 200px;
+}
+
 .displacement-bar {
-    width: 170px;
-    height: 10px;
-    background: linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 100%);
-    border-radius: 5px;
+    height: 8px;
+    background: #e8ecf1;
+    border-radius: 4px;
     overflow: hidden;
-    box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.08);
-    border: 1px solid rgba(0, 0, 0, 0.03);
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .displacement-bar-fill {
     height: 100%;
-    border-radius: 5px;
-    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 2px 10px rgba(0, 195, 255, 0.4);
+    border-radius: 4px;
+    transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
-    background: linear-gradient(90deg, #00C3FF 0%, #008CFF 100%);
 }
 
 .displacement-bar-fill::after {
     content: '';
     position: absolute;
     inset: 0;
-    border-radius: 5px;
-    background: linear-gradient(90deg, rgba(255, 255, 255, 0.3) 0%, transparent 60%);
+    border-radius: 4px;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.4) 0%, transparent 70%);
 }
 
 .displacement-value {
     font-size: 1rem;
     font-weight: 800;
-    letter-spacing: 0.3px;
-    font-family: 'Courier New', monospace;
+    letter-spacing: 0.2px;
+    font-family: 'Menlo', 'Monaco', monospace;
 }
 
-/* Responsive Design */
-@media (max-width: 1200px) {
-    .top10-asset-row {
-        grid-template-columns: 54px 1fr 190px;
-        gap: 1.5rem;
-        padding: 1.35rem 1.5rem;
+/* RESPONSIVE */
+@media (max-width: 1024px) {
+    .top10-header {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 1.5rem;
     }
 
-    .displacement-bar {
-        width: 150px;
+    .top10-badge {
+        align-self: flex-start;
+    }
+
+    .top10-asset-card {
+        grid-template-columns: 60px 1fr 180px;
+        gap: 1.2rem;
+        padding: 1.15rem;
+    }
+
+    .displacement-bar-container {
+        max-width: 160px;
     }
 }
 
 @media (max-width: 768px) {
-    .top10-office-section {
-        margin-bottom: 2.5rem;
+    .top10-container {
+        border-radius: 12px;
+        margin: 2rem 0;
     }
 
-    .top10-office-header {
-        padding: 1.25rem 0 1rem 0;
-        margin-bottom: 1.25rem;
-    }
-
-    .top10-office-header::after {
-        width: 70px;
-    }
-
-    .top10-asset-row {
-        grid-template-columns: 1fr;
-        gap: 1rem;
+    .top10-header {
         padding: 1.25rem;
     }
 
-    .top10-rank {
+    .top10-title {
+        font-size: 1.25rem;
+    }
+
+    .top10-subtitle {
+        font-size: 0.85rem;
+    }
+
+    .top10-badge {
+        padding: 0.5rem 1rem;
+        font-size: 0.8rem;
+    }
+
+    .top10-body {
+        padding: 1.25rem;
+    }
+
+    .top10-asset-card {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+        padding: 1rem;
+    }
+
+    .top10-card-rank {
         order: -1;
-        align-self: flex-start;
-        margin-bottom: 0.5rem;
     }
 
-    .top10-asset-info {
-        gap: 0.6rem;
+    .rank-number {
+        width: 50px;
+        height: 50px;
+        font-size: 1rem;
     }
 
-    .top10-displacement {
+    .top10-displacement-section {
         grid-column: 1;
         flex-direction: row;
         justify-content: space-between;
         align-items: center;
-        gap: 1rem;
         padding-top: 1rem;
-        border-top: 1px solid rgba(0, 0, 0, 0.06);
+        border-top: 1px solid #e8ecf1;
+        align-items: center;
+        gap: 1rem;
     }
 
-    .displacement-bar {
+    .displacement-bar-container {
         flex: 1;
-        width: auto;
-        min-width: 100px;
+        max-width: none;
+        min-width: 80px;
+    }
+
+    .serial-label,
+    .time-label {
+        font-size: 0.7rem;
+    }
+
+    .serial-value,
+    .time-value {
+        font-size: 0.9rem;
     }
 
     .top10-office-name {
-        font-size: 1.05rem;
+        font-size: 1.1rem;
     }
 
-    .top10-asset-info .value {
-        font-size: 0.85rem;
+    .top10-office-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .displacement-value {
+        font-size: 0.95rem;
     }
 }
 
 @media (max-width: 480px) {
-    .top10-office-section {
-        margin-bottom: 2rem;
+    .top10-header {
+        padding: 1rem;
+        gap: 1rem;
+    }
+
+    .top10-title {
+        font-size: 1.1rem;
+    }
+
+    .top10-body {
+        padding: 1rem;
+    }
+
+    .top10-asset-card {
+        padding: 0.9rem;
+    }
+
+    .rank-number {
+        width: 45px;
+        height: 45px;
+        font-size: 0.95rem;
+    }
+
+    .top10-card-content {
+        gap: 0.6rem;
+    }
+
+    .top10-empty-state {
+        min-height: 200px;
+    }
+
+    .top10-empty-icon {
+        width: 50px;
+        height: 50px;
     }
 
     .top10-asset-row {

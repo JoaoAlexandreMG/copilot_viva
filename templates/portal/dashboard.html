@@ -204,13 +204,20 @@
 </div>
 
 <!-- Top 10 Ativos por Displacement Section -->
-<div class="card" style="margin: 2rem 0; width: 100%;">
-    <div class="card-header">
-        <h3 class="card-title">📊 Top 10 Ativos - Maior Deslocamento (últimas 24h)</h3>
-        <p class="card-subtitle" style="margin-top: 0.5rem; color: #6b7280; font-size: 0.875rem;">Segregado por Escritório de Vendas</p>
+<div class="top10-container">
+    <div class="top10-header">
+        <div class="top10-header-content">
+            <h2 class="top10-title">Ativos com Maior Deslocamento</h2>
+            <p class="top10-subtitle">Últimas 24 horas</p>
+        </div>
+        <div class="top10-badge">🚚 Top 10</div>
     </div>
-    <div class="card-body" id="top10Container" style="padding: 2rem;">
+    <div class="top10-body" id="top10Container">
         <div class="top10-empty-state">
+            <svg class="top10-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="M12 6v6m0 4v.01"></path>
+            </svg>
             <p>Carregando dados...</p>
         </div>
     </div>
@@ -316,36 +323,47 @@
      * ============================================================================
      */
 
-    // --- Renderizador do Top 10 Ativos ---
+    // --- Renderizador do Top 10 Ativos (Premium Design) ---
     class Top10AssetRenderer {
         static render(top10Data) {
             const container = document.getElementById('top10Container');
             if (!container || !top10Data || top10Data.length === 0) {
                 if (container) {
-                    container.innerHTML = '<div class="top10-empty-state"><p>📭 Nenhum dado de deslocamento disponível nas últimas 24h</p></div>';
+                    container.innerHTML = `
+                        <div class="top10-empty-state">
+                            <svg class="top10-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path d="M9 12h6m-6 4h6M7.5 3h9a2.5 2.5 0 0 1 2.5 2.5v13A2.5 2.5 0 0 1 16.5 21h-9A2.5 2.5 0 0 1 5 18.5v-13A2.5 2.5 0 0 1 7.5 3z"></path>
+                            </svg>
+                            <p>Nenhum dado disponível</p>
+                            <span>Aguarde dados de deslocamento nas próximas 24 horas</span>
+                        </div>
+                    `;
                 }
                 return;
             }
 
             let html = '';
 
-            // Itera sobre cada escritório de vendas em ordem de aparição no ranking global
-            top10Data.forEach((officeGroup) => {
+            // Itera sobre cada escritório de vendas
+            top10Data.forEach((officeGroup, groupIndex) => {
                 const office = officeGroup.office;
                 const assets = officeGroup.assets;
 
                 html += `
-                    <div class="top10-office-section">
-                        <div class="top10-office-header">
-                            <h4 class="top10-office-name">🏢 ${office}</h4>
-                            <span class="top10-office-count">${assets.length} ativo(s)</span>
+                    <div class="top10-office-group" data-office-index="${groupIndex}">
+                        <div class="top10-office-header-modern">
+                            <div class="top10-office-info">
+                                <h3 class="top10-office-name">${office}</h3>
+                                <span class="top10-assets-count">${assets.length}</span>
+                            </div>
                         </div>
-                        <div class="top10-assets-list">
+                        <div class="top10-assets-grid">
                 `;
 
-                // Renderiza cada ativo em ordem de ranking global
-                assets.forEach((asset, index) => {
+                // Renderiza cada ativo
+                assets.forEach((asset) => {
                     const displacementColor = this.getDisplacementColor(asset.displacement_meter);
+                    const displacementPercent = Math.min((asset.displacement_meter / 1000) * 100, 100);
                     const formattedTime = asset.start_time
                         ? new Date(asset.start_time).toLocaleString('pt-BR', {
                             month: '2-digit',
@@ -355,27 +373,36 @@
                         })
                         : 'N/A';
 
+                    const getRankBadgeClass = (rank) => {
+                        if (rank === 1) return 'rank-gold';
+                        if (rank === 2) return 'rank-silver';
+                        if (rank === 3) return 'rank-bronze';
+                        return 'rank-default';
+                    };
+
                     html += `
-                        <div class="top10-asset-row">
-                            <div class="top10-rank">
-                                <span class="badge badge-rank">#${asset.rank}</span>
+                        <div class="top10-asset-card">
+                            <div class="top10-card-rank ${getRankBadgeClass(asset.rank)}">
+                                <span class="rank-number">#${asset.rank}</span>
                             </div>
-                            <div class="top10-asset-info">
-                                <div class="top10-serial">
-                                    <span class="label">Serial:</span>
-                                    <span class="value">${asset.asset_serial_number}</span>
+                            <div class="top10-card-content">
+                                <div class="top10-asset-serial">
+                                    <span class="serial-label">Serial</span>
+                                    <span class="serial-value" title="${asset.asset_serial_number}">${asset.asset_serial_number}</span>
                                 </div>
-                                <div class="top10-time">
-                                    <span class="label">Último movimento:</span>
-                                    <span class="value">${formattedTime}</span>
+                                <div class="top10-asset-time">
+                                    <span class="time-label">Último movimento</span>
+                                    <span class="time-value">${formattedTime}</span>
                                 </div>
                             </div>
-                            <div class="top10-displacement">
-                                <div class="displacement-bar">
-                                    <div class="displacement-bar-fill" style="width: ${Math.min((asset.displacement_meter / 1000) * 100, 100)}%; background-color: ${displacementColor};"></div>
+                            <div class="top10-displacement-section">
+                                <div class="displacement-bar-container">
+                                    <div class="displacement-bar">
+                                        <div class="displacement-bar-fill" style="width: ${displacementPercent}%; background: linear-gradient(90deg, ${displacementColor}, ${this.getLighterColor(displacementColor)});"></div>
+                                    </div>
                                 </div>
-                                <span class="displacement-value" style="color: ${displacementColor}; font-weight: 600;">
-                                    ${asset.displacement_meter.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} m
+                                <span class="displacement-value" style="color: ${displacementColor};">
+                                    ${asset.displacement_meter.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} m
                                 </span>
                             </div>
                         </div>
@@ -392,10 +419,21 @@
         }
 
         static getDisplacementColor(displacement) {
-            if (displacement >= 500) return '#dc2626'; // Vermelho - Alta atividade
-            if (displacement >= 300) return '#f97316'; // Laranja
-            if (displacement >= 100) return '#eab308'; // Amarelo
-            return '#22c55e'; // Verde - Baixa atividade
+            if (displacement >= 500) return '#ef4444';  // Red
+            if (displacement >= 300) return '#f97316';  // Orange
+            if (displacement >= 100) return '#eab308';  // Amber
+            return '#10b981';  // Green
+        }
+
+        static getLighterColor(hexColor) {
+            // Retorna uma versão mais clara da cor
+            const colorMap = {
+                '#ef4444': 'rgba(239, 68, 68, 0.3)',
+                '#f97316': 'rgba(249, 115, 22, 0.3)',
+                '#eab308': 'rgba(234, 179, 8, 0.3)',
+                '#10b981': 'rgba(16, 185, 129, 0.3)'
+            };
+            return colorMap[hexColor] || hexColor;
         }
     }
 
