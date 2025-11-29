@@ -12,22 +12,22 @@
 
 .stat-card {
     position: relative; /* Essencial para o badge funcionar */
-    background: #ffffff;
-    border-radius: 12px;
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
     padding: 1.5rem;
     display: flex;
     align-items: center;
     gap: 1.25rem;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-    border: 1px solid #e8f0f7;
-    transition: all 0.2s ease-in-out;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--color-border-light);
+    transition: all var(--transition-base);
     min-height: 110px; /* Garante altura visual uniforme */
 }
 
 .stat-card:hover {
     transform: translateY(-3px);
-    box-shadow: 0 10px 15px -3px rgba(0, 195, 255, 0.12), 0 4px 6px -2px rgba(0, 195, 255, 0.08);
-    border-color: #00C3FF;
+    box-shadow: var(--shadow-glow);
+    border-color: rgba(0, 195, 255, 0.3);
 }
 
 /* Links */
@@ -57,7 +57,7 @@ a.stat-card.clickable:hover { background-color: #fafafa; }
 
 .stat-label {
     font-size: 0.8rem;
-    color: #64748b; /* Slate 500 */
+    color: var(--atlas-gray-medium);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -67,16 +67,24 @@ a.stat-card.clickable:hover { background-color: #fafafa; }
 .stat-value {
     font-size: 1.6rem;
     font-weight: 700;
-    color: #1e293b; /* Slate 800 */
+    background: linear-gradient(135deg, var(--atlas-black-tech) 0%, var(--atlas-gray-pro) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
     margin: 0;
     line-height: 1.2;
 }
 
 /* Seta de link (Chevron) */
 .stat-arrow {
-    color: #cbd5e1;
+    color: var(--atlas-blue-electric);
     font-size: 1rem;
     padding-left: 0.5rem;
+    transition: transform var(--transition-fast);
+}
+
+.stat-card:hover .stat-arrow {
+    transform: translateX(2px);
 }
 
 /* =========================================
@@ -87,16 +95,16 @@ a.stat-card.clickable:hover { background-color: #fafafa; }
     position: absolute;
     top: 12px;
     right: 12px;
-    background-color: #f8fafc; /* Slate 50 */
-    color: #94a3b8;            /* Slate 400 */
+    background: linear-gradient(135deg, rgba(0, 195, 255, 0.1) 0%, rgba(0, 140, 255, 0.05) 100%);
+    color: var(--atlas-blue-electric);
     font-size: 0.65rem;
     font-weight: 700;
     padding: 4px 8px;
     border-radius: 6px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid rgba(0, 195, 255, 0.2);
     text-transform: uppercase;
     pointer-events: none; /* O clique passa através dele */
-    transition: opacity 0.3s ease;
+    transition: all var(--transition-fast);
 }
 
 /* =========================================
@@ -127,15 +135,14 @@ a.stat-card.clickable:hover { background-color: #fafafa; }
     gap: 6px;
     text-decoration: none;
     color: inherit;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    /* padding: 8px 12px; */
-    border-radius: 8px;
+    transition: all var(--transition-base);
+    border-radius: var(--radius-md);
     cursor: pointer;
     justify-content: center;
     position: relative;
     /* Indicadores visuais que sugerem clicabilidade */
-    border: 1px solid rgba(0, 195, 255, 0.2);
-    background-color: rgba(0, 195, 255, 0.05);
+    border: 1px solid rgba(0, 195, 255, 0.3);
+    background-color: rgba(0, 195, 255, 0.08);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
     /* Animação sutil para chamar atenção */
     animation: subtle-pulse 4s ease-in-out infinite;
@@ -144,24 +151,24 @@ a.stat-card.clickable:hover { background-color: #fafafa; }
 }
 
 @keyframes subtle-pulse {
-    0%, 100% { 
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); 
+    0%, 100% {
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
     }
-    50% { 
-        box-shadow: 0 2px 5px rgba(0, 195, 255, 0.15); 
+    50% {
+        box-shadow: 0 2px 8px rgba(0, 195, 255, 0.15);
     }
 }
 
 .clickable-split:hover {
     background-color: rgba(0, 195, 255, 0.15);
     transform: scale(1.03);
-    border-color: rgba(0, 195, 255, 0.4);
-    box-shadow: 0 2px 8px rgba(0, 195, 255, 0.2);
+    border-color: rgba(0, 195, 255, 0.5);
+    box-shadow: var(--shadow-glow-subtle);
 }
 
 .clickable-split:active {
     transform: scale(0.98);
-    box-shadow: 0 1px 2px rgba(0, 195, 255, 0.3);
+    box-shadow: 0 1px 4px rgba(0, 195, 255, 0.2);
 }
 
 /* Adiciona um pequeno ícone de link no canto para indicar clicabilidade */
@@ -172,58 +179,118 @@ a.stat-card.clickable:hover { background-color: #fafafa; }
     right: 6px;
     font-size: 10px;
     opacity: 0.4;
-    color: #00C3FF;
-    transition: opacity 0.3s ease;
+    color: var(--atlas-blue-electric);
+    transition: opacity var(--transition-fast);
 }
 
 .clickable-split:hover::after {
-    opacity: 0.8;
+    opacity: 0.9;
 }
 
-.split-text { font-size: 0.75rem; color: #94a3b8; font-weight: 500; }
-.split-val { font-size: 1.1rem; font-weight: 700; color: #334155; }
-.split-divider { width: 1px; height: 24px; background: #e2e8f0; }
+.split-text {
+    font-size: 0.75rem;
+    color: var(--atlas-gray-medium);
+    font-weight: 500;
+}
 
-.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-.dot.green { background-color: #22c55e; }
-.dot.red { background-color: #ef4444; }
+.split-val {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--atlas-black-tech);
+}
+
+.split-divider {
+    width: 1px;
+    height: 24px;
+    background: var(--color-border-light);
+}
+
+.dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.dot.green {
+    background-color: var(--atlas-green);
+}
+
+.dot.red {
+    background-color: var(--atlas-yellow);
+}
 
 /* Dica visual de clicabilidade */
 .click-hint {
     opacity: 0.6;
     font-style: italic;
     font-weight: normal;
-    color: #667eea;
+    color: var(--atlas-blue-electric);
     margin-left: 4px;
 }
 
-/* Cores de Fundo - Viva AI Brand Colors */
-.bg-indigo { background: rgba(76, 58, 255, 0.1); color: #4C3AFF; } /* Roxo Inteligência */
-.bg-green  { background: rgba(0, 245, 181, 0.1); color: #00F5B5; } /* Verde Ação */
-.bg-blue   { background: rgba(0, 195, 255, 0.1); color: #00C3FF; } /* Azul Elétrico */
-.bg-teal   { background: rgba(10, 31, 68, 0.08); color: #0A1F44; } /* Azul Profundo */
-.bg-red    { background: rgba(255, 201, 60, 0.15); color: #FFC93C; } /* Amarelo Atenção */
-.bg-cyan   { background: rgba(0, 140, 255, 0.1); color: #008CFF; } /* Azul Neon */
-.bg-orange { background: rgba(255, 201, 60, 0.2); color: #FFC93C; } /* Amarelo Atenção */
+/* Cores de Fundo - ATLAS Brand Colors */
+.bg-indigo {
+    background: linear-gradient(135deg, rgba(76, 58, 255, 0.12) 0%, rgba(76, 58, 255, 0.05) 100%);
+    color: var(--atlas-purple);
+    border: 1px solid rgba(76, 58, 255, 0.2);
+}
+
+.bg-green {
+    background: linear-gradient(135deg, rgba(0, 245, 181, 0.12) 0%, rgba(0, 245, 181, 0.05) 100%);
+    color: var(--atlas-green);
+    border: 1px solid rgba(0, 245, 181, 0.2);
+}
+
+.bg-blue {
+    background: linear-gradient(135deg, rgba(0, 195, 255, 0.12) 0%, rgba(0, 195, 255, 0.05) 100%);
+    color: var(--atlas-blue-electric);
+    border: 1px solid rgba(0, 195, 255, 0.2);
+}
+
+.bg-teal {
+    background: linear-gradient(135deg, rgba(10, 31, 68, 0.1) 0%, rgba(10, 31, 68, 0.05) 100%);
+    color: var(--atlas-blue-deep);
+    border: 1px solid rgba(10, 31, 68, 0.15);
+}
+
+.bg-red {
+    background: linear-gradient(135deg, rgba(255, 201, 60, 0.15) 0%, rgba(255, 201, 60, 0.05) 100%);
+    color: var(--atlas-yellow);
+    border: 1px solid rgba(255, 201, 60, 0.3);
+}
+
+.bg-cyan {
+    background: linear-gradient(135deg, rgba(0, 140, 255, 0.12) 0%, rgba(0, 140, 255, 0.05) 100%);
+    color: var(--atlas-blue-neon);
+    border: 1px solid rgba(0, 140, 255, 0.2);
+}
+
+.bg-orange {
+    background: linear-gradient(135deg, rgba(255, 201, 60, 0.2) 0%, rgba(255, 201, 60, 0.08) 100%);
+    color: var(--atlas-yellow);
+    border: 1px solid rgba(255, 201, 60, 0.3);
+}
 /* ==================================================================
     2. CONTROLES DE PÁGINA (Timezone & Período)
     ================================================================== */
 
 /* Container Flexível para Timezone */
 .timezone-selector-container {
-    background: #fff;
+    background: var(--color-white);
     padding: 15px 20px;
     margin-bottom: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
     display: flex;
     align-items: center;
     gap: 10px;
+    border: 1px solid var(--color-border-light);
 }
 
 .timezone-label {
     font-weight: 600;
-    color: #374151;
+    color: var(--atlas-black-tech);
     display: flex;
     align-items: center;
     gap: 8px;
@@ -232,45 +299,52 @@ a.stat-card.clickable:hover { background-color: #fafafa; }
 
 .timezone-select {
     padding: 8px 12px;
-    border: 2px solid #e5e7eb;
-    border-radius: 6px;
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--radius-sm);
     font-size: 14px;
-    background: #fff;
-    color: #374151;
+    background: var(--color-white);
+    color: var(--atlas-black-tech);
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all var(--transition-fast);
     min-width: 200px;
 }
 
-.timezone-select:hover { border-color: #00C3FF; }
-.timezone-select:focus { 
-    outline: none; border-color: #00C3FF; box-shadow: 0 0 0 3px rgba(0, 195, 255, 0.1); 
+.timezone-select:hover {
+    border-color: var(--atlas-blue-electric);
+    box-shadow: var(--shadow-glow-subtle);
+}
+
+.timezone-select:focus {
+    outline: none;
+    border-color: var(--atlas-blue-electric);
+    box-shadow: 0 0 0 3px rgba(0, 195, 255, 0.1);
 }
 
 .timezone-indicator {
-    background: #f3f4f6;
+    background: linear-gradient(135deg, rgba(0, 195, 255, 0.05) 0%, rgba(0, 140, 255, 0.02) 100%);
     padding: 6px 12px;
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     font-size: 12px;
-    color: #6b7280;
+    color: var(--atlas-gray-medium);
     font-weight: 500;
-    border: 1px solid #e5e7eb;
+    border: 1px solid rgba(0, 195, 255, 0.15);
 }
 
 .timezone-updated { animation: highlight 0.5s ease; }
 
 /* Seletor de Período */
 .period-selector-container {
-    background: linear-gradient(135deg, #4C3AFF 0%, #00C3FF 100%);
+    background: linear-gradient(135deg, var(--atlas-blue-electric) 0%, var(--atlas-blue-neon) 100%);
     padding: 15px 20px;
     margin-bottom: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(76, 58, 255, 0.2);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-glow);
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 20px;
     flex-wrap: wrap;
+    border: 1px solid rgba(0, 195, 255, 0.2);
 }
 
 .period-toggle {
@@ -278,38 +352,61 @@ a.stat-card.clickable:hover { background-color: #fafafa; }
     gap: 8px;
     background: rgba(255, 255, 255, 0.1);
     padding: 4px;
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     backdrop-filter: blur(10px);
 }
 
 .period-btn {
     padding: 8px 16px;
     border: none;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     background: transparent;
-    color: white;
+    color: var(--atlas-white);
     font-weight: 600;
     font-size: 14px;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all var(--transition-base);
     display: flex;
     align-items: center;
     gap: 6px;
     white-space: nowrap;
 }
 
-.period-btn:hover { background: rgba(255, 255, 255, 0.2); transform: translateY(-1px); }
+.period-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateY(-1px);
+}
 
 .period-btn.active {
-    background: white;
-    color: #4C3AFF;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    background: var(--atlas-white);
+    color: var(--atlas-blue-electric);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    font-weight: 700;
 }
-.period-btn.active:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25); }
 
-.period-indicator { display: flex; align-items: center; gap: 12px; color: white; font-weight: 500; }
-#periodLabel { font-size: 14px; font-weight: 600; }
-.period-dates { font-size: 12px; opacity: 0.9; }
+.period-btn.active:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+}
+
+.period-indicator {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--atlas-white);
+    font-weight: 500;
+}
+
+#periodLabel {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+}
+
+.period-dates {
+    font-size: 12px;
+    opacity: 0.9;
+}
 
 /* Media Queries para Controles */
 @media (max-width: 768px) {
@@ -342,21 +439,40 @@ a.stat-card.clickable:hover { background-color: #fafafa; }
 }
 
 .chart-card {
-    background: white;
-    border-radius: 8px;
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-border-light);
+    box-shadow: var(--shadow-sm);
     overflow: hidden;
+    transition: all var(--transition-base);
+}
+
+.chart-card:hover {
+    box-shadow: var(--shadow-md);
+    border-color: rgba(0, 195, 255, 0.15);
 }
 
 .chart-header {
     padding: 1.5rem;
-    border-bottom: 1px solid #e2e8f0;
-    background: #f8f9fa;
+    border-bottom: 1px solid var(--color-border-light);
+    background: linear-gradient(135deg, rgba(255,255,255,0.5) 0%, rgba(248,248,250,0.3) 100%);
 }
 
-.chart-header h3 { margin: 0; font-size: 1.1rem; font-weight: 600; color: #333; }
-.chart-body { padding: 1.5rem; position: relative; height: 350px; }
+.chart-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    background: linear-gradient(135deg, var(--atlas-black-tech) 0%, var(--atlas-gray-pro) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.chart-body {
+    padding: 1.5rem;
+    position: relative;
+    height: 350px;
+}
 
 
 /* ==================================================================
@@ -364,10 +480,16 @@ a.stat-card.clickable:hover { background-color: #fafafa; }
     ================================================================== */
 
 .card {
-    background: white;
-    border-radius: 8px;
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-border-light);
+    box-shadow: var(--shadow-sm);
+    transition: all var(--transition-base);
+}
+
+.card:hover {
+    box-shadow: var(--shadow-md);
+    border-color: rgba(0, 195, 255, 0.15);
 }
 
 /* ==================================================================

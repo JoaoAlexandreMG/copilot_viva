@@ -13,51 +13,88 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <!-- Theme CSS variables (can be overridden via `theme` in Flask context) -->
+    <!-- ATLAS Design System - Theme CSS Variables -->
     <style>
         :root {
-            /* Viva AI Brand Colors */
-            --primary: {{ theme.primary | default('#00C3FF') }};  /* Azul Elétrico */
-            --primary-dark: {{ theme.primary_dark | default('#4C3AFF') }}; /* Roxo Inteligência */
-            --accent: {{ theme.accent | default('#00F5B5') }};  /* Verde Ação */
-            --secondary: {{ theme.secondary | default('#008CFF') }};  /* Azul Neon */
-            --success: {{ theme.success | default('#00F5B5') }};  /* Verde Ação */
-            --danger: {{ theme.danger | default('#FFC93C') }};  /* Amarelo Atenção */
-            --warning: {{ theme.warning | default('#FFC93C') }};  /* Amarelo Atenção */
-            --light: {{ theme.light | default('#F5F5F7') }};
-            --darker: {{ theme.darker | default('#0A1F44') }};  /* Azul Profundo */
-            --border: {{ theme.border_color | default('#D0D0D0') }};
-            --bg-light: {{ theme.bg_light | default('#f5f5f5') }};
-            --text-dark: {{ theme.text_dark | default('#1C1C1E') }};
-            --text-gray: {{ theme.text_gray | default('#8E8E93') }};
-            --text-tertiary: {{ theme.text_tertiary | default('#C7C7CC') }};
-            --spacing-xs: {{ theme.spacing_xs | default('0.5rem') }};
-            --spacing-sm: {{ theme.spacing_sm | default('0.75rem') }};
-            --spacing-md: {{ theme.spacing_md | default('1rem') }};
-            --spacing-lg: {{ theme.spacing_lg | default('1.25rem') }};
-            --spacing-xl: {{ theme.spacing_xl | default('1.5rem') }};
-            --radius-sm: {{ theme.radius_sm | default('8px') }};
-            --radius-md: {{ theme.radius_md | default('12px') }};
-            --radius-lg: {{ theme.radius_lg | default('16px') }};
-            --radius: {{ theme.radius | default('12px') }};
-            /* Aliases for legacy css variables (for compatibility with static css) */
-            --color-primary: var(--primary);
-            --color-primary-hover: var(--primary-dark);
+            /* ============ ATLAS PRIMARY COLORS ============ */
+            /* Dark Tech Palette */
+            --atlas-black-tech: #0B0B0D;           /* Preto Grafite - Text/Contrast */
+            --atlas-gray-pro: #1F1F23;             /* Cinza Profissional - UI/Cards */
+            --atlas-gray-medium: #6D6D73;          /* Cinza Médio - Labels/Secondary */
+            --atlas-white: #FFFFFF;                /* Branco Puro - Primary Text */
+
+            /* Electric Blue (Main Brand) */
+            --atlas-blue-electric: #00C3FF;        /* Azul Elétrico - Main Accent */
+            --atlas-blue-neon: #008CFF;            /* Azul Neon - Secondary Accent */
+            --atlas-blue-deep: #0A1F44;            /* Azul Profundo - Dark BG */
+
+            /* Support Colors */
+            --atlas-green: #00F5B5;                /* Verde Ação - Success/Care */
+            --atlas-purple: #4C3AFF;               /* Roxo Inteligência - Oracle/AI */
+            --atlas-yellow: #FFC93C;               /* Amarelo Atenção - Alerts */
+
+            /* ============ LEGACY ALIASES (ATLAS) ============ */
+            --primary: var(--atlas-blue-electric);
+            --primary-dark: var(--atlas-blue-neon);
+            --accent: var(--atlas-green);
+            --secondary: var(--atlas-blue-neon);
+            --success: var(--atlas-green);
+            --danger: var(--atlas-yellow);
+            --warning: var(--atlas-yellow);
+            --light: var(--atlas-white);
+            --darker: var(--atlas-blue-deep);
+            --bg-light: var(--atlas-white);
+            --text-dark: var(--atlas-black-tech);
+            --text-gray: var(--atlas-gray-medium);
+            --text-tertiary: var(--atlas-gray-pro);
+            --border: var(--atlas-gray-pro);
+
+            /* ============ MODERN ALIASES ============ */
+            --color-primary: var(--atlas-blue-electric);
+            --color-primary-hover: var(--atlas-blue-neon);
             --color-primary-light: rgba(0, 195, 255, 0.1);
-            --color-secondary: var(--secondary);
-            --color-secondary-hover: var(--secondary);
-            --color-secondary-light: var(--light);
-            --color-success: var(--success);
-            --color-warning: var(--warning);
-            --color-danger: var(--danger);
-            --color-info: var(--accent);
-            --color-white: #ffffff;
+            --color-secondary: var(--atlas-gray-pro);
+            --color-secondary-hover: var(--atlas-gray-medium);
+            --color-secondary-light: var(--atlas-white);
+            --color-success: var(--atlas-green);
+            --color-warning: var(--atlas-yellow);
+            --color-danger: var(--atlas-yellow);
+            --color-info: var(--atlas-blue-electric);
+            --color-white: var(--atlas-white);
+
+            /* ============ SPACING ============ */
+            --spacing-xs: 0.5rem;
+            --spacing-sm: 0.75rem;
+            --spacing-md: 1rem;
+            --spacing-lg: 1.25rem;
+            --spacing-xl: 1.5rem;
+            --spacing-2xl: 2rem;
+
+            /* ============ RADIUS ============ */
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius: 12px;
+
+            /* ============ SHADOWS ============ */
             --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
             --shadow-md: 0 4px 16px rgba(0,0,0,0.08);
-            /* Layout variables */
+            --shadow-lg: 0 8px 32px rgba(0, 195, 255, 0.15);
+            --shadow-glow: 0 8px 32px rgba(0, 195, 255, 0.15), 0 0 1px rgba(0, 195, 255, 0.2);
+
+            /* ============ LAYOUT ============ */
             --header-height: 64px;
+            --sidebar-width: 260px;
+
+            /* ============ TRANSITIONS ============ */
+            --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
         }
     </style>
+
+    <!-- ATLAS Design System CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/atlas-design-system.css') }}">
 
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}?v={{ range(1, 9999) | random }}">
