@@ -74,18 +74,6 @@ a.stat-card.clickable:hover { background: linear-gradient(135deg, rgba(31, 31, 3
     line-height: 1.2;
 }
 
-/* Seta de link (Chevron) */
-.stat-arrow {
-    color: var(--atlas-blue-electric);
-    font-size: 1rem;
-    padding-left: 0.5rem;
-    transition: transform var(--transition-fast);
-}
-
-.stat-card:hover .stat-arrow {
-    transform: translateX(2px);
-}
-
 /* =========================================
    BADGE (A ETIQUETA DE PERÍODO)
    Posicionada no topo direito absoluto
@@ -124,13 +112,13 @@ a.stat-card.clickable:hover { background: linear-gradient(135deg, rgba(31, 31, 3
 }
 
 .split-item.clickable-split {
-    flex: 1;
-    min-width: 0;
+    flex: auto;
+    min-width: fit-content;
 }
 
 .clickable-split {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: 6px;
     text-decoration: none;
     color: inherit;
@@ -139,6 +127,7 @@ a.stat-card.clickable:hover { background: linear-gradient(135deg, rgba(31, 31, 3
     cursor: pointer;
     justify-content: center;
     position: relative;
+    padding: 0.5rem 0.75rem;
     /* Indicadores visuais que sugerem clicabilidade */
     border: 1px solid rgba(0, 195, 255, 0.3);
     background-color: rgba(0, 195, 255, 0.08);
@@ -146,7 +135,8 @@ a.stat-card.clickable:hover { background: linear-gradient(135deg, rgba(31, 31, 3
     /* Animação sutil para chamar atenção */
     animation: subtle-pulse 4s ease-in-out infinite;
     white-space: nowrap;
-    min-width: auto;
+    min-width: fit-content;
+    flex-shrink: 0;
 }
 
 @keyframes subtle-pulse {
@@ -209,6 +199,7 @@ a.stat-card.clickable:hover { background: linear-gradient(135deg, rgba(31, 31, 3
     height: 8px;
     border-radius: 50%;
     display: inline-block;
+    flex-shrink: 0;
 }
 
 .dot.green {
@@ -248,9 +239,8 @@ a.stat-card.clickable:hover { background: linear-gradient(135deg, rgba(31, 31, 3
 }
 
 .bg-teal {
-    background: linear-gradient(135deg, rgba(10, 31, 68, 0.1) 0%, rgba(10, 31, 68, 0.05) 100%);
-    color: var(--atlas-blue-deep);
-    border: 1px solid rgba(10, 31, 68, 0.15);
+    background: linear-gradient(135deg, rgba(0, 195, 255, 0.12) 0%, rgba(0, 195, 255, 0.05) 100%);    border: 1px solid rgba(0, 195, 255, 0.2);
+    border: 1px solid rgba(0, 195, 255, 0.2);
 }
 
 .bg-red {
@@ -334,7 +324,6 @@ a.stat-card.clickable:hover { background: linear-gradient(135deg, rgba(31, 31, 3
 
 /* Seletor de Período */
 .period-selector-container {
-    background: linear-gradient(135deg, var(--atlas-blue-electric) 0%, var(--atlas-blue-neon) 100%);
     padding: 15px 20px;
     margin-bottom: 20px;
     border-radius: var(--radius-md);
