@@ -12,27 +12,29 @@
 
 .stat-card {
     position: relative; /* Essencial para o badge funcionar */
-    background: var(--color-white);
+    background: linear-gradient(135deg, rgba(31, 31, 35, 0.8) 0%, rgba(45, 45, 55, 0.6) 100%);
     border-radius: var(--radius-lg);
     padding: 1.5rem;
     display: flex;
     align-items: center;
     gap: 1.25rem;
-    box-shadow: var(--shadow-sm);
-    border: 1px solid var(--color-border-light);
+    box-shadow: 0 8px 32px rgba(0, 195, 255, 0.1);
+    border: 1px solid rgba(0, 195, 255, 0.1);
     transition: all var(--transition-base);
     min-height: 110px; /* Garante altura visual uniforme */
+    backdrop-filter: blur(10px);
 }
 
 .stat-card:hover {
     transform: translateY(-3px);
-    box-shadow: var(--shadow-glow);
+    box-shadow: 0 8px 32px rgba(0, 195, 255, 0.25);
     border-color: rgba(0, 195, 255, 0.3);
+    background: linear-gradient(135deg, rgba(31, 31, 35, 0.95) 0%, rgba(45, 45, 55, 0.85) 100%);
 }
 
 /* Links */
 a.stat-card { text-decoration: none; cursor: pointer; }
-a.stat-card.clickable:hover { background-color: #fafafa; }
+a.stat-card.clickable:hover { background: linear-gradient(135deg, rgba(31, 31, 35, 0.95) 0%, rgba(45, 45, 55, 0.85) 100%); }
 
 /* Ícones (Quadrados arredondados) */
 .stat-icon {
@@ -57,7 +59,7 @@ a.stat-card.clickable:hover { background-color: #fafafa; }
 
 .stat-label {
     font-size: var(--text-xs);
-    color: var(--atlas-gray-medium);
+    color: rgba(255, 255, 255, 0.6);
     font-weight: var(--font-weight-semibold);
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -67,7 +69,7 @@ a.stat-card.clickable:hover { background-color: #fafafa; }
 .stat-value {
     font-size: var(--text-3xl);
     font-weight: var(--font-weight-bold);
-    color: var(--atlas-black-tech);
+    color: var(--atlas-white);
     margin: 0;
     line-height: 1.2;
 }
@@ -186,20 +188,20 @@ a.stat-card.clickable:hover { background-color: #fafafa; }
 
 .split-text {
     font-size: var(--text-xs);
-    color: var(--atlas-gray-medium);
+    color: rgba(255, 255, 255, 0.6);
     font-weight: var(--font-weight-medium);
 }
 
 .split-val {
     font-size: var(--text-xl);
     font-weight: var(--font-weight-bold);
-    color: var(--atlas-black-tech);
+    color: var(--atlas-white);
 }
 
 .split-divider {
     width: 1px;
     height: 24px;
-    background: var(--color-border-light);
+    background: rgba(0, 195, 255, 0.2);
 }
 
 .dot {
@@ -274,20 +276,21 @@ a.stat-card.clickable:hover { background-color: #fafafa; }
 
 /* Container Flexível para Timezone */
 .timezone-selector-container {
-    background: var(--color-white);
+    background: linear-gradient(135deg, rgba(31, 31, 35, 0.8) 0%, rgba(45, 45, 55, 0.6) 100%);
     padding: 15px 20px;
     margin-bottom: 20px;
     border-radius: var(--radius-md);
-    box-shadow: var(--shadow-sm);
+    box-shadow: 0 8px 32px rgba(0, 195, 255, 0.1);
     display: flex;
     align-items: center;
     gap: 10px;
-    border: 1px solid var(--color-border-light);
+    border: 1px solid rgba(0, 195, 255, 0.1);
+    backdrop-filter: blur(10px);
 }
 
 .timezone-label {
     font-weight: var(--font-weight-semibold);
-    color: var(--atlas-black-tech);
+    color: var(--atlas-white);
     display: flex;
     align-items: center;
     gap: 8px;
@@ -296,11 +299,11 @@ a.stat-card.clickable:hover { background-color: #fafafa; }
 
 .timezone-select {
     padding: 8px 12px;
-    border: 1px solid var(--color-border-light);
+    border: 1px solid rgba(0, 195, 255, 0.2);
     border-radius: var(--radius-sm);
     font-size: 14px;
-    background: var(--color-white);
-    color: var(--atlas-black-tech);
+    background: rgba(0, 0, 0, 0.2);
+    color: var(--atlas-white);
     cursor: pointer;
     transition: all var(--transition-fast);
     min-width: 200px;
@@ -318,13 +321,13 @@ a.stat-card.clickable:hover { background-color: #fafafa; }
 }
 
 .timezone-indicator {
-    background: linear-gradient(135deg, rgba(0, 195, 255, 0.05) 0%, rgba(0, 140, 255, 0.02) 100%);
+    background: linear-gradient(135deg, rgba(0, 195, 255, 0.15) 0%, rgba(0, 140, 255, 0.08) 100%);
     padding: 6px 12px;
     border-radius: var(--radius-sm);
     font-size: 12px;
-    color: var(--atlas-gray-medium);
+    color: var(--atlas-blue-electric);
     font-weight: 500;
-    border: 1px solid rgba(0, 195, 255, 0.15);
+    border: 1px solid rgba(0, 195, 255, 0.2);
 }
 
 .timezone-updated { animation: highlight 0.5s ease; }
@@ -436,30 +439,31 @@ a.stat-card.clickable:hover { background-color: #fafafa; }
 }
 
 .chart-card {
-    background: var(--color-white);
+    background: linear-gradient(135deg, rgba(31, 31, 35, 0.8) 0%, rgba(45, 45, 55, 0.6) 100%);
     border-radius: var(--radius-lg);
-    border: 1px solid var(--color-border-light);
-    box-shadow: var(--shadow-sm);
+    border: 1px solid rgba(0, 195, 255, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 195, 255, 0.1);
     overflow: hidden;
     transition: all var(--transition-base);
+    backdrop-filter: blur(10px);
 }
 
 .chart-card:hover {
-    box-shadow: var(--shadow-md);
-    border-color: rgba(0, 195, 255, 0.15);
+    box-shadow: 0 8px 32px rgba(0, 195, 255, 0.25);
+    border-color: rgba(0, 195, 255, 0.3);
 }
 
 .chart-header {
     padding: 1.5rem;
-    border-bottom: 1px solid var(--color-border-light);
-    background: linear-gradient(135deg, rgba(255,255,255,0.5) 0%, rgba(248,248,250,0.3) 100%);
+    border-bottom: 1px solid rgba(0, 195, 255, 0.1);
+    background: linear-gradient(135deg, rgba(0, 195, 255, 0.1) 0%, rgba(0, 140, 255, 0.05) 100%);
 }
 
 .chart-header h3 {
     margin: 0;
     font-size: var(--text-lg);
     font-weight: var(--font-weight-bold);
-    color: var(--atlas-black-tech);
+    color: var(--atlas-white);
 }
 
 .chart-body {
@@ -474,16 +478,17 @@ a.stat-card.clickable:hover { background-color: #fafafa; }
     ================================================================== */
 
 .card {
-    background: var(--color-white);
+    background: linear-gradient(135deg, rgba(31, 31, 35, 0.8) 0%, rgba(45, 45, 55, 0.6) 100%);
     border-radius: var(--radius-lg);
-    border: 1px solid var(--color-border-light);
-    box-shadow: var(--shadow-sm);
+    border: 1px solid rgba(0, 195, 255, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 195, 255, 0.1);
     transition: all var(--transition-base);
+    backdrop-filter: blur(10px);
 }
 
 .card:hover {
-    box-shadow: var(--shadow-md);
-    border-color: rgba(0, 195, 255, 0.15);
+    box-shadow: 0 8px 32px rgba(0, 195, 255, 0.25);
+    border-color: rgba(0, 195, 255, 0.3);
 }
 
 /* ==================================================================
@@ -492,15 +497,15 @@ a.stat-card.clickable:hover { background-color: #fafafa; }
 
 .card-header {
     padding: 1.5rem;
-    border-bottom: 1px solid var(--color-border-light);
-    background: linear-gradient(135deg, rgba(255,255,255,0.5) 0%, rgba(248,248,250,0.3) 100%);
+    border-bottom: 1px solid rgba(0, 195, 255, 0.1);
+    background: linear-gradient(135deg, rgba(0, 195, 255, 0.1) 0%, rgba(0, 140, 255, 0.05) 100%);
 }
 
 .card-title {
     margin: 0;
     font-size: var(--text-lg);
     font-weight: var(--font-weight-bold);
-    color: var(--atlas-black-tech);
+    color: var(--atlas-white);
 }
 
 .card-body {
@@ -522,38 +527,43 @@ a.stat-card.clickable:hover { background-color: #fafafa; }
     text-decoration: none;
     color: inherit;
     transition: all 0.3s ease;
-    background: white;
+    background: linear-gradient(135deg, rgba(31, 31, 35, 0.8) 0%, rgba(45, 45, 55, 0.6) 100%);
     border-radius: 8px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid rgba(0, 195, 255, 0.1);
+    backdrop-filter: blur(10px);
 }
 
-.dashboard-card:hover { transform: translateY(-4px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); }
+.dashboard-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 32px rgba(0, 195, 255, 0.2);
+    border-color: rgba(0, 195, 255, 0.3);
+}
 
 .dashboard-card-icon {
     font-size: 2.5rem; margin-bottom: 1rem; padding: 1rem;
     border-radius: 50%; display: flex; align-items: center; justify-content: center;
 }
-.dashboard-card-icon.primary { background: rgba(76, 58, 255, 0.1); color: #4C3AFF; }
-.dashboard-card-icon.success { background: rgba(0, 245, 181, 0.1); color: #00F5B5; }
-.dashboard-card-icon.warning { background: rgba(255, 201, 60, 0.1); color: #FFC93C; }
-.dashboard-card-icon.danger { background: rgba(0, 195, 255, 0.1); color: #00C3FF; }
-.dashboard-card-icon.info { background: rgba(0, 140, 255, 0.1); color: #008CFF; }
+.dashboard-card-icon.primary { background: rgba(76, 58, 255, 0.15); color: #4C3AFF; }
+.dashboard-card-icon.success { background: rgba(0, 245, 181, 0.15); color: #00F5B5; }
+.dashboard-card-icon.warning { background: rgba(255, 201, 60, 0.15); color: #FFC93C; }
+.dashboard-card-icon.danger { background: rgba(0, 195, 255, 0.15); color: #00C3FF; }
+.dashboard-card-icon.info { background: rgba(0, 140, 255, 0.15); color: #008CFF; }
 
-.dashboard-card-title { margin: 0 0 0.25rem 0; font-size: 1rem; font-weight: 600; color: #333; }
-.dashboard-card-subtitle { margin: 0; font-size: 0.85rem; color: #999; }
+.dashboard-card-title { margin: 0 0 0.25rem 0; font-size: 1rem; font-weight: 600; color: var(--atlas-white); }
+.dashboard-card-subtitle { margin: 0; font-size: 0.85rem; color: rgba(255, 255, 255, 0.6); }
 
 /* LOADING */
 .loading-overlay {
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(255, 255, 255, 0.7);
+    background: rgba(10, 31, 68, 0.7);
     display: flex; align-items: center; justify-content: center;
     z-index: 100; border-radius: 8px; backdrop-filter: blur(2px);
 }
 
 .spinner {
     width: 40px; height: 40px;
-    border: 4px solid #f3f3f3;
+    border: 4px solid rgba(255, 255, 255, 0.2);
     border-top: 4px solid #00C3FF;
     border-radius: 50%;
     animation: spin 1s linear infinite;
@@ -564,16 +574,17 @@ a.stat-card.clickable:hover { background-color: #fafafa; }
     100% { transform: rotate(360deg); }
 }
 
-/* TOP 10 CONTAINER - ATLAS LIGHT THEME */
+/* TOP 10 CONTAINER - ATLAS DARK THEME */
 .top10-container {
-    background: var(--atlas-white);
+    background: linear-gradient(135deg, rgba(31, 31, 35, 0.8) 0%, rgba(45, 45, 55, 0.6) 100%);
     border-radius: 16px;
     overflow: hidden;
-    box-shadow: var(--shadow-sm);
+    box-shadow: 0 8px 32px rgba(0, 195, 255, 0.1);
     margin: 2.5rem 0;
-    border: 1px solid var(--color-border-light);
+    border: 1px solid rgba(0, 195, 255, 0.1);
     transition: all var(--transition-base);
     position: relative;
+    backdrop-filter: blur(10px);
 }
 
 .top10-container::before {
@@ -594,8 +605,8 @@ a.stat-card.clickable:hover { background-color: #fafafa; }
 /* HEADER */
 .top10-header {
     padding: 2rem;
-    background: linear-gradient(135deg, rgba(255,255,255,0.5) 0%, rgba(248,248,250,0.3) 100%);
-    border-bottom: 1px solid var(--color-border-light);
+    background: linear-gradient(135deg, rgba(0, 195, 255, 0.1) 0%, rgba(0, 140, 255, 0.05) 100%);
+    border-bottom: 1px solid rgba(0, 195, 255, 0.1);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -610,7 +621,7 @@ a.stat-card.clickable:hover { background-color: #fafafa; }
     margin: 0 0 0.5rem 0;
     font-size: var(--text-2xl);
     font-weight: var(--font-weight-bold);
-    color: var(--atlas-black-tech);
+    color: var(--atlas-white);
     letter-spacing: -0.3px;
     text-transform: uppercase;
 }
@@ -618,7 +629,7 @@ a.stat-card.clickable:hover { background-color: #fafafa; }
 .top10-subtitle {
     margin: 0;
     font-size: var(--text-sm);
-    color: var(--atlas-gray-medium);
+    color: rgba(255, 255, 255, 0.6);
     font-weight: var(--font-weight-regular);
     letter-spacing: 0.3px;
 }
@@ -647,7 +658,7 @@ a.stat-card.clickable:hover { background-color: #fafafa; }
     align-items: center;
     justify-content: center;
     min-height: 300px;
-    color: #6D6D73;
+    color: rgba(255, 255, 255, 0.6);
     text-align: center;
     gap: 1rem;
 }
@@ -663,12 +674,12 @@ a.stat-card.clickable:hover { background-color: #fafafa; }
     margin: 0;
     font-size: 1.1rem;
     font-weight: 600;
-    color: #FFFFFF;
+    color: var(--atlas-white);
 }
 
 .top10-empty-state span {
     font-size: 0.95rem;
-    color: #6D6D73;
+    color: rgba(255, 255, 255, 0.6);
 }
 
 /* OFFICE GROUP */
@@ -708,7 +719,7 @@ a.stat-card.clickable:hover { background-color: #fafafa; }
     margin: 0;
     font-size: 1.2rem;
     font-weight: 700;
-    color: #FFFFFF;
+    color: var(--atlas-white);
     letter-spacing: -0.3px;
     text-transform: uppercase;
 }
@@ -858,14 +869,14 @@ a.stat-card.clickable:hover { background-color: #fafafa; }
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: #6D6D73;
+    color: rgba(255, 255, 255, 0.5);
 }
 
 .serial-value,
 .time-value {
     font-size: 0.95rem;
     font-weight: 600;
-    color: #FFFFFF;
+    color: var(--atlas-white);
     font-family: 'Menlo', 'Monaco', monospace;
     overflow: hidden;
     text-overflow: ellipsis;
