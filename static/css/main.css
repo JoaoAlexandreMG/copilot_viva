@@ -23,8 +23,8 @@ html {
 
 body {
     font-family: var(--font-sans);
-    background: var(--atlas-white);
-    color: var(--color-text);
+    background: var(--atlas-blue-deep);
+    color: var(--atlas-white);
     line-height: 1.6;
     overflow-x: hidden;
     font-weight: var(--font-weight-regular);
@@ -39,8 +39,8 @@ body {
 /* Sidebar - ATLAS Dark Tech */
 .sidebar {
     width: var(--sidebar-width);
-    background: linear-gradient(180deg, var(--atlas-white) 0%, #F5F5F7 100%);
-    border-right: 1px solid var(--color-border-light);
+    background: linear-gradient(180deg, var(--atlas-gray-pro) 0%, var(--atlas-black-tech) 100%);
+    border-right: 1px solid rgba(0, 195, 255, 0.1);
     position: fixed;
     left: 0;
     top: 0;
@@ -54,7 +54,7 @@ body {
 
 .sidebar-header {
     padding: var(--spacing-xl) var(--spacing-lg);
-    border-bottom: 1px solid var(--color-gray-200);
+    border-bottom: 1px solid rgba(0, 195, 255, 0.1);
 }
 
 .sidebar-logo {
@@ -62,7 +62,7 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    border-bottom: 1px solid var(--color-gray-200);
+    border-bottom: 1px solid rgba(0, 195, 255, 0.1);
 }
 
 .sidebar-logo img {
@@ -75,7 +75,7 @@ body {
 .sidebar-title {
     font-size: var(--text-lg);
     font-weight: var(--font-weight-bold);
-    color: var(--atlas-black-tech);
+    color: var(--atlas-white);
     text-decoration: none;
     display: flex;
     align-items: center;
@@ -169,8 +169,8 @@ body {
 
 .sidebar-footer {
     padding: var(--spacing-lg);
-    border-top: 1px solid var(--color-border-light);
-    background: linear-gradient(180deg, rgba(255,255,255,0.5), #F5F5F7);
+    border-top: 1px solid rgba(0, 195, 255, 0.1);
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.5));
     display: flex;
     flex-direction: column;
     gap: var(--spacing-md);
@@ -216,7 +216,7 @@ body {
 .sidebar-user-name {
     font-size: 0.875rem;
     font-weight: 600;
-    color: var(--color-gray-900);
+    color: var(--atlas-white);
     display: block;
     white-space: nowrap;
     overflow: hidden;
@@ -225,7 +225,7 @@ body {
 
 .sidebar-user-role {
     font-size: 0.75rem;
-    color: var(--color-gray-500);
+    color: rgba(255, 255, 255, 0.6);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -287,12 +287,13 @@ body {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
+    background: var(--atlas-blue-deep);
 }
 
 .main-header {
     height: var(--header-height);
-    background: var(--atlas-white);
-    border-bottom: 1px solid var(--color-border-light);
+    background: linear-gradient(90deg, rgba(10, 31, 68, 0.8) 0%, rgba(15, 43, 86, 0.6) 100%);
+    border-bottom: 1px solid rgba(0, 195, 255, 0.1);
     padding: 0 var(--spacing-xl);
     display: flex;
     align-items: center;
@@ -300,7 +301,8 @@ body {
     position: sticky;
     top: 0;
     z-index: 50;
-    box-shadow: var(--shadow-sm);
+    box-shadow: 0 8px 32px rgba(0, 195, 255, 0.1);
+    backdrop-filter: blur(10px);
 }
 
 .main-header-left {
@@ -312,7 +314,7 @@ body {
 .main-header-title {
     font-size: var(--text-2xl);
     font-weight: var(--font-weight-bold);
-    color: var(--atlas-black-tech);
+    color: var(--atlas-white);
 }
 
 .main-header-breadcrumb {
@@ -320,7 +322,7 @@ body {
     align-items: center;
     gap: var(--spacing-sm);
     font-size: var(--text-sm);
-    color: var(--atlas-gray-medium);
+    color: rgba(255, 255, 255, 0.6);
     font-weight: var(--font-weight-regular);
 }
 
@@ -333,6 +335,7 @@ body {
 .main-body {
     flex: 1;
     padding: var(--spacing-xl);
+    background: var(--atlas-blue-deep);
 }
 
 /* Mobile Menu Toggle */
@@ -341,51 +344,61 @@ body {
     background: none;
     border: none;
     font-size: 1.5rem;
-    color: var(--color-gray-700);
+    color: var(--atlas-white);
     cursor: pointer;
     padding: var(--spacing-sm);
+    transition: all var(--transition-base);
+}
+
+.mobile-menu-toggle:hover {
+    color: var(--atlas-blue-electric);
+    transform: scale(1.1);
 }
 
 /* ============ COMPONENTS ============ */
 
 /* Cards - ATLAS Theme */
 .card {
-    background: var(--color-white);
+    background: linear-gradient(135deg, rgba(31, 31, 35, 0.8) 0%, rgba(45, 45, 55, 0.6) 100%);
     border-radius: var(--radius-lg);
-    border: 1px solid var(--color-border-light);
-    box-shadow: var(--shadow-sm);
+    border: 1px solid rgba(0, 195, 255, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 195, 255, 0.1);
     transition: all var(--transition-base);
+    backdrop-filter: blur(10px);
 }
 
 .card:hover {
-    box-shadow: var(--shadow-md);
-    border-color: rgba(0, 195, 255, 0.2);
-    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(0, 195, 255, 0.25);
+    border-color: rgba(0, 195, 255, 0.3);
+    transform: translateY(-4px);
+    background: linear-gradient(135deg, rgba(31, 31, 35, 0.95) 0%, rgba(45, 45, 55, 0.85) 100%);
 }
 
 .card-header {
     padding: var(--spacing-lg);
-    border-bottom: 1px solid var(--color-border-light);
+    border-bottom: 1px solid rgba(0, 195, 255, 0.1);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background: linear-gradient(135deg, rgba(255,255,255,0.5) 0%, rgba(248,248,250,0.3) 100%);
+    background: linear-gradient(135deg, rgba(0, 195, 255, 0.1) 0%, rgba(0, 140, 255, 0.05) 100%);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
 
 .card-title {
     font-size: var(--text-lg);
     font-weight: var(--font-weight-bold);
-    color: var(--atlas-black-tech);
+    color: var(--atlas-white);
 }
 
 .card-body {
     padding: var(--spacing-lg);
+    color: rgba(255, 255, 255, 0.9);
 }
 
 .card-footer {
     padding: var(--spacing-lg);
-    border-top: 1px solid var(--color-gray-200);
-    background-color: var(--color-gray-50);
+    border-top: 1px solid rgba(0, 195, 255, 0.1);
+    background-color: rgba(0, 0, 0, 0.2);
     border-radius: 0 0 var(--radius-lg) var(--radius-lg);
 }
 
