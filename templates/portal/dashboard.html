@@ -69,9 +69,6 @@
             <p class="stat-label">Ativos (24h)</p>
             <h4 class="stat-value" id="kpiAssets24h">{{ stats.assets_health_last_24h_count }}</h4>
         </div>
-        <div class="stat-arrow">
-            <i class="fas fa-chevron-right"></i>
-        </div>
     </a>
 
     <div class="stat-card temp-card">
@@ -129,9 +126,6 @@
         <div class="stat-content">
             <p class="stat-label">Alertas</p>
             <h4 class="stat-value" id="kpiAlerts">{{ stats.alerts_period_count }}</h4>
-        </div>
-        <div class="stat-arrow">
-            <i class="fas fa-chevron-right"></i>
         </div>
         <span class="period-badge">30d</span>
     </a>
@@ -960,17 +954,56 @@
         _getChartOptions: () => ({
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { display: false } }, // Legenda oculta para visual limpo
+            plugins: {
+                legend: { display: false }, // Legenda oculta para visual limpo
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: '#FFFFFF',
+                    bodyColor: '#FFFFFF',
+                    borderColor: '#00C3FF',
+                    borderWidth: 1
+                }
+            },
             scales: {
-                y: { beginAtZero: true, grid: { color: '#f1f5f9' } },
-                x: { grid: { display: false } }
+                y: {
+                    beginAtZero: true,
+                    grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                    ticks: {
+                        color: '#FFFFFF',
+                        font: { weight: '600' }
+                    }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: {
+                        color: '#FFFFFF',
+                        font: { weight: '600' }
+                    }
+                }
             }
         }),
 
         _getPieOptions: () => ({
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { position: 'bottom', labels: { padding: 20, usePointStyle: true } } }
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 20,
+                        usePointStyle: true,
+                        color: '#FFFFFF',
+                        font: { weight: '600' }
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: '#FFFFFF',
+                    bodyColor: '#FFFFFF',
+                    borderColor: '#00C3FF',
+                    borderWidth: 1
+                }
+            }
         })
     };
 
