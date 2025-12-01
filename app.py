@@ -8,6 +8,7 @@ from routes.app.outlet import outlets_bp
 from routes.app.assets import assets_bp
 from routes.app.smartdevices import smart_devices_bp
 from routes.portal.dashboard import dashboard_bp
+from routes.inventory import inventory_bp
 from routes.portal.users import users_bp as portal_users_bp
 from routes.portal.outlets import outlets_bp as portal_outlets_bp
 from routes.portal.assets import assets_bp as portal_assets_bp
@@ -40,6 +41,8 @@ def inject_user():
     return user_data
 
 
+# Keep a safe 'theme' variable available in templates to avoid UndefinedError.
+# We intentionally do not inject any default colors here to preserve templates' own fallbacks.
 @app.context_processor
 def inject_theme():
     """Inject site theme variables into templates with Viva AI brand colors (can be overridden via environment variables)."""
@@ -97,6 +100,7 @@ app.register_blueprint(portal_assets_bp)
 app.register_blueprint(portal_smartdevices_bp)
 app.register_blueprint(portal_tracking_bp)
 app.register_blueprint(portal_alerts_bp)
+app.register_blueprint(inventory_bp)
 
 # Register Swagger documentation
 register_swagger(app)
@@ -116,6 +120,9 @@ def index():
         user_country = request.form.get("country", "").strip().lower()
         check_only = request.form.get("check_only") == "true"
         destination = request.form.get("destination", "assets")
+        # Sanitizar o destination para evitar '/Inventory' ou espaços
+        if destination:
+            destination = destination.strip().lower().lstrip('/')
     
         latitude = request.form.get("latitude")
         longitude = request.form.get("longitude")
@@ -187,6 +194,10 @@ def index():
         db_session.commit()
 
         # Redirect based on destination
+        # Check `inventory` explicitly before `portal` to permit custom inventory redirect
+        if destination == "inventory":
+            return redirect(url_for("inventory.render_inventory_index"))
+
         if destination == "portal":
             return redirect(url_for("dashboard.render_dashboard"))
         else:

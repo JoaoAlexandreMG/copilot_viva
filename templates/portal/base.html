@@ -1,14 +1,16 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="{{ theme.primary }}">
+    <meta name="theme-color" content="{{ theme.primary | default('#667eea') }}">
     <meta name="description" content="Portal de Gerenciamento - Viva AI">
     <title>{% block title %}Portal de Gerenciamento {% endblock %} | VivaAI</title>
 
     <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
 
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -18,20 +20,30 @@
         :root {
             /* ============ ATLAS PRIMARY COLORS ============ */
             /* Dark Tech Palette */
-            --atlas-black-tech: #0B0B0D;           /* Preto Grafite - Text/Contrast */
-            --atlas-gray-pro: #1F1F23;             /* Cinza Profissional - UI/Cards */
-            --atlas-gray-medium: #6D6D73;          /* Cinza Médio - Labels/Secondary */
-            --atlas-white: #FFFFFF;                /* Branco Puro - Primary Text */
+            --atlas-black-tech: #0B0B0D;
+            /* Preto Grafite - Text/Contrast */
+            --atlas-gray-pro: #1F1F23;
+            /* Cinza Profissional - UI/Cards */
+            --atlas-gray-medium: #6D6D73;
+            /* Cinza Médio - Labels/Secondary */
+            --atlas-white: #FFFFFF;
+            /* Branco Puro - Primary Text */
 
             /* Electric Blue (Main Brand) */
-            --atlas-blue-electric: #00C3FF;        /* Azul Elétrico - Main Accent */
-            --atlas-blue-neon: #008CFF;            /* Azul Neon - Secondary Accent */
-            --atlas-blue-deep: #0A1F44;            /* Azul Profundo - Dark BG */
+            --atlas-blue-electric: #00C3FF;
+            /* Azul Elétrico - Main Accent */
+            --atlas-blue-neon: #008CFF;
+            /* Azul Neon - Secondary Accent */
+            --atlas-blue-deep: #0A1F44;
+            /* Azul Profundo - Dark BG */
 
             /* Support Colors */
-            --atlas-green: #00F5B5;                /* Verde Ação - Success/Care */
-            --atlas-purple: #4C3AFF;               /* Roxo Inteligência - Oracle/AI */
-            --atlas-yellow: #FFC93C;               /* Amarelo Atenção - Alerts */
+            --atlas-green: #00F5B5;
+            /* Verde Ação - Success/Care */
+            --atlas-purple: #4C3AFF;
+            /* Roxo Inteligência - Oracle/AI */
+            --atlas-yellow: #FFC93C;
+            /* Amarelo Atenção - Alerts */
 
             /* ============ LEGACY ALIASES (ATLAS) ============ */
             --primary: var(--atlas-blue-electric);
@@ -77,8 +89,8 @@
             --radius: 12px;
 
             /* ============ SHADOWS ============ */
-            --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
-            --shadow-md: 0 4px 16px rgba(0,0,0,0.08);
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+            --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
             --shadow-lg: 0 8px 32px rgba(0, 195, 255, 0.15);
             --shadow-glow: 0 8px 32px rgba(0, 195, 255, 0.15), 0 0 1px rgba(0, 195, 255, 0.2);
 
@@ -102,6 +114,7 @@
     {% block styles %}{% endblock %}
     {% block extra_css %}{% endblock %}
 </head>
+
 <body>
     <div class="app-container">
         <!-- Sidebar -->
@@ -110,7 +123,7 @@
             <div class="sidebar-logo">
                 <img src="{{ url_for('static', filename='images/logo.png') }}" alt="VivaAI Logo">
             </div>
-            
+
             <!-- Header -->
             <div class="sidebar-header">
                 <a href="{{ url_for('dashboard.render_dashboard') }}" class="sidebar-title">
@@ -122,7 +135,8 @@
             <nav class="sidebar-nav">
                 <div class="sidebar-nav-section">
                     <div class="sidebar-nav-title">Principal</div>
-                    <a href="{{ url_for('dashboard.render_dashboard') }}" class="sidebar-nav-link {% if request.path.startswith('/portal_associacao') and ('/dashboard' in request.path or request.path.rstrip('/') == '/portal_associacao') %}active{% endif %}">
+                    <a href="{{ url_for('dashboard.render_dashboard') }}"
+                        class="sidebar-nav-link {% if request.path.startswith('/portal_associacao') and ('/dashboard' in request.path or request.path.rstrip('/') == '/portal_associacao') %}active{% endif %}">
                         <i class="fas fa-home"></i>
                         <span>Dashboard</span>
                     </a>
@@ -130,12 +144,15 @@
 
                 <div class="sidebar-nav-section">
                     <div class="sidebar-nav-title">Rastreamento</div>
-                    <a href="{{ url_for('portal_tracking.render_tracking') }}" class="sidebar-nav-link {% if request.path.startswith('/portal_associacao/tracking') and 'simple' not in request.path %}active{% endif %}">
+                    <a href="{{ url_for('portal_tracking.render_tracking') }}"
+                        class="sidebar-nav-link {% if request.path.startswith('/portal_associacao/tracking') and 'simple' not in request.path %}active{% endif %}">
                         <i class="fas fa-location-dot"></i>
                         <span>Rastreio</span>
                     </a>
                     {% if is_simple_tracking_authorized %}
-                    <a href="{{ url_for('portal_tracking.render_simple_tracking') }}" class="sidebar-nav-link {% if '/tracking/simple' in request.path %}active{% endif %}" style="padding-left: 40px; font-size: 13px; opacity: 0.8;">
+                    <a href="{{ url_for('portal_tracking.render_simple_tracking') }}"
+                        class="sidebar-nav-link {% if '/tracking/simple' in request.path %}active{% endif %}"
+                        style="padding-left: 40px; font-size: 13px; opacity: 0.8;">
                         <i class="fas fa-arrow-right"></i>
                         <span>Rastreio Simples</span>
                     </a>
@@ -144,7 +161,8 @@
 
                 <div class="sidebar-nav-section">
                     <div class="sidebar-nav-title">Monitoramento</div>
-                    <a href="{{ url_for('dashboard.render_technicians_page') }}" class="sidebar-nav-link {% if request.path.startswith('/portal_associacao/technicians') %}active{% endif %}">
+                    <a href="{{ url_for('dashboard.render_technicians_page') }}"
+                        class="sidebar-nav-link {% if request.path.startswith('/portal_associacao/technicians') %}active{% endif %}">
                         <i class="fas fa-user-cog"></i>
                         <span>Técnicos</span>
                     </a>
@@ -152,21 +170,30 @@
 
                 <div class="sidebar-nav-section">
                     <div class="sidebar-nav-title">Gerenciamento</div>
-                    <a href="{{ url_for('portal_users.list_and_create_users') }}" class="sidebar-nav-link {% if request.path.startswith('/portal_associacao/users') %}active{% endif %}">
+                    <a href="{{ url_for('portal_users.list_and_create_users') }}"
+                        class="sidebar-nav-link {% if request.path.startswith('/portal_associacao/users') %}active{% endif %}">
                         <i class="fas fa-users"></i>
                         <span>Usuários</span>
                     </a>
-                    <a href="{{ url_for('portal_outlets.list_and_create_outlets') }}" class="sidebar-nav-link {% if request.path.startswith('/portal_associacao/outlets') %}active{% endif %}">
+                    <a href="{{ url_for('portal_outlets.list_and_create_outlets') }}"
+                        class="sidebar-nav-link {% if request.path.startswith('/portal_associacao/outlets') %}active{% endif %}">
                         <i class="fas fa-store"></i>
                         <span>Outlets</span>
                     </a>
-                    <a href="{{ url_for('portal_assets.list_and_create_assets') }}" class="sidebar-nav-link {% if request.path.startswith('/portal_associacao/assets') %}active{% endif %}">
+                    <a href="{{ url_for('portal_assets.list_and_create_assets') }}"
+                        class="sidebar-nav-link {% if request.path.startswith('/portal_associacao/assets') %}active{% endif %}">
                         <i class="fas fa-boxes"></i>
                         <span>Assets</span>
                     </a>
-                    <a href="{{ url_for('portal_smartdevices.list_and_create_smartdevices') }}" class="sidebar-nav-link {% if request.path.startswith('/portal_associacao/smartdevices') %}active{% endif %}">
+                    <a href="{{ url_for('portal_smartdevices.list_and_create_smartdevices') }}"
+                        class="sidebar-nav-link {% if request.path.startswith('/portal_associacao/smartdevices') %}active{% endif %}">
                         <i class="fas fa-mobile-alt"></i>
                         <span>Smart Devices</span>
+                    </a>
+                    <a href="{{ url_for('inventory.render_inventory_index') }}"
+                        class="sidebar-nav-link {% if request.path.startswith('/inventory') %}active{% endif %}">
+                        <i class="fas fa-boxes"></i>
+                        <span>Inventário</span>
                     </a>
                 </div>
             </nav>
@@ -213,19 +240,21 @@
             <div class="main-body">
                 <!-- Flash Messages -->
                 {% with messages = get_flashed_messages(with_categories=true) %}
-                    {% if messages %}
-                        <div class="alerts-container">
-                            {% for category, message in messages %}
-                                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible" role="alert">
-                                    <i class="fas fa-{{ 'exclamation-circle' if category == 'error' else 'check-circle' if category == 'success' else 'info-circle' }}"></i>
-                                    <span>{{ message }}</span>
-                                    <button type="button" class="btn-close" onclick="this.parentElement.remove()">
-                                        <i class="fas fa-times"></i>
-                                    </button>
-                                </div>
-                            {% endfor %}
-                        </div>
-                    {% endif %}
+                {% if messages %}
+                <div class="alerts-container">
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible"
+                        role="alert">
+                        <i
+                            class="fas fa-{{ 'exclamation-circle' if category == 'error' else 'check-circle' if category == 'success' else 'info-circle' }}"></i>
+                        <span>{{ message }}</span>
+                        <button type="button" class="btn-close" onclick="this.parentElement.remove()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
                 {% endwith %}
 
                 <!-- Page Content -->
@@ -269,4 +298,5 @@
 
     {% block extra_js %}{% endblock %}
 </body>
+
 </html>
