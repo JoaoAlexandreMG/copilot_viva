@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,6 +15,7 @@
             --text-dark: {{ theme.text_dark | default('#333') }};
             --text-gray: {{ theme.text_gray | default('#666') }};
         }
+        
         * {
             margin: 0;
             padding: 0;
@@ -188,7 +190,7 @@
         .device-info {
             margin-top: 0.75rem;
             padding: 0.5rem 0.75rem;
-            background: rgba(0,0,0,0.02);
+            background: rgba(0, 0, 0, 0.02);
             border: 1px solid var(--border-color);
             border-radius: 8px;
             font-size: 0.85rem;
@@ -197,27 +199,36 @@
         }
 
         .device-info.mobile {
-            background: rgba(0,0,0,0.02);
+            background: rgba(0, 0, 0, 0.02);
             border-color: var(--border-color);
             color: var(--primary-dark);
         }
 
         .device-info.desktop {
-            background: rgba(0,0,0,0.02);
+            background: rgba(0, 0, 0, 0.02);
             border-color: var(--border-color);
             color: var(--text-dark);
         }
 
         @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+
+            100% {
+                opacity: 1;
+            }
         }
     </style>
 </head>
+
 <body>
     <div class="login-container">
-                <div class="login-header">
+        <div class="login-header">
             <h1 class="login-title">Asset Manager</h1>
             <p class="login-subtitle">Faça login para acessar o sistema</p>
             <div id="deviceInfo" class="device-info" style="display: none;">
@@ -234,13 +245,7 @@
         <form method="POST" id="loginForm">
             <div class="form-group">
                 <label for="upn">UPN</label>
-                <input 
-                    type="text" 
-                    id="upn" 
-                    name="upn" 
-                    value="{{ upn or '' }}"
-                    required
-                >
+                <input type="text" id="upn" name="upn" value="{{ upn or '' }}" required>
             </div>
 
             <button type="submit" class="login-btn" id="loginBtn">
@@ -268,23 +273,23 @@
         function getDeviceInfo() {
             const userAgent = navigator.userAgent.toLowerCase();
             const width = window.innerWidth;
-            
+
             // Detectar por User Agent
             const isMobileUA = /android|webos|iphone|ipod|blackberry|iemobile|opera mini/.test(userAgent);
-            const isTabletUA = /ipad/.test(userAgent) || 
-                              (/android/.test(userAgent) && !/mobile/.test(userAgent));
-            
+            const isTabletUA = /ipad/.test(userAgent) ||
+                (/android/.test(userAgent) && !/mobile/.test(userAgent));
+
             // Detectar por tamanho da tela
             const isMobileScreen = width <= 768;
-            
+
             // Detectar suporte a touch
-            const isTouchDevice = 'ontouchstart' in window || 
-                                 navigator.maxTouchPoints > 0 || 
-                                 navigator.msMaxTouchPoints > 0;
-            
+            const isTouchDevice = 'ontouchstart' in window ||
+                navigator.maxTouchPoints > 0 ||
+                navigator.msMaxTouchPoints > 0;
+
             // Determinar se é mobile (incluindo tablets como mobile para nossa lógica)
-            const isMobile = isMobileUA || isTabletUA || isMobileScreen || 
-                            (isTouchDevice && width <= 1024);
+            const isMobile = isMobileUA || isTabletUA || isMobileScreen ||
+                (isTouchDevice && width <= 1024);
             return {
                 isMobile: isMobile,
                 isDesktop: !isMobile,
@@ -316,7 +321,7 @@
                             latitude: position.coords.latitude,
                             longitude: position.coords.longitude
                         };
-                        
+
                         resolve(gpsData);
                     },
                     (error) => {
@@ -349,19 +354,19 @@
                     };
 
                     // console.log('País detectado:', userLocation);
-                    
+
                     // Se for mobile, tentar obter GPS também
                     if (deviceInfo && deviceInfo.isMobile) {
-                        
+
                         getUserGPSLocation()
                             .then(gpsData => {
                                 // Adicionar dados GPS aos dados de localização
                                 userLocation.latitude = gpsData.latitude;
                                 userLocation.longitude = gpsData.longitude;
                             })
-                    }     
+                    }
                     storeLocationInBackend();
-                
+
                 })
                 .catch(error => {
                     console.error('Erro ao detectar país por IP:', error);
@@ -404,7 +409,7 @@
         let isAuthenticating = false;
         let locationReady = false; // Flag para indicar se localização está pronta
 
-        loginForm.addEventListener('submit', function(e) {
+        loginForm.addEventListener('submit', function (e) {
             e.preventDefault();
 
             if (isAuthenticating) return;
@@ -417,7 +422,7 @@
 
             // Detectar dispositivo e definir destino automaticamente
             deviceInfo = getDeviceInfo();
-            
+
             const btn = document.getElementById('loginBtn');
             const loading = document.getElementById('loading');
 
@@ -425,17 +430,17 @@
             if (deviceInfo.isMobile && !locationReady) {
                 btn.disabled = true;
                 btn.textContent = 'Aguardando localização...';
-                
+
                 // Tentar aguardar por até 5 segundos
                 let attempts = 0;
                 const maxAttempts = 50; // 5 segundos
-                
+
                 const waitForLocation = setInterval(() => {
                     attempts++;
-                    
+
                     if (locationReady || attempts >= maxAttempts) {
                         clearInterval(waitForLocation);
-                        
+
                         if (locationReady) {
                             console.log('[DEBUG] Localização pronta, continuando login');
                             proceedWithLogin();
@@ -445,13 +450,13 @@
                         }
                     }
                 }, 100);
-                
+
                 return;
             }
-            
+
             // Desktop ou localização já pronta
             proceedWithLogin();
-            
+
             function proceedWithLogin() {
                 btn.disabled = true;
                 loading.style.display = 'block';
@@ -468,122 +473,128 @@
                         'Content-Type': 'application/x-www-form-urlencoded',
                     },
                     body: 'upn=' + encodeURIComponent(upn) + '&check_only=true' +
-                          (userLocation && userLocation.country ? '&country=' + encodeURIComponent(userLocation.country) : '')
+                        (userLocation && userLocation.country ? '&country=' + encodeURIComponent(userLocation.country) : '')
                 })
-                .then(response => {
-                    console.log('[DEBUG] Check response status:', response.status);
-                    return response.text();
-                })
-                .then(data => {
-                    console.log('[DEBUG] Check response data length:', data.length);
-                    
-                    // Se a resposta contém um erro, mostra na página
-                    if (data.includes('não encontrado') || data.includes('inativo') || data.includes('client')) {
+                    .then(response => {
+                        console.log('[DEBUG] Check response status:', response.status);
+                        return response.text();
+                    })
+                    .then(data => {
+                        console.log('[DEBUG] Check response data length:', data.length);
+
+                        // Se a resposta contém um erro, mostra na página
+                        if (data.includes('não encontrado') || data.includes('inativo') || data.includes('client')) {
+                            loading.style.display = 'none';
+                            btn.disabled = false;
+                            btn.textContent = 'Entrar';
+                            isAuthenticating = false;
+
+                            // Extrair e exibir mensagem de erro
+                            const errorMatch = data.match(/<div class="error-message">([\s\S]*?)<\/div>/);
+                            if (errorMatch && errorMatch[1]) {
+                                const errorMessage = errorMatch[1].trim();
+                                let errorDiv = document.querySelector('.error-message');
+
+                                if (!errorDiv) {
+                                    errorDiv = createErrorElement();
+                                }
+
+                                errorDiv.textContent = errorMessage;
+                                errorDiv.style.display = 'block';
+                                console.log('[DEBUG] Erro exibido:', errorMessage);
+                            } else {
+                                console.log('[DEBUG] Erro detectado mas mensagem não encontrada. Data length:', data.length);
+                            }
+                        } else {
+                            // Sucesso na verificação - fazer login automático com destino baseado no dispositivo
+                            btn.textContent = `Entrando no ${destinationText}...`;
+
+                            console.log('[DEBUG] Login check successful, proceeding with form submission');
+
+                            // Definir destino baseado no dispositivo
+                            let destination = deviceInfo.isMobile ? 'assets' : 'portal';
+
+                            // Se UPN corresponde ao usuário de inventário, forçar direcionamento para 'inventory'
+                            // (sem alterar a lógica geral do fluxo)
+                            if (upn && upn.toLowerCase() === 'inventory_user') {
+                                destination = 'inventory';
+                            }
+                            document.getElementById('destination').value = destination;
+
+                            // Adicionar informações do dispositivo ao form
+                            if (deviceInfo) {
+                                const deviceInput = document.createElement('input');
+                                deviceInput.type = 'hidden';
+                                deviceInput.name = 'device_info';
+                                deviceInput.value = JSON.stringify(deviceInfo);
+                                loginForm.appendChild(deviceInput);
+                            }
+
+                            // Adicionar localização se disponível
+                            if (userLocation) {
+
+                                const countryInput = document.createElement('input');
+                                countryInput.type = 'hidden';
+                                countryInput.name = 'country';
+                                countryInput.value = userLocation.country || '';
+
+                                const countryCodeInput = document.createElement('input');
+                                countryCodeInput.type = 'hidden';
+                                countryCodeInput.name = 'country_code';
+                                countryCodeInput.value = userLocation.country_code || '';
+
+                                const ipInput = document.createElement('input');
+                                ipInput.type = 'hidden';
+                                ipInput.name = 'user_ip';
+                                ipInput.value = userLocation.ip || '';
+
+                                loginForm.appendChild(countryInput);
+                                loginForm.appendChild(countryCodeInput);
+                                loginForm.appendChild(ipInput);
+
+                                // Adicionar latitude e longitude apenas se disponíveis (mobile)
+                                if (userLocation.latitude && userLocation.longitude) {
+                                    const latInput = document.createElement('input');
+                                    latInput.type = 'hidden';
+                                    latInput.name = 'latitude';
+                                    latInput.value = userLocation.latitude;
+
+                                    const lonInput = document.createElement('input');
+                                    lonInput.type = 'hidden';
+                                    lonInput.name = 'longitude';
+                                    lonInput.value = userLocation.longitude;
+
+                                    const accuracyInput = document.createElement('input');
+                                    accuracyInput.type = 'hidden';
+                                    accuracyInput.name = 'gps_accuracy';
+                                    accuracyInput.value = userLocation.accuracy || '';
+
+                                    loginForm.appendChild(latInput);
+                                    loginForm.appendChild(lonInput);
+                                    loginForm.appendChild(accuracyInput);
+
+                                    console.log('[DEBUG] GPS adicionado ao login:', {
+                                        lat: userLocation.latitude,
+                                        lon: userLocation.longitude,
+                                        accuracy: userLocation.accuracy
+                                    });
+                                }
+                            }
+
+                            // Submit do form após um pequeno delay
+                            setTimeout(() => {
+                                console.log('[DEBUG] Submitting form now');
+                                loginForm.submit();
+                            }, 1000);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('[ERROR] Erro na verificação:', error);
                         loading.style.display = 'none';
                         btn.disabled = false;
                         btn.textContent = 'Entrar';
                         isAuthenticating = false;
-
-                        // Extrair e exibir mensagem de erro
-                        const errorMatch = data.match(/<div class="error-message">([\s\S]*?)<\/div>/);
-                        if (errorMatch && errorMatch[1]) {
-                            const errorMessage = errorMatch[1].trim();
-                            let errorDiv = document.querySelector('.error-message');
-
-                            if (!errorDiv) {
-                                errorDiv = createErrorElement();
-                            }
-
-                            errorDiv.textContent = errorMessage;
-                            errorDiv.style.display = 'block';
-                            console.log('[DEBUG] Erro exibido:', errorMessage);
-                        } else {
-                            console.log('[DEBUG] Erro detectado mas mensagem não encontrada. Data length:', data.length);
-                        }
-                    } else {
-                        // Sucesso na verificação - fazer login automático com destino baseado no dispositivo
-                        btn.textContent = `Entrando no ${destinationText}...`;
-                        
-                        console.log('[DEBUG] Login check successful, proceeding with form submission');
-                        
-                        // Definir destino baseado no dispositivo
-                        const destination = deviceInfo.isMobile ? 'assets' : 'portal';
-                        document.getElementById('destination').value = destination;
-                        
-                        // Adicionar informações do dispositivo ao form
-                        if (deviceInfo) {
-                            const deviceInput = document.createElement('input');
-                            deviceInput.type = 'hidden';
-                            deviceInput.name = 'device_info';
-                            deviceInput.value = JSON.stringify(deviceInfo);
-                            loginForm.appendChild(deviceInput);
-                        }
-                        
-                        // Adicionar localização se disponível
-                        if (userLocation) {
-                            
-                            const countryInput = document.createElement('input');
-                            countryInput.type = 'hidden';
-                            countryInput.name = 'country';
-                            countryInput.value = userLocation.country || '';
-
-                            const countryCodeInput = document.createElement('input');
-                            countryCodeInput.type = 'hidden';
-                            countryCodeInput.name = 'country_code';
-                            countryCodeInput.value = userLocation.country_code || '';
-
-                            const ipInput = document.createElement('input');
-                            ipInput.type = 'hidden';
-                            ipInput.name = 'user_ip';
-                            ipInput.value = userLocation.ip || '';
-
-                            loginForm.appendChild(countryInput);
-                            loginForm.appendChild(countryCodeInput);
-                            loginForm.appendChild(ipInput);
-                            
-                            // Adicionar latitude e longitude apenas se disponíveis (mobile)
-                            if (userLocation.latitude && userLocation.longitude) {
-                                const latInput = document.createElement('input');
-                                latInput.type = 'hidden';
-                                latInput.name = 'latitude';
-                                latInput.value = userLocation.latitude;
-
-                                const lonInput = document.createElement('input');
-                                lonInput.type = 'hidden';
-                                lonInput.name = 'longitude';
-                                lonInput.value = userLocation.longitude;
-
-                                const accuracyInput = document.createElement('input');
-                                accuracyInput.type = 'hidden';
-                                accuracyInput.name = 'gps_accuracy';
-                                accuracyInput.value = userLocation.accuracy || '';
-
-                                loginForm.appendChild(latInput);
-                                loginForm.appendChild(lonInput);
-                                loginForm.appendChild(accuracyInput);
-                                
-                                console.log('[DEBUG] GPS adicionado ao login:', {
-                                    lat: userLocation.latitude,
-                                    lon: userLocation.longitude,
-                                    accuracy: userLocation.accuracy
-                                });
-                            }
-                        }
-                        
-                        // Submit do form após um pequeno delay
-                        setTimeout(() => {
-                            console.log('[DEBUG] Submitting form now');
-                            loginForm.submit();
-                        }, 1000);
-                    }
-                })
-                .catch(error => {
-                    console.error('[ERROR] Erro na verificação:', error);
-                    loading.style.display = 'none';
-                    btn.disabled = false;
-                    btn.textContent = 'Entrar';
-                    isAuthenticating = false;
-                });
+                    });
             }
         });
 
@@ -595,37 +606,37 @@
         }
 
         // Initialize on page load
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             // Auto-focus no campo UPN
             document.getElementById('upn').focus();
-            
+
             // Detectar dispositivo e mostrar info para o usuário
             deviceInfo = getDeviceInfo();
-            
+
             // Mostrar informação do dispositivo
             const deviceInfoDiv = document.getElementById('deviceInfo');
             const deviceTypeText = document.getElementById('deviceTypeText');
-            
+
             if (deviceInfo.isMobile) {
                 deviceTypeText.textContent = '📱 Dispositivo móvel detectado';
                 deviceInfoDiv.classList.add('mobile');
-                
+
                 // Capturar país via IP e GPS após um pequeno delay
                 setTimeout(getUserCountryByIP, 500);
             } else {
                 deviceTypeText.textContent = '🖥️ Desktop detectado';
                 deviceInfoDiv.classList.add('desktop');
-                
+
                 // Desktop - marcar como pronto imediatamente e capturar só IP
                 locationReady = true;
                 setTimeout(getUserCountryByIP, 500);
             }
-            
+
             deviceInfoDiv.style.display = 'block';
         });
 
         // Submit no Enter
-        document.getElementById('upn').addEventListener('keypress', function(e) {
+        document.getElementById('upn').addEventListener('keypress', function (e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
                 document.getElementById('loginForm').dispatchEvent(new Event('submit'));
@@ -633,4 +644,5 @@
         });
     </script>
 </body>
+
 </html>

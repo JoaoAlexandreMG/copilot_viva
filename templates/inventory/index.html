@@ -1,0 +1,20 @@
+{% extends 'portal/base.html' %}
+
+{% block title %}Inventário{% endblock %}
+
+{% block page_title %}Inventário{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>Inventário</h2>
+    <p>Bem-vindo(a), {{ user.first_name or user.upn }}</p>
+    <p>Esta é a página de inventário. Aqui você pode listar ou gerenciar seus ativos no futuro.</p>
+
+    <div class="card">
+        <div class="card-body">
+            <p><strong>UPN:</strong> {{ user.upn }}</p>
+            <p><strong>Client:</strong> {{ user.client }}</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
