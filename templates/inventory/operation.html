@@ -496,8 +496,7 @@
                 `<strong>${title}</strong>`,
                 asset.asset_type ? `Tipo: ${asset.asset_type}` : null,
                 asset.outlet_name ? `Ponto: ${asset.outlet_name}` : null,
-                asset.city || asset.street ? `${asset.street || ''} ${asset.city || ''}`.trim() : null,
-                asset.last_visit_at ? `Última visita: ${asset.last_visit_at}` : null
+                asset.city || asset.street ? `${asset.street || ''} ${asset.city || ''}`.trim() : null
             ].filter(Boolean);
 
             const outletKey = (asset.outlet_name || 'Sem outlet').trim() || 'Sem outlet';

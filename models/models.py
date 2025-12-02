@@ -446,7 +446,6 @@ class AssetsInventory(Base):
 
     is_deleted = Column(Boolean, default=False)
 
-    last_visit_at = Column(DateTime)
     last_visit_distance_m = Column(Float)
 
     notes = Column(Text)

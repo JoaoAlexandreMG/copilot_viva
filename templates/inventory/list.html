@@ -82,7 +82,7 @@
         <div class="card-body" style="padding: 0;">
             {% if assets_inventory %}
             <div class="table-wrap">
-            <table class="table inventory-table" style="width: 100%; min-width: 960px;">
+            <table class="table inventory-table" style="width: 100%; min-width: 860px;">
                 <thead>
                     <tr>
                         <th>Serial</th>
@@ -91,7 +91,6 @@
                         <th>Outlet</th>
                         <th>Latitude</th>
                         <th>Longitude</th>
-                        <th>Última visita</th>
                         <th>Cidade</th>
                         <th>Rua</th>
                         <th>Criado em</th>
@@ -113,7 +112,6 @@
                         </td>
                         <td>{{ asset.last_latitude or '-' }}</td>
                         <td>{{ asset.last_longitude or '-' }}</td>
-                        <td>{{ asset.last_visit_at or '-' }}</td>
                         <td>{{ asset.city or '-' }}</td>
                         <td>{{ asset.street or '-' }}</td>
                         <td>{{ asset.created_at or '-' }}</td>

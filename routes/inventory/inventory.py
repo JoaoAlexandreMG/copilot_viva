@@ -9,7 +9,7 @@ inventory_bp = Blueprint("inventory", __name__, url_prefix="/inventory")
 def _serialize_inventory_asset(asset: AssetsInventory) -> dict:
     data = asset.to_dict()
     # Normaliza campos de data para strings ISO legíveis no front
-    for date_field in ("last_visit_at", "created_at"):
+    for date_field in ("created_at", ):
         if data.get(date_field):
             data[date_field] = data[date_field].isoformat()
     return data
