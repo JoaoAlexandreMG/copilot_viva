@@ -19,9 +19,14 @@
         <div class="sidebar-nav-section">
             <div class="sidebar-nav-title">Principal</div>
             <a href="{{ url_for('inventory.render_inventory_dashboard') }}"
-                class="sidebar-nav-link {% if request.path.startswith('/inventory/dashboard') or request.path.startswith('/inventory') %}active{% endif %}">
+                class="sidebar-nav-link {% if request.path.startswith('/inventory/dashboard') or request.path == '/inventory/' or request.path == '/inventory' %}active{% endif %}">
                 <i class="fas fa-boxes"></i>
                 <span>Inventário</span>
+            </a>
+            <a href="{{ url_for('inventory.render_inventory_operation') }}"
+                class="sidebar-nav-link {% if request.path.startswith('/inventory/operation') %}active{% endif %}">
+                <i class="fas fa-cogs"></i>
+                <span>Operação</span>
             </a>
         </div>
         <!-- Rastreio removido desta sidebar para não exibir opções indesejadas -->

@@ -35,3 +35,17 @@ def render_inventory_dashboard():
     except Exception as e:
         print(f"[ERROR] Error rendering inventory dashboard: {e}")
         return redirect(url_for('inventory.render_inventory_index'))
+
+
+@inventory_bp.route('/operation', methods=['GET'])
+@require_authentication
+def render_inventory_operation():
+    """Render the inventory operations page."""
+    try:
+        user = session.get('user')
+        if not user:
+            return redirect(url_for('index'))
+        return render_template('inventory/operation.html', user=user)
+    except Exception as e:
+        print(f"[ERROR] Error rendering inventory operation: {e}")
+        return redirect(url_for('inventory.render_inventory_index'))

@@ -1,18 +1,34 @@
 {% extends 'portal/base.html' %}
 
-{% block title %}Inventário - Dashboard{% endblock %}
+{% block title %}Operação - Inventário{% endblock %}
 
-{% block page_title %}Inventário - Dashboard{% endblock %}
+{% block page_title %}Operação (Inventário){% endblock %}
 
 {% block content %}
 <div class="container">
-    <h2>Painel do Inventário</h2>
-    <p>Bem-vindo ao painel de inventário. Aqui podemos mostrar métricas, gráficos e links importantes.</p>
+    <h2>Operações do Inventário</h2>
+    <p>Acompanhe as operações em andamento e o posicionamento das movimentações.</p>
+
+    <div class="card" style="margin-top: 1rem;">
+        <div class="card-header">
+            <strong>Mapa de Operações</strong>
+        </div>
+        <div class="card-body" style="height: 360px; display: flex; align-items: center; justify-content: center; background: #f7f9fc;">
+            <div style="text-align: center; color: #6c757d;">
+                <i class="fas fa-map-marked-alt" style="font-size: 42px; margin-bottom: 12px;"></i>
+                <p style="margin: 0;">Área reservada para o mapa interativo das operações.</p>
+            </div>
+        </div>
+    </div>
+
+    <div style="margin-top: 1rem; text-align: right;">
+        <button type="button" class="btn btn-primary">Ação principal</button>
+    </div>
 </div>
 {% endblock %}
 
 {% block sidebar %}
-<!-- Inventory sidebar for dashboard -->
+<!-- Inventory sidebar with Operação link -->
 <aside class="sidebar" id="sidebar">
     <div class="sidebar-logo">
         <img src="{{ url_for('static', filename='images/logo.png') }}" alt="VivaAI Logo">
@@ -36,7 +52,6 @@
                 <span>Operação</span>
             </a>
         </div>
-        <!-- Adicione outras seções se necessário -->
     </nav>
     <div class="sidebar-footer">
         <div class="sidebar-user">
