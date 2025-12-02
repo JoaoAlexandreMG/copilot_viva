@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, session, redirect, url_for, jsonify
+from flask import Blueprint, render_template, session, redirect, url_for, jsonify, request
 from routes.portal.decorators import require_authentication
 from db.database import get_session
 from models.models import AssetsInventory
@@ -78,3 +78,65 @@ def get_inventory_operation_data():
     except Exception as e:
         print(f"[ERROR] Error fetching inventory operation data: {e}")
         return jsonify({"error": "Erro ao buscar dados de inventário"}), 500
+
+
+@inventory_bp.route('/operation/create', methods=['POST'])
+@require_authentication
+def create_inventory_asset():
+    """Cria um novo asset no inventário via JSON ou form."""
+    try:
+        payload = request.get_json(silent=True) or request.form
+
+        serial_number = (payload.get('serial_number') or '').strip()
+        if not serial_number:
+            return jsonify({"error": "O campo serial_number é obrigatório."}), 400
+
+        asset_type = (payload.get('asset_type') or '').strip() or None
+        material = (payload.get('material') or '').strip() or None
+        outlet_name = (payload.get('outlet_name') or '').strip() or None
+        street = (payload.get('street') or '').strip() or None
+        city = (payload.get('city') or '').strip() or None
+        notes = (payload.get('notes') or '').strip() or None
+
+        def to_float(value):
+            try:
+                return float(value) if value not in (None, '') else None
+            except (TypeError, ValueError):
+                return None
+
+        last_latitude = to_float(payload.get('last_latitude'))
+        last_longitude = to_float(payload.get('last_longitude'))
+
+        db_session = get_session()
+
+        # Evita duplicidade simples pelo serial_number quando não deletado
+        existing = db_session.query(AssetsInventory).filter(
+            AssetsInventory.serial_number == serial_number,
+            AssetsInventory.is_deleted.is_(False)
+        ).first()
+        if existing:
+            return jsonify({"error": "Já existe um asset com este serial_number."}), 409
+
+        user = session.get('user') or {}
+        created_by = user.get('upn') or user.get('email') or 'system'
+
+        asset = AssetsInventory(
+            serial_number=serial_number,
+            asset_type=asset_type,
+            material=material,
+            outlet_name=outlet_name,
+            street=street,
+            city=city,
+            notes=notes,
+            last_latitude=last_latitude,
+            last_longitude=last_longitude,
+            created_by_user=created_by
+        )
+
+        db_session.add(asset)
+        db_session.commit()
+
+        return jsonify({"asset": _serialize_inventory_asset(asset)}), 201
+    except Exception as e:
+        print(f"[ERROR] Error creating inventory asset: {e}")
+        return jsonify({"error": "Erro ao criar asset"}), 500

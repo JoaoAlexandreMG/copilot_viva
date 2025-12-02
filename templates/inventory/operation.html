@@ -6,6 +6,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
 <style>
     /* Tamanho fixo para o mapa sem interferir nos demais cards */
     #operation-map {
@@ -13,6 +14,82 @@
         border-radius: var(--radius-md, 12px);
         overflow: hidden;
         background: #f7f9fc;
+    }
+
+    .map-wrapper {
+        position: relative;
+    }
+
+    .map-legend {
+        position: absolute;
+        right: 12px;
+        top: 12px;
+        background: rgba(12, 20, 36, 0.88);
+        color: #f4f7ff;
+        padding: 10px 12px;
+        border-radius: 10px;
+        box-shadow: var(--shadow-md, 0 4px 16px rgba(0, 0, 0, 0.18));
+        font-size: 12px;
+        max-width: 260px;
+        max-height: 180px;
+        overflow-y: auto;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        z-index: 500;
+        pointer-events: auto;
+    }
+
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 6px;
+    }
+
+    .legend-swatch {
+        width: 12px;
+        height: 12px;
+        border-radius: 4px;
+        flex-shrink: 0;
+        border: 1px solid rgba(255, 255, 255, 0.35);
+    }
+
+    .legend-swatch.current {
+        border-radius: 50%;
+        background: radial-gradient(circle at 50% 50%, #fff 0%, #00c3ff 55%, #00c3ff 100%);
+        border: 1px solid #fff;
+    }
+
+    .legend-swatch.asset {
+        width: 0;
+        height: 0;
+        border-left: 7px solid transparent;
+        border-right: 7px solid transparent;
+        border-bottom: 10px solid var(--color, #00c3ff);
+        border-radius: 0;
+    }
+
+    .current-location-icon {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: radial-gradient(circle at 50% 50%, #ffffff 0%, #ffffff 35%, #00c3ff 65%, #0075ff 100%);
+        border: 2px solid #ffffff;
+        box-shadow: 0 0 14px rgba(0, 195, 255, 0.9);
+    }
+
+    .asset-marker-icon {
+        width: 0;
+        height: 0;
+        border-left: 9px solid transparent;
+        border-right: 9px solid transparent;
+        border-bottom: 14px solid var(--color, #00c3ff);
+        filter: drop-shadow(0 0 4px rgba(0,0,0,0.25));
+        transform: translateY(-2px);
+    }
+
+    .asset-marker-wrapper {
+        width: 18px;
+        height: 18px;
     }
 
     #operation-map .map-status {
@@ -30,6 +107,160 @@
         display: flex;
         justify-content: center;
     }
+
+    /* Modais alinhados com a paleta do portal */
+    .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(10, 31, 68, 0.55);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        padding: 16px;
+    }
+
+    .modal-backdrop.active {
+        display: flex;
+    }
+
+    .modal-card {
+        background: linear-gradient(160deg, #0c1424 0%, #0c1424 45%, #10203c 100%);
+        color: #f4f7ff;
+        border-radius: 14px;
+        padding: 20px;
+        width: 100%;
+        max-width: 540px;
+        box-shadow: var(--shadow-lg, 0 8px 32px rgba(0, 195, 255, 0.18));
+        border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+        gap: 12px;
+        padding: 10px 12px;
+        background: rgba(255, 255, 255, 0.06);
+        border-radius: 12px;
+    }
+
+    .modal-header h4 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 700;
+    }
+
+    .modal-close {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        background: rgba(0, 0, 0, 0.32);
+        color: #f4f7ff;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        border-radius: 10px;
+        font-weight: 600;
+        transition: background var(--transition-base, 0.2s ease), border-color var(--transition-base, 0.2s ease);
+    }
+
+    .modal-close:hover {
+        background: rgba(0, 0, 0, 0.5);
+        border-color: rgba(255, 255, 255, 0.26);
+    }
+
+    .modal-body {
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+
+    .modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 16px;
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 12px;
+    }
+
+    .form-grid label {
+        font-weight: 600;
+        font-size: 14px;
+    }
+
+    .form-grid input,
+    .form-grid textarea {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        background: rgba(12, 20, 36, 0.75);
+        color: #f4f7ff;
+        border-radius: 10px;
+        font-size: 14px;
+    }
+
+    .form-grid input:focus,
+    .form-grid textarea:focus {
+        outline: 2px solid var(--primary, #00c3ff);
+        border-color: var(--primary, #00c3ff);
+        background: rgba(15, 26, 45, 0.95);
+    }
+
+    .form-grid textarea {
+        min-height: 80px;
+    }
+
+    #qr-reader {
+        width: 100%;
+        min-height: 260px;
+    }
+
+    .pill-option {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 12px 16px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        cursor: pointer;
+        gap: 10px;
+        width: 100%;
+        background: rgba(14, 22, 38, 0.9);
+        color: #f4f7ff;
+        font-weight: 600;
+        transition: background var(--transition-base, 0.2s ease), transform 120ms ease;
+    }
+
+    .pill-option:hover {
+        background: rgba(0, 195, 255, 0.16);
+        transform: translateY(-1px);
+    }
+
+    .status-text {
+        font-size: 13px;
+        color: #d0d7e3;
+        margin-top: 6px;
+    }
+
+    .location-status {
+        margin-top: 8px;
+    }
+
+    .btn-light {
+        background: rgba(255, 255, 255, 0.12);
+        color: #f4f7ff;
+        border: 1px solid rgba(0, 0, 0, 0.25);
+    }
+
+    .btn-light:hover {
+        background: rgba(255, 255, 255, 0.22);
+        color: #fff;
+    }
 </style>
 {% endblock %}
 
@@ -42,43 +273,220 @@
         <div class="card-header">
             <strong>Mapa de Operações</strong>
         </div>
-        <div class="card-body" style="padding: 0;">
+        <div class="card-body map-wrapper" style="padding: 0;">
             <div id="operation-map"></div>
+            <div id="map-legend" class="map-legend"></div>
         </div>
     </div>
 
+    <div class="status-text" id="location-status"></div>
+
     <div class="operation-actions">
-        <button type="button" class="btn btn-primary">Ação principal</button>
+        <button type="button" class="btn btn-primary" id="open-scan-btn">Scan</button>
+    </div>
+
+    <!-- Modal: Escolher método -->
+    <div class="modal-backdrop" id="method-modal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h4>Adicionar asset</h4>
+                <button type="button" class="modal-close" data-close-modal="method-modal"><i class="fas fa-times"></i> Fechar</button>
+            </div>
+            <div class="modal-body">
+                <p>Escolha como deseja adicionar o asset:</p>
+                <div class="form-grid">
+                    <button type="button" class="pill-option" id="choose-qr">
+                        <i class="fas fa-qrcode"></i> Scanear QR Code
+                    </button>
+                    <button type="button" class="pill-option" id="choose-manual">
+                        <i class="fas fa-keyboard"></i> Inserir manualmente
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: QR Scanner -->
+    <div class="modal-backdrop" id="qr-modal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h4>Scanear QR Code</h4>
+                <button type="button" class="modal-close" data-close-modal="qr-modal"><i class="fas fa-times"></i> Fechar</button>
+            </div>
+            <div class="modal-body">
+                <div id="qr-reader"></div>
+                <p class="status-text">Aponte a câmera para o QR Code. Após ler, os dados serão preenchidos automaticamente.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Formulário -->
+    <div class="modal-backdrop" id="form-modal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h4>Cadastro de Asset</h4>
+                <button type="button" class="modal-close" data-close-modal="form-modal"><i class="fas fa-times"></i> Fechar</button>
+            </div>
+            <form id="inventory-form">
+                <div class="modal-body">
+                    <div class="form-grid">
+                        <div>
+                            <label for="serial_number">Serial Number *</label>
+                            <input id="serial_number" name="serial_number" required />
+                        </div>
+                        <div>
+                            <label for="asset_type">Tipo</label>
+                            <input id="asset_type" name="asset_type" />
+                        </div>
+                        <div>
+                            <label for="material">Material</label>
+                            <input id="material" name="material" />
+                        </div>
+                        <div>
+                            <label for="outlet_name">Ponto/Outlet</label>
+                            <input id="outlet_name" name="outlet_name" />
+                        </div>
+                        <div>
+                            <label for="street">Rua</label>
+                            <input id="street" name="street" />
+                        </div>
+                        <div>
+                            <label for="city">Cidade</label>
+                            <input id="city" name="city" />
+                        </div>
+                        <div>
+                            <label for="last_latitude">Latitude</label>
+                            <input id="last_latitude" name="last_latitude" />
+                        </div>
+                        <div>
+                            <label for="last_longitude">Longitude</label>
+                            <input id="last_longitude" name="last_longitude" />
+                        </div>
+                        <div style="grid-column: 1 / -1;">
+                            <label for="notes">Notas</label>
+                            <textarea id="notes" name="notes"></textarea>
+                        </div>
+                    </div>
+                    <div class="status-text" id="form-status"></div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-light" data-close-modal="form-modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const mapContainer = document.getElementById('operation-map');
-        if (!window.L) {
-            mapContainer.innerHTML = '<div class="map-status">Não foi possível carregar o mapa (biblioteca não carregada).</div>';
-            return;
+        const assetsData = {{ operation_assets | default([]) | tojson }};
+        let map;
+        let markers = [];
+        let qrScanner = null;
+
+        const formModal = document.getElementById('form-modal');
+        const methodModal = document.getElementById('method-modal');
+        const qrModal = document.getElementById('qr-modal');
+        const openScanBtn = document.getElementById('open-scan-btn');
+        const formElement = document.getElementById('inventory-form');
+        const statusText = document.getElementById('form-status');
+        const locationStatus = document.getElementById('location-status');
+
+        const fieldSerial = document.getElementById('serial_number');
+        const fieldType = document.getElementById('asset_type');
+        const fieldMaterial = document.getElementById('material');
+        const fieldOutlet = document.getElementById('outlet_name');
+        const fieldStreet = document.getElementById('street');
+        const fieldCity = document.getElementById('city');
+        const fieldLat = document.getElementById('last_latitude');
+        const fieldLng = document.getElementById('last_longitude');
+        const fieldNotes = document.getElementById('notes');
+        let currentLocationMarker = null;
+        let userLat = null;
+        let userLng = null;
+        let geoWatchId = null;
+        const outletColorMap = {};
+        const outletColorPalette = ['#00C3FF', '#4C3AFF', '#FFC93C', '#00F5B5', '#FF6B6B', '#1F8EF1', '#7C4DFF', '#FF8A65'];
+        const legendContainer = document.getElementById('map-legend');
+        const currentIcon = L.divIcon({ className: 'current-location-icon' });
+
+        function setModal(modal, isOpen) {
+            if (!modal) return;
+            if (isOpen) modal.classList.add('active');
+            else modal.classList.remove('active');
         }
 
-        const defaultView = {
-            center: [-15.7801, -47.9292], // Brasil
-            zoom: 4
-        };
+        function fillLocationFields(prefill = {}) {
+            const latValue = prefill.last_latitude ?? userLat;
+            const lngValue = prefill.last_longitude ?? userLng;
+            if (fieldLat && latValue !== null && latValue !== undefined) fieldLat.value = latValue;
+            if (fieldLng && lngValue !== null && lngValue !== undefined) fieldLng.value = lngValue;
+        }
 
-        const map = L.map('operation-map').setView(defaultView.center, defaultView.zoom);
+        function resetForm() {
+            formElement.reset();
+            statusText.textContent = '';
+            fillLocationFields();
+        }
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(map);
+        function loadScriptIfNeeded(checkFn, primaryUrl, fallbackUrl) {
+            return new Promise((resolve) => {
+                if (checkFn()) return resolve(true);
+                const script = document.createElement('script');
+                script.src = primaryUrl;
+                script.onload = () => resolve(true);
+                script.onerror = () => {
+                    if (!fallbackUrl) return resolve(false);
+                    const fallback = document.createElement('script');
+                    fallback.src = fallbackUrl;
+                    fallback.onload = () => resolve(true);
+                    fallback.onerror = () => resolve(false);
+                    document.body.appendChild(fallback);
+                };
+                document.body.appendChild(script);
+            });
+        }
 
-        const assetsData = {{ operation_assets | default([]) | tojson }};
-        const markers = [];
+        async function initMap() {
+            const leafletLoaded = await loadScriptIfNeeded(
+                () => window.L,
+                'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
+                'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js'
+            );
 
-        assetsData.forEach(asset => {
+            if (!leafletLoaded || !window.L) {
+                mapContainer.innerHTML = '<div class="map-status">Não foi possível carregar o mapa (biblioteca não carregada).</div>';
+                return;
+            }
+
+            map = L.map('operation-map').setView([-15.7801, -47.9292], 4);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+
+            assetsData.forEach(addAssetMarker);
+
+            if (!markers.length) {
+                const status = document.createElement('div');
+                status.className = 'map-status';
+                status.innerText = 'Sem ativos com localização para exibir no mapa.';
+                mapContainer.appendChild(status);
+            }
+
+            // Após inicializar o mapa, tente capturar localização atual
+            requestCurrentLocation();
+        }
+
+        function addAssetMarker(asset) {
+            if (!map) return;
             const lat = parseFloat(asset.last_latitude);
             const lng = parseFloat(asset.last_longitude);
             if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
@@ -92,20 +500,256 @@
                 asset.last_visit_at ? `Última visita: ${asset.last_visit_at}` : null
             ].filter(Boolean);
 
-            const marker = L.marker([lat, lng]).addTo(map).bindPopup(popupLines.join('<br>'));
-            markers.push(marker);
-        });
+            const outletKey = (asset.outlet_name || 'Sem outlet').trim() || 'Sem outlet';
+            const color = getOutletColor(outletKey);
 
-        if (markers.length) {
+            const marker = L.marker([lat, lng], { icon: createAssetIcon(color) }).addTo(map).bindPopup(popupLines.join('<br>'));
+            markers.push(marker);
+            updateLegend();
+
             const group = L.featureGroup(markers);
             map.fitBounds(group.getBounds(), { padding: [24, 24] });
-        } else {
-            // Nenhum asset com coordenada; mostra estado para o usuário
-            const status = document.createElement('div');
-            status.className = 'map-status';
-            status.innerText = 'Sem ativos com localização para exibir no mapa.';
-            mapContainer.appendChild(status);
         }
+
+        function createAssetIcon(color) {
+            const html = `<div class="asset-marker-wrapper"><div class="asset-marker-icon" style="--color:${color};"></div></div>`;
+            return L.divIcon({
+                className: 'asset-marker-container',
+                html,
+                iconSize: [18, 18],
+                iconAnchor: [9, 12],
+                popupAnchor: [0, -10]
+            });
+        }
+
+        function getOutletColor(outlet) {
+            if (outletColorMap[outlet]) return outletColorMap[outlet];
+            const idx = Object.keys(outletColorMap).length % outletColorPalette.length;
+            outletColorMap[outlet] = outletColorPalette[idx];
+            return outletColorMap[outlet];
+        }
+
+        function updateLegend() {
+            if (!legendContainer) return;
+            legendContainer.innerHTML = '<strong>Mapa</strong><div style="height: 6px"></div>';
+
+            // Localização atual
+            const meItem = document.createElement('div');
+            meItem.className = 'legend-item';
+            const meSwatch = document.createElement('div');
+            meSwatch.className = 'legend-swatch current';
+            const meLabel = document.createElement('span');
+            meLabel.textContent = 'Sua localização';
+            meItem.appendChild(meSwatch);
+            meItem.appendChild(meLabel);
+            legendContainer.appendChild(meItem);
+
+            const divider = document.createElement('div');
+            divider.style.height = '6px';
+            legendContainer.appendChild(divider);
+            const title = document.createElement('div');
+            title.style.marginBottom = '4px';
+            title.textContent = 'Outlets';
+            legendContainer.appendChild(title);
+
+            Object.keys(outletColorMap).forEach(outlet => {
+                const item = document.createElement('div');
+                item.className = 'legend-item';
+                const swatch = document.createElement('div');
+                swatch.className = 'legend-swatch asset';
+                swatch.style.setProperty('--color', outletColorMap[outlet]);
+                const label = document.createElement('span');
+                label.textContent = outlet;
+                item.appendChild(swatch);
+                item.appendChild(label);
+                legendContainer.appendChild(item);
+            });
+        }
+
+        function setCurrentLocation(lat, lng) {
+            userLat = lat;
+            userLng = lng;
+            if (fieldLat) fieldLat.value = lat;
+            if (fieldLng) fieldLng.value = lng;
+
+            if (!map || !window.L) return;
+
+            if (currentLocationMarker) {
+                map.removeLayer(currentLocationMarker);
+            }
+
+            currentLocationMarker = L.marker([lat, lng], { icon: currentIcon }).addTo(map).bindPopup('Sua localização atual');
+
+            map.panTo([lat, lng]);
+        }
+
+        function requestCurrentLocation() {
+            if (!navigator.geolocation) {
+                if (locationStatus) locationStatus.textContent = 'Geolocalização não suportada neste dispositivo.';
+                return;
+            }
+
+            if (locationStatus) locationStatus.textContent = 'Obtendo sua localização...';
+
+            const opts = {
+                enableHighAccuracy: true,
+                timeout: 15000,
+                maximumAge: 0
+            };
+
+            const onSuccess = (pos) => {
+                const lat = pos.coords.latitude;
+                const lng = pos.coords.longitude;
+                setCurrentLocation(lat, lng);
+                if (locationStatus) locationStatus.textContent = 'Localização preenchida automaticamente.';
+                if (geoWatchId !== null) navigator.geolocation.clearWatch(geoWatchId);
+                geoWatchId = null;
+            };
+
+            const onError = (err) => {
+                console.warn('Geolocation error', err);
+                if (locationStatus) locationStatus.textContent = 'Não foi possível obter a localização.';
+                if (geoWatchId !== null) navigator.geolocation.clearWatch(geoWatchId);
+                geoWatchId = null;
+            };
+
+            geoWatchId = navigator.geolocation.watchPosition(onSuccess, onError, opts);
+        }
+
+        function parseQrText(rawText) {
+            const data = {};
+            const cleaned = rawText.replace(/^Raw text:\s*/i, '').trim();
+            cleaned.split(/\r?\n/).forEach(line => {
+                const [key, ...rest] = line.split(':');
+                if (!key || !rest.length) return;
+                const value = rest.join(':').trim();
+                const normalized = key.trim().toLowerCase();
+                if (normalized === 'type') data.asset_type = value;
+                if (normalized === 'material') data.material = value;
+                if (normalized === 'sn') data.serial_number = value;
+            });
+            return data;
+        }
+
+        function openForm(prefill = {}) {
+            resetForm();
+            if (prefill.serial_number) fieldSerial.value = prefill.serial_number;
+            if (prefill.asset_type) fieldType.value = prefill.asset_type;
+            if (prefill.material) fieldMaterial.value = prefill.material;
+            fillLocationFields(prefill);
+            setModal(formModal, true);
+        }
+
+        async function startQrScanner() {
+            const qrLoaded = await loadScriptIfNeeded(
+                () => window.Html5Qrcode,
+                'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js',
+                'https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js'
+            );
+
+            if (!qrLoaded || !window.Html5Qrcode) {
+                statusText.textContent = 'Biblioteca de QR não carregou.';
+                return;
+            }
+            const qrRegionId = 'qr-reader';
+            const config = { fps: 10, qrbox: 250 };
+            qrScanner = new Html5Qrcode(qrRegionId);
+            qrScanner.start({ facingMode: "environment" }, config, (decodedText) => {
+                safeStopQrScanner();
+                setModal(qrModal, false);
+                const parsed = parseQrText(decodedText);
+                openForm(parsed);
+            }, (errorMessage) => {
+                // Ignorar erros de leitura contínuos
+            }).catch(err => {
+                statusText.textContent = 'Não foi possível iniciar a câmera: ' + err;
+            });
+        }
+
+        function safeStopQrScanner() {
+            if (!qrScanner) return;
+            qrScanner.stop().then(() => qrScanner.clear()).catch(() => {}).finally(() => {
+                qrScanner = null;
+            });
+        }
+
+        function stopQrScanner() {
+            safeStopQrScanner();
+        }
+
+        if (openScanBtn) {
+        openScanBtn.addEventListener('click', () => setModal(methodModal, true));
+        }
+
+        const chooseManual = document.getElementById('choose-manual');
+        if (chooseManual) {
+            chooseManual.addEventListener('click', () => {
+                setModal(methodModal, false);
+                openForm();
+            });
+        }
+
+        const chooseQr = document.getElementById('choose-qr');
+        if (chooseQr) {
+            chooseQr.addEventListener('click', () => {
+                setModal(methodModal, false);
+                setModal(qrModal, true);
+                startQrScanner();
+            });
+        }
+
+        document.querySelectorAll('[data-close-modal]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const target = btn.getAttribute('data-close-modal');
+                const modal = document.getElementById(target);
+                if (modal) setModal(modal, false);
+                if (target === 'qr-modal') stopQrScanner();
+            });
+        });
+
+        formElement.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            statusText.textContent = 'Enviando...';
+
+            const payload = {
+                serial_number: fieldSerial.value.trim(),
+                asset_type: fieldType.value.trim(),
+                material: fieldMaterial.value.trim(),
+                outlet_name: fieldOutlet.value.trim(),
+                street: fieldStreet.value.trim(),
+                city: fieldCity.value.trim(),
+                last_latitude: fieldLat.value.trim(),
+                last_longitude: fieldLng.value.trim(),
+                notes: fieldNotes.value.trim(),
+            };
+
+            try {
+                const response = await fetch('{{ url_for('inventory.create_inventory_asset') }}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                if (!response.ok) {
+                    statusText.textContent = result.error || 'Erro ao salvar asset.';
+                    return;
+                }
+
+                statusText.textContent = 'Asset salvo com sucesso!';
+                setModal(formModal, false);
+
+                // Atualiza mapa com o novo asset
+                if (result.asset) {
+                    assetsData.push(result.asset);
+                    addAssetMarker(result.asset);
+                }
+            } catch (err) {
+                statusText.textContent = 'Erro de rede ao salvar asset.';
+            }
+        });
+
+        initMap();
     });
 </script>
 {% endblock %}
