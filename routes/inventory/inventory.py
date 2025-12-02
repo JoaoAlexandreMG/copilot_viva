@@ -13,10 +13,25 @@ def render_inventory_index():
         if not user:
             return redirect(url_for('index'))
 
-        # For now, just render a simple inventory page
-        # You can extend this template with actual inventory logic later
-        return render_template('inventory/index.html', user=user)
+        # Redirect /inventory/ to the dashboard page to keep URLs consistent
+        return redirect(url_for('inventory.render_inventory_dashboard'))
 
     except Exception as e:
         print(f"[ERROR] Error rendering inventory index: {e}")
         return redirect(url_for('index'))
+
+
+    # Inventory dashboard route (user-facing dashboard under /inventory/dashboard)
+
+@inventory_bp.route('/dashboard', methods=['GET'])
+@require_authentication
+def render_inventory_dashboard():
+    """Render the main inventory dashboard page."""
+    try:
+        user = session.get('user')
+        if not user:
+            return redirect(url_for('index'))
+        return render_template('inventory/dashboard.html', user=user)
+    except Exception as e:
+        print(f"[ERROR] Error rendering inventory dashboard: {e}")
+        return redirect(url_for('inventory.render_inventory_index'))
