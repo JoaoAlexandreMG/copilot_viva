@@ -1,11 +1,18 @@
 {% extends 'portal/base.html' %}
 
-{% block title %}Inventário{% endblock %}
+{% block title %}Inventário - Dashboard{% endblock %}
 
-{% block page_title %}Inventário{% endblock %}
+{% block page_title %}Inventário - Dashboard{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>Painel do Inventário</h2>
+    <p>Bem-vindo ao painel de inventário. Aqui podemos mostrar métricas, gráficos e links importantes.</p>
+</div>
+{% endblock %}
 
 {% block sidebar %}
-<!-- Sidebar customizada para Inventário -->
+<!-- Inventory sidebar for dashboard -->
 <aside class="sidebar" id="sidebar">
     <div class="sidebar-logo">
         <img src="{{ url_for('static', filename='images/logo.png') }}" alt="VivaAI Logo">
@@ -24,8 +31,7 @@
                 <span>Inventário</span>
             </a>
         </div>
-        <!-- Rastreio removido desta sidebar para não exibir opções indesejadas -->
-        <!-- Adicione mais seções ou links customizados aqui -->
+        <!-- Adicione outras seções se necessário -->
     </nav>
     <div class="sidebar-footer">
         <div class="sidebar-user">
@@ -45,19 +51,4 @@
         </form>
     </div>
 </aside>
-{% endblock %}
-
-{% block content %}
-<div class="container">
-    <h2>Inventário</h2>
-    <p>Bem-vindo(a), {{ user.first_name or user.upn }}</p>
-    <p>Esta é a página de inventário. Aqui você pode listar ou gerenciar seus ativos no futuro.</p>
-
-    <div class="card">
-        <div class="card-body">
-            <p><strong>UPN:</strong> {{ user.upn }}</p>
-            <p><strong>Client:</strong> {{ user.client }}</p>
-        </div>
-    </div>
-</div>
 {% endblock %}
