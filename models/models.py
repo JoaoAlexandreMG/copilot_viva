@@ -430,6 +430,33 @@ class DoorEvent(Base):
     client = Column(String(50))
     sub_client = Column(String(50))
 
+
+class AssetsInventory(Base):
+    __tablename__ = 'assets_inventory'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    serial_number = Column(String(100), nullable=False)
+    asset_type = Column(String(50))
+    material = Column(String(50))
+    outlet_name = Column(String(150))
+
+    last_latitude = Column(Float)
+    last_longitude = Column(Float)
+
+    is_deleted = Column(Boolean, default=False)
+
+    last_visit_at = Column(DateTime)
+    last_visit_distance_m = Column(Float)
+
+    notes = Column(Text)
+
+    street = Column(String(150))
+    city = Column(String(100))
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+    created_by_user = Column(String(100))
+
 class Alert(Base):
     __tablename__ = 'alerts'
 

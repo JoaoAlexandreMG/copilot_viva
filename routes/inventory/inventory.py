@@ -1,7 +1,18 @@
-from flask import Blueprint, render_template, session, redirect, url_for
+from flask import Blueprint, render_template, session, redirect, url_for, jsonify
 from routes.portal.decorators import require_authentication
+from db.database import get_session
+from models.models import AssetsInventory
 
 inventory_bp = Blueprint("inventory", __name__, url_prefix="/inventory")
+
+
+def _serialize_inventory_asset(asset: AssetsInventory) -> dict:
+    data = asset.to_dict()
+    # Normaliza campos de data para strings ISO legíveis no front
+    for date_field in ("last_visit_at", "created_at"):
+        if data.get(date_field):
+            data[date_field] = data[date_field].isoformat()
+    return data
 
 
 @inventory_bp.route('/', methods=['GET'])
@@ -45,7 +56,25 @@ def render_inventory_operation():
         user = session.get('user')
         if not user:
             return redirect(url_for('index'))
-        return render_template('inventory/operation.html', user=user)
+        db_session = get_session()
+        # Carrega todos os ativos não deletados para exibir no mapa
+        assets = db_session.query(AssetsInventory).filter(AssetsInventory.is_deleted.is_(False)).all()
+        operation_assets = [_serialize_inventory_asset(asset) for asset in assets]
+
+        return render_template('inventory/operation.html', user=user, operation_assets=operation_assets)
     except Exception as e:
         print(f"[ERROR] Error rendering inventory operation: {e}")
         return redirect(url_for('inventory.render_inventory_index'))
+
+
+@inventory_bp.route('/operation/data', methods=['GET'])
+@require_authentication
+def get_inventory_operation_data():
+    """JSON endpoint com os assets para o mapa de operações."""
+    try:
+        db_session = get_session()
+        assets = db_session.query(AssetsInventory).filter(AssetsInventory.is_deleted.is_(False)).all()
+        return jsonify([_serialize_inventory_asset(asset) for asset in assets])
+    except Exception as e:
+        print(f"[ERROR] Error fetching inventory operation data: {e}")
+        return jsonify({"error": "Erro ao buscar dados de inventário"}), 500
