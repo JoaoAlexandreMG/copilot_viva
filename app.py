@@ -196,7 +196,7 @@ def index():
         # Redirect based on destination
         # Check `inventory` explicitly before `portal` to permit custom inventory redirect
         if destination == "inventory":
-            return redirect(url_for("inventory.render_inventory_dashboard"))
+            return redirect(url_for("inventory.render_inventory_list"))
 
         if destination == "portal":
             return redirect(url_for("dashboard.render_dashboard"))
