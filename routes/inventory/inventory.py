@@ -24,28 +24,37 @@ def render_inventory_index():
         if not user:
             return redirect(url_for('index'))
 
-        # Redirect /inventory/ to the dashboard page to keep URLs consistent
-        return redirect(url_for('inventory.render_inventory_dashboard'))
+        # Redirect /inventory/ to the list page to keep URLs consistent
+        return redirect(url_for('inventory.render_inventory_list'))
 
     except Exception as e:
         print(f"[ERROR] Error rendering inventory index: {e}")
         return redirect(url_for('index'))
 
 
-    # Inventory dashboard route (user-facing dashboard under /inventory/dashboard)
+    # Inventory list route (user-facing list under /inventory/list)
 
-@inventory_bp.route('/dashboard', methods=['GET'])
+@inventory_bp.route('/list', methods=['GET'])
 @require_authentication
-def render_inventory_dashboard():
+def render_inventory_list():
     """Render the main inventory dashboard page."""
     try:
         user = session.get('user')
         if not user:
             return redirect(url_for('index'))
-        return render_template('inventory/dashboard.html', user=user)
+        db_session = get_session()
+        assets = db_session.query(AssetsInventory).filter(AssetsInventory.is_deleted.is_(False)).all()
+        return render_template('inventory/list.html', user=user, assets_inventory=assets)
     except Exception as e:
         print(f"[ERROR] Error rendering inventory dashboard: {e}")
         return redirect(url_for('inventory.render_inventory_index'))
+
+
+@inventory_bp.route('/dashboard', methods=['GET'])
+@require_authentication
+def legacy_inventory_dashboard_redirect():
+    """Compat redirect from old /dashboard path to /list."""
+    return redirect(url_for('inventory.render_inventory_list'))
 
 
 @inventory_bp.route('/operation', methods=['GET'])
