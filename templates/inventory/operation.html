@@ -4,6 +4,35 @@
 
 {% block page_title %}Operação (Inventário){% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+    /* Tamanho fixo para o mapa sem interferir nos demais cards */
+    #operation-map {
+        height: 360px;
+        border-radius: var(--radius-md, 12px);
+        overflow: hidden;
+        background: #f7f9fc;
+    }
+
+    #operation-map .map-status {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        color: #6c757d;
+        font-size: 14px;
+    }
+
+    /* Centraliza o botão de ação logo abaixo do mapa */
+    .operation-actions {
+        margin-top: 1rem;
+        display: flex;
+        justify-content: center;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container">
     <h2>Operações do Inventário</h2>
@@ -13,18 +42,72 @@
         <div class="card-header">
             <strong>Mapa de Operações</strong>
         </div>
-        <div class="card-body" style="height: 360px; display: flex; align-items: center; justify-content: center; background: #f7f9fc;">
-            <div style="text-align: center; color: #6c757d;">
-                <i class="fas fa-map-marked-alt" style="font-size: 42px; margin-bottom: 12px;"></i>
-                <p style="margin: 0;">Área reservada para o mapa interativo das operações.</p>
-            </div>
+        <div class="card-body" style="padding: 0;">
+            <div id="operation-map"></div>
         </div>
     </div>
 
-    <div style="margin-top: 1rem; text-align: right;">
+    <div class="operation-actions">
         <button type="button" class="btn btn-primary">Ação principal</button>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const mapContainer = document.getElementById('operation-map');
+        if (!window.L) {
+            mapContainer.innerHTML = '<div class="map-status">Não foi possível carregar o mapa (biblioteca não carregada).</div>';
+            return;
+        }
+
+        const defaultView = {
+            center: [-15.7801, -47.9292], // Brasil
+            zoom: 4
+        };
+
+        const map = L.map('operation-map').setView(defaultView.center, defaultView.zoom);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        const assetsData = {{ operation_assets | default([]) | tojson }};
+        const markers = [];
+
+        assetsData.forEach(asset => {
+            const lat = parseFloat(asset.last_latitude);
+            const lng = parseFloat(asset.last_longitude);
+            if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+            const title = asset.serial_number || 'Asset sem serial';
+            const popupLines = [
+                `<strong>${title}</strong>`,
+                asset.asset_type ? `Tipo: ${asset.asset_type}` : null,
+                asset.outlet_name ? `Ponto: ${asset.outlet_name}` : null,
+                asset.city || asset.street ? `${asset.street || ''} ${asset.city || ''}`.trim() : null,
+                asset.last_visit_at ? `Última visita: ${asset.last_visit_at}` : null
+            ].filter(Boolean);
+
+            const marker = L.marker([lat, lng]).addTo(map).bindPopup(popupLines.join('<br>'));
+            markers.push(marker);
+        });
+
+        if (markers.length) {
+            const group = L.featureGroup(markers);
+            map.fitBounds(group.getBounds(), { padding: [24, 24] });
+        } else {
+            // Nenhum asset com coordenada; mostra estado para o usuário
+            const status = document.createElement('div');
+            status.className = 'map-status';
+            status.innerText = 'Sem ativos com localização para exibir no mapa.';
+            mapContainer.appendChild(status);
+        }
+    });
+</script>
 {% endblock %}
 
 {% block sidebar %}
