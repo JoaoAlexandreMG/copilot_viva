@@ -259,6 +259,69 @@
         margin-top: 8px;
     }
 
+    /* Mini cards (assets mais antigos) */
+    .stale-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 240px));
+        gap: 12px;
+        justify-content: flex-start;
+    }
+
+    .stale-card {
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        padding: 12px;
+        background: rgba(12, 20, 36, 0.75);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        color: #eef2fb;
+        min-width: 210px;
+        max-width: 260px;
+        font-size: 14px;
+        word-break: break-word;
+    }
+
+    .stale-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+        gap: 8px;
+    }
+
+    .stale-serial {
+        font-weight: 700;
+        font-size: 16px;
+        line-height: 1.2;
+        max-width: 70%;
+        word-break: break-word;
+    }
+
+    .stale-outlet {
+        padding: 4px 8px;
+        border-radius: 10px;
+        background: rgba(0, 195, 255, 0.14);
+        border: 1px solid rgba(0, 195, 255, 0.3);
+        font-size: 12px;
+        color: #9be7ff;
+        max-width: 90px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .stale-meta {
+        display: flex;
+        gap: 4px;
+        font-size: 13px;
+        color: #cfd6e6;
+        margin-bottom: 4px;
+    }
+
+    .stale-meta .label {
+        opacity: 0.75;
+        min-width: 100px;
+    }
+
     .toast {
         position: fixed;
         left: 50%;
@@ -321,6 +384,36 @@
     </div>
 
     <div class="toast" id="scan-toast"></div>
+
+    <div class="card" style="margin-top: 1.25rem;">
+        <div class="card-header">
+            <strong>Assets sem visita (mais antigos primeiro)</strong>
+        </div>
+        <div class="card-body" style="padding: 12px;">
+            {% if stale_assets %}
+            <div class="stale-grid" id="stale-grid" style="margin: 0; width: 100%;">
+                {% for asset in stale_assets %}
+                <div class="stale-card">
+                    <div class="stale-header">
+                        <div class="stale-serial">{{ asset.serial_number }}</div>
+                        <div class="stale-outlet">{{ asset.outlet_name or 'Sem outlet' }}</div>
+                    </div>
+                    <div class="stale-meta">
+                        <span class="label">Última visita:</span>
+                        <span class="value">{{ asset.last_visit_at or 'Sem registro' }}</span>
+                    </div>
+                    <div class="stale-meta">
+                        <span class="label">Lat/Lng:</span>
+                        <span class="value">{{ asset.last_latitude or '-' }}, {{ asset.last_longitude or '-' }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div style="padding: 8px;">Nenhuma visita registrada ainda.</div>
+            {% endif %}
+        </div>
+    </div>
 
     <!-- Modal: Escolher método -->
     <div class="modal-backdrop" id="method-modal">
@@ -428,6 +521,7 @@
     document.addEventListener('DOMContentLoaded', function () {
         const mapContainer = document.getElementById('operation-map');
         const assetsData = {{ operation_assets | default([]) | tojson }};
+        const staleAssetsData = {{ stale_assets | default([]) | tojson }};
         let map;
         let markers = [];
         const markersBySerial = {};
@@ -461,6 +555,7 @@
         const legendContainer = document.getElementById('map-legend');
         const currentIcon = L.divIcon({ className: 'current-location-icon' });
         const toastEl = document.getElementById('scan-toast');
+        const staleGridEl = document.getElementById('stale-grid');
 
         function setModal(modal, isOpen) {
             if (!modal) return;
@@ -567,6 +662,67 @@
             const idx = assetsData.findIndex((a) => a.serial_number === asset.serial_number);
             if (idx >= 0) assetsData[idx] = asset;
             else assetsData.push(asset);
+        }
+
+        function upsertStaleAsset(asset) {
+            if (!asset.serial_number) return;
+            const idx = staleAssetsData.findIndex(a => a.serial_number === asset.serial_number);
+            if (idx >= 0) staleAssetsData[idx] = asset;
+            else staleAssetsData.unshift(asset);
+            // Ordena por last_visit_at (mais antigo primeiro)
+            staleAssetsData.sort((a, b) => {
+                    const ta = a.last_visit_at ? Date.parse(a.last_visit_at) : 0;
+                    const tb = b.last_visit_at ? Date.parse(b.last_visit_at) : 0;
+                    return ta - tb;
+                });
+                renderStaleGrid();
+            }
+
+        function formatLocalDate(isoString) {
+            if (!isoString) return null;
+            const d = new Date(isoString);
+            if (Number.isNaN(d.getTime())) return isoString;
+            return d.toLocaleString(undefined, {
+                timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                hour12: false
+            });
+        }
+
+        function renderStaleGrid() {
+            if (!staleGridEl) return;
+            staleGridEl.innerHTML = '';
+            staleAssetsData.slice(0, 10).forEach(asset => {
+                const card = document.createElement('div');
+                card.className = 'stale-card';
+
+                const header = document.createElement('div');
+                header.className = 'stale-header';
+                const serialDiv = document.createElement('div');
+                serialDiv.className = 'stale-serial';
+                serialDiv.textContent = asset.serial_number;
+                const outletDiv = document.createElement('div');
+                outletDiv.className = 'stale-outlet';
+                outletDiv.textContent = asset.outlet_name || 'Sem outlet';
+                header.appendChild(serialDiv);
+                header.appendChild(outletDiv);
+
+                const meta1 = document.createElement('div');
+                meta1.className = 'stale-meta';
+                const lbl1 = document.createElement('span'); lbl1.className = 'label'; lbl1.textContent = 'Última visita:';
+                const val1 = document.createElement('span'); val1.className = 'value'; val1.textContent = formatLocalDate(asset.last_visit_at) || 'Sem registro';
+                meta1.appendChild(lbl1); meta1.appendChild(val1);
+
+                const meta2 = document.createElement('div');
+                meta2.className = 'stale-meta';
+                const lbl2 = document.createElement('span'); lbl2.className = 'label'; lbl2.textContent = 'Lat/Lng:';
+                const val2 = document.createElement('span'); val2.className = 'value'; val2.textContent = `${asset.last_latitude || '-'}, ${asset.last_longitude || '-'}`;
+                meta2.appendChild(lbl2); meta2.appendChild(val2);
+
+                card.appendChild(header);
+                card.appendChild(meta1);
+                card.appendChild(meta2);
+                staleGridEl.appendChild(card);
+            });
         }
 
         function createAssetIcon(color) {
@@ -819,6 +975,12 @@
                 if (result.asset) {
                     upsertAssetData(result.asset);
                     addAssetMarker(result.asset);
+                    // Atualiza mini cards de visitas
+                    const stalePayload = { ...result.asset };
+                    if (!stalePayload.last_visit_at) {
+                        stalePayload.last_visit_at = new Date().toISOString();
+                    }
+                    upsertStaleAsset(stalePayload);
                 }
 
                 if (toastEl) {
@@ -864,6 +1026,7 @@
         });
 
         initMap();
+        renderStaleGrid();
     });
 </script>
 {% endblock %}

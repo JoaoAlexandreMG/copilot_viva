@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Float, Float, String, Integer, BigInteger, Boolean, DateTime, Text
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from sqlalchemy import ForeignKey
 
 class Base(declarative_base()):
@@ -453,7 +454,7 @@ class AssetsInventory(Base):
     street = Column(String(150))
     city = Column(String(100))
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(ZoneInfo("America/Sao_Paulo")))
     created_by_user = Column(String(100))
 
 
@@ -462,18 +463,18 @@ class AssetInventoryVisit(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     asset_id = Column(Integer, ForeignKey('assets_inventory.id', ondelete='CASCADE'), nullable=False)
-    visit_at = Column(DateTime, default=datetime.utcnow)
+    visit_at = Column(DateTime(timezone=True), default=lambda: datetime.now(ZoneInfo("America/Sao_Paulo")))
     latitude = Column(Float, nullable=False)
     longitude = Column(Float, nullable=False)
 
-    prev_visit_at = Column(DateTime)
+    prev_visit_at = Column(DateTime(timezone=True))
     prev_latitude = Column(Float)
     prev_longitude = Column(Float)
 
     distance_from_prev_m = Column(Float)
     scanned_by = Column(String(150))
     notes = Column(Text)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(ZoneInfo("America/Sao_Paulo")))
 
 class Alert(Base):
     __tablename__ = 'alerts'
