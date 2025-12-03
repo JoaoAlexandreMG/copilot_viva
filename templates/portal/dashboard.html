@@ -10,6 +10,7 @@
 {% block styles %}
     {{ super() }} 
     <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <!-- <link rel="stylesheet" href="/static/css/dashboard.css"> -->
 {% endblock %}
 
 {% block content %}
@@ -126,6 +127,17 @@
         <div class="stat-content">
             <p class="stat-label">Alertas</p>
             <h4 class="stat-value" id="kpiAlerts">{{ stats.alerts_period_count }}</h4>
+        </div>
+        <span class="period-badge">30d</span>
+    </a>
+
+    <a href="{{url_for('portal_tracking.render_tracking')}}?is_missing=true" class="stat-card clickable" data-missing-card>
+        <div class="stat-icon bg-red">
+            <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <div class="stat-content">
+            <p class="stat-label">Assets Missing</p>
+            <h4 class="stat-value" id="kpiMissing">{{ stats.assets_missing_count }}</h4>
         </div>
         <span class="period-badge">30d</span>
     </a>
@@ -396,7 +408,7 @@
                                     </div>
                                 </div>
                                 <span class="displacement-value" style="color: ${displacementColor};">
-                                    ${asset.displacement_meter.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} m
+                                    ${asset.displacement_meter >= 1000 ? (asset.displacement_meter / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + ' km' : asset.displacement_meter.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' m'}
                                 </span>
                             </div>
                         </div>
@@ -635,6 +647,13 @@
                 alertsCard.setAttribute('href', alertsUrl);
             }
 
+            // Atualiza badge do card de missing
+            const missingCard = document.querySelector('[data-missing-card]');
+            if(missingCard) {
+                const badge = missingCard.querySelector('.period-badge');
+                if(badge) badge.textContent = `${this.currentPeriod}d`;
+            }
+
             // Atualiza as datas no parênteses (ex: 01 Nov - 30 Nov)
             const dates = document.getElementById('periodDates');
             if(dates) {
@@ -696,6 +715,7 @@
             setText('kpiTotalAssets', stats.total_assets);
             setText('kpiAssets24h', stats.assets_health_last_24h_count);
             setText('kpiAlerts', stats.alerts_period_count);
+            setText('kpiMissing', stats.assets_missing_count);
 
             // Cards Opcionais (Verifica se o valor existe antes de tentar atualizar)
             if(stats.avg_compressor_on_time !== undefined) {
@@ -847,10 +867,10 @@
                         datasets: [{
                             label: 'Temp Média (°C)',
                             data: APP_CONFIG.charts.temp.data,
-                            borderColor: '#667eea',
-                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                            borderColor: '#00C3FF',
+                            backgroundColor: 'rgba(0, 195, 255, 0.1)',
                             borderWidth: 3, fill: true, tension: 0.4,
-                            pointBackgroundColor: '#667eea', pointRadius: 4
+                            pointBackgroundColor: '#00C3FF', pointRadius: 4
                         }]
                     },
                     options: this._getChartOptions()
@@ -867,10 +887,10 @@
                         datasets: [{
                             label: 'Aberturas',
                             data: APP_CONFIG.charts.door.data,
-                            borderColor: '#f6ad55',
-                            backgroundColor: 'rgba(246, 173, 85, 0.1)',
+                            borderColor: '#00F5B5',
+                            backgroundColor: 'rgba(0, 245, 181, 0.1)',
                             borderWidth: 3, fill: true, tension: 0.4,
-                            pointBackgroundColor: '#f6ad55', pointRadius: 4
+                            pointBackgroundColor: '#00F5B5', pointRadius: 4
                         }]
                     },
                     options: this._getChartOptions()
@@ -887,8 +907,9 @@
                         labels: ['Boa (>50%)', 'Baixa (25-50%)', 'Crítica (<25%)'],
                         datasets: [{
                             data: [s.bat_good, s.bat_low, s.bat_crit],
-                            backgroundColor: ['#48bb78', '#f6ad55', '#f56565'],
-                            borderWidth: 2
+                            backgroundColor: ['#00F5B5', '#FFC93C', '#FF5A5F'],
+                            borderWidth: 0,
+                            borderColor: 'transparent'
                         }]
                     },
                     options: this._getPieOptions()
@@ -904,8 +925,9 @@
                         labels: APP_CONFIG.charts.status_temp.labels,
                         datasets: [{
                             data: APP_CONFIG.charts.status_temp.data,
-                            backgroundColor: ['#48bb78', '#f56565', '#667eea'],
-                            borderWidth: 2
+                            backgroundColor: ['#00F5B5', '#FF5A5F', '#00C3FF'],
+                            borderWidth: 0,
+                            borderColor: 'transparent'
                         }]
                     },
                     options: this._getPieOptions()
@@ -955,28 +977,33 @@
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: { display: false }, // Legenda oculta para visual limpo
+                legend: { display: false },
                 tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    backgroundColor: 'rgba(31, 31, 35, 0.95)',
                     titleColor: '#FFFFFF',
                     bodyColor: '#FFFFFF',
-                    borderColor: '#00C3FF',
-                    borderWidth: 1
+                    borderColor: 'rgba(0, 195, 255, 0.3)',
+                    borderWidth: 1,
+                    padding: 12,
+                    cornerRadius: 8
                 }
             },
             scales: {
                 y: {
                     beginAtZero: true,
-                    grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                    grid: { 
+                        color: 'rgba(0, 195, 255, 0.08)',
+                        drawBorder: false
+                    },
                     ticks: {
-                        color: '#FFFFFF',
+                        color: 'rgba(255, 255, 255, 0.7)',
                         font: { weight: '600' }
                     }
                 },
                 x: {
                     grid: { display: false },
                     ticks: {
-                        color: '#FFFFFF',
+                        color: 'rgba(255, 255, 255, 0.7)',
                         font: { weight: '600' }
                     }
                 }
@@ -986,22 +1013,29 @@
         _getPieOptions: () => ({
             responsive: true,
             maintainAspectRatio: false,
+            cutout: '60%',
             plugins: {
                 legend: {
                     position: 'bottom',
                     labels: {
                         padding: 20,
                         usePointStyle: true,
-                        color: '#FFFFFF',
-                        font: { weight: '600' }
+                        pointStyle: 'circle',
+                        color: 'rgba(255, 255, 255, 0.9)',
+                        font: { 
+                            weight: '600',
+                            size: 12
+                        }
                     }
                 },
                 tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    backgroundColor: 'rgba(31, 31, 35, 0.95)',
                     titleColor: '#FFFFFF',
                     bodyColor: '#FFFFFF',
-                    borderColor: '#00C3FF',
-                    borderWidth: 1
+                    borderColor: 'rgba(0, 195, 255, 0.3)',
+                    borderWidth: 1,
+                    padding: 12,
+                    cornerRadius: 8
                 }
             }
         })

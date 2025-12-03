@@ -1,6 +1,5 @@
 from flask import Blueprint, render_template, session, redirect, url_for, request, jsonify
 from sqlalchemy import text
-from models.models import Asset, AlertsDefinition, User
 from .decorators import require_authentication
 from db.database import get_session
 from datetime import datetime, timezone
@@ -119,10 +118,6 @@ def process_hourly_data(raw_data, key, now):
 
     for h in range(24):
         value = data_by_hour.get(h, 0.0)
-        
-        # Filtro de Sanidade para Temperatura (reproduzindo a lógica SQL)
-        if key == 'avg_temp' and not (-30 <= value <= 20):
-             value = 0.0 
              
         hourly_array[h] = value
 
@@ -145,7 +140,8 @@ def process_hourly_data(raw_data, key, now):
         })
             
     return hourly_array, hourly_data_with_timestamps
-
+@dashboard_bp.route("/api/dashboard-stats-internal", methods=["GET"])
+# @require_authentication
 def stats_for_dashboard(days=30):
     """
     Calcula as principais estatísticas para o dashboard de forma otimizada, 
@@ -156,10 +152,9 @@ def stats_for_dashboard(days=30):
     """
     db_session = get_session()
     
-    # 1. Filtro e Parâmetros
-    client = session.get("user", {}).get("client") 
+    client = request.args.get("client")
     if not client:
-        return {}
+        client = session.get("user", {}).get("client") 
     
     now = datetime.now(timezone.utc)
 
@@ -170,6 +165,8 @@ def stats_for_dashboard(days=30):
             total_assets_count,
             alerts_30d,
             alerts_7d,
+            assets_missing_30d,
+            assets_missing_7d,
             active_assets_24h_count AS assets_health_last_24h_count,
             count_battery_ok AS good_battery_assets_count,
             count_battery_low AS low_battery_assets_count,
@@ -201,6 +198,7 @@ def stats_for_dashboard(days=30):
             "total_assets": 0,
             "assets_health_last_24h_count": 0,
             "alerts_period_count": 0,
+            "assets_missing_count": 0,
             "ok_temperatures_count": 0, "not_ok_temperatures_count": 0, "total_with_temperature": 0,
             "temp_ok_percentage": 0, "temp_not_ok_percentage": 0,
             "good_battery_assets_count": 0, "low_battery_assets_count": 0, "critical_battery_assets_count": 0,
@@ -220,12 +218,14 @@ def stats_for_dashboard(days=30):
         raw_temp_data = status_results.hourly_temp_data_7d
         raw_door_data = status_results.hourly_door_data_7d
         alerts_period_count = status_results.alerts_7d
+        assets_missing_count = status_results.assets_missing_7d
         avg_compressor_on_time = status_results.avg_compressor_percent_7d
         avg_power_consumption = status_results.avg_consumption_watt_7d
     else: # days == 30 (padrão)
         raw_temp_data = status_results.hourly_temp_data_30d
         raw_door_data = status_results.hourly_door_data_30d
         alerts_period_count = status_results.alerts_30d
+        assets_missing_count = status_results.assets_missing_30d
         avg_compressor_on_time = status_results.avg_compressor_percent_30d
         avg_power_consumption = status_results.avg_consumption_watt_30d
         
@@ -334,6 +334,7 @@ def stats_for_dashboard(days=30):
         "total_assets": int(status_results.total_assets_count or 0),
         "assets_health_last_24h_count": int(status_results.assets_health_last_24h_count or 0),
         "alerts_period_count": int(alerts_period_count or 0), # Dinâmico (7/30d)
+        "assets_missing_count": int(assets_missing_count or 0), # Dinâmico (7/30d)
 
         # Métricas de Temperatura (Contagens e Percentuais)
         "ok_temperatures_count": ok_temperatures_count,
@@ -370,6 +371,23 @@ def stats_for_dashboard(days=30):
         # Top 10 Ativos por Displacement (últimas 24h)
         "top10_assets": top10_data,
     }
+
+def get_temp_definition_by_client(client:str):
+    """
+    Retorna a definição de temperatura (min e max) aplicada para o cliente.
+    """
+    db_session = get_session()
+    sql = text("""
+        SELECT applied_min, applied_max
+        FROM mv_client_overview
+        WHERE client = :client
+    """)
+    result = db_session.execute(sql, {"client": client}).fetchone()
+    db_session.close()
+    if result:
+        return result.applied_min, result.applied_max
+    else:
+        return None, None
 
 @dashboard_bp.route("/dashboard", methods=["GET"])
 @require_authentication

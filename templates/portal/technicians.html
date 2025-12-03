@@ -1,11 +1,9 @@
 {% extends "portal/base.html" %}
 
-{% block title %}Monitoramento de Técnicos{% endblock %}
-{% block page_title %}Monitoramento de Técnicos{% endblock %}
 
 {% block breadcrumb %}
-    <i class="fas fa-satellite-dish"></i>
-    <span>Painel de Monitoramento</span>
+<i class="fas fa-home"></i><span class="breadcrumb-separator">/</span>
+<span class="breadcrumb-item">Técnicos</span>
 {% endblock %}
 
 {% block styles %}
@@ -19,10 +17,10 @@
         }
 
         .painel-filtros {
-            background: white;
+            background: #1F1F23;
             padding: 1.5rem;
             border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, .05);
             margin-bottom: 2rem;
             border-left: 5px solid #007bff;
         }
@@ -36,10 +34,15 @@
 
         .input-pesquisa {
             flex: 1;
-            padding: 0.7rem;
-            border: 1px solid #ced4da;
+            color: white;
+            padding: .7rem;
+            border: 1px solid #00C3FF;
             border-radius: 4px;
             min-width: 200px;
+            background: #0A1F44;
+        }
+        .input-pesquisa::placeholder {
+            color: white;
         }
 
         .btn-filtro {
@@ -55,9 +58,9 @@
         .btn-filtro:hover { background: #e2e6ea; }
 
         .btn-filtro.ativo {
-            background: #343a40;
-            color: white;
-            border-color: #343a40;
+            background: #4C3AFF;
+            color: #fff;
+            border-color: #FFFFFF;
         }
 
         /* GRID DE CARDS */
@@ -78,8 +81,8 @@
 
         .card-tech:hover { transform: translateY(-5px); }
 
-        .card-tech[data-status="ativo"] { border-top-color: var(--cor-ativo); }
-        .card-tech[data-status="inativo"] { border-top-color: var(--cor-inativo); }
+        .card-tech[data-status="ativo"] { border-top-color: #00F5B5; }
+        .card-tech[data-status="inativo"] { border-top-color: #FFC93C; }
 
         .tech-info h4 { margin: 0 0 5px 0; color: #333; }
         .tech-info p { margin: 0; color: #666; font-size: 0.9rem; }
@@ -94,8 +97,8 @@
             margin-top: 10px;
         }
         
-        .bg-ativo { background: #d4edda; color: #155724; }
-        .bg-inativo { background: #f8d7da; color: #721c24; }
+        .bg-ativo { background: #00F5B5; color: #0B0B0D; }
+        .bg-inativo { background: #FFC93C; color: #0B0B0D; }
 
         .stats-area {
             display: flex;
@@ -115,7 +118,7 @@
 {% block content %}
 
 <div class="painel-filtros">
-    <div style="margin-bottom: 10px; font-weight: bold; color: #555;">
+    <div style="margin-bottom: 10px; font-weight: bold; color: white;">
         <i class="fas fa-sliders-h"></i> Filtrar Técnicos:
     </div>
     <div class="controles-wrapper">
@@ -125,7 +128,7 @@
         <button id="btnAtivos" class="btn-filtro">Ativos</button>
         <button id="btnInativos" class="btn-filtro">Inativos</button>
     </div>
-    <div style="margin-top: 10px; font-size: 0.9rem; color: #777;">
+    <div style="margin-top: 10px; font-size: 0.9rem; color: white;">
         Exibindo <span id="contador">0</span> técnicos
     </div>
 </div>
