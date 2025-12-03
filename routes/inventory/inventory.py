@@ -1,8 +1,9 @@
 from flask import Blueprint, render_template, session, redirect, url_for, jsonify, request
 import math
+from datetime import datetime
 from routes.portal.decorators import require_authentication
 from db.database import get_session
-from models.models import AssetsInventory
+from models.models import AssetsInventory, AssetInventoryVisit
 
 inventory_bp = Blueprint("inventory", __name__, url_prefix="/inventory")
 
@@ -165,6 +166,7 @@ def create_inventory_asset():
             # Atualiza coordenadas e calcula distância se possível
             prev_lat = existing.last_latitude
             prev_lng = existing.last_longitude
+            prev_time = existing.created_at
 
             if last_latitude is not None:
                 existing.last_latitude = last_latitude
@@ -188,6 +190,21 @@ def create_inventory_asset():
             if notes is not None:
                 existing.notes = notes
 
+            # Registrar visita/movimento
+            visit = AssetInventoryVisit(
+                asset_id=existing.id,
+                visit_at=datetime.utcnow(),
+                latitude=last_latitude if last_latitude is not None else prev_lat or 0,
+                longitude=last_longitude if last_longitude is not None else prev_lng or 0,
+                prev_visit_at=prev_time,
+                prev_latitude=prev_lat,
+                prev_longitude=prev_lng,
+                distance_from_prev_m=existing.last_visit_distance_m,
+                scanned_by=created_by,
+                notes=notes
+            )
+            db_session.add(visit)
+
             db_session.commit()
             return jsonify({"asset": _serialize_inventory_asset(existing), "updated": True}), 200
 
@@ -205,6 +222,22 @@ def create_inventory_asset():
         )
 
         db_session.add(asset)
+        db_session.flush()
+
+        visit = AssetInventoryVisit(
+            asset_id=asset.id,
+            visit_at=datetime.utcnow(),
+            latitude=last_latitude or 0,
+            longitude=last_longitude or 0,
+            prev_visit_at=None,
+            prev_latitude=None,
+            prev_longitude=None,
+            distance_from_prev_m=None,
+            scanned_by=created_by,
+            notes=notes
+        )
+        db_session.add(visit)
+
         db_session.commit()
 
         return jsonify({"asset": _serialize_inventory_asset(asset), "created": True}), 201

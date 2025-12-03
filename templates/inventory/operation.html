@@ -430,6 +430,7 @@
         const assetsData = {{ operation_assets | default([]) | tojson }};
         let map;
         let markers = [];
+        const markersBySerial = {};
         let qrScanner = null;
 
         const formModal = document.getElementById('form-modal');
@@ -547,12 +548,25 @@
             const outletKey = (asset.outlet_name || 'Sem outlet').trim() || 'Sem outlet';
             const color = getOutletColor(outletKey);
 
+            const markerKey = asset.serial_number || `${lat},${lng}`;
+            if (markersBySerial[markerKey]) {
+                map.removeLayer(markersBySerial[markerKey]);
+                markers = markers.filter(m => m !== markersBySerial[markerKey]);
+            }
+
             const marker = L.marker([lat, lng], { icon: createAssetIcon(color) }).addTo(map).bindPopup(popupLines.join('<br>'));
             markers.push(marker);
+            markersBySerial[markerKey] = marker;
             updateLegend();
 
             const group = L.featureGroup(markers);
             map.fitBounds(group.getBounds(), { padding: [24, 24] });
+        }
+
+        function upsertAssetData(asset) {
+            const idx = assetsData.findIndex((a) => a.serial_number === asset.serial_number);
+            if (idx >= 0) assetsData[idx] = asset;
+            else assetsData.push(asset);
         }
 
         function createAssetIcon(color) {
@@ -803,7 +817,7 @@
                 if (!skipFormClose) setModal(formModal, false);
 
                 if (result.asset) {
-                    assetsData.push(result.asset);
+                    upsertAssetData(result.asset);
                     addAssetMarker(result.asset);
                 }
 
