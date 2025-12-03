@@ -28,6 +28,35 @@ def _visit_iso_in_brazil(dt):
     return dt.astimezone(ZoneInfo("America/Sao_Paulo")).isoformat()
 
 
+def DateTimeSortHelper(value):
+    try:
+        return DateTimeSortHelper._cache.setdefault(value, DateTimeSortHelper._parse(value))
+    except Exception:
+        return 0
+
+
+DateTimeSortHelper._cache = {}
+
+
+def _datetime_sort_helper_parse(value):
+    if not value:
+        return 0
+    try:
+        return datetime.fromisoformat(value).timestamp()
+    except Exception:
+        try:
+            return datetime.strptime(value, "%Y-%m-%dT%H:%M:%S%z").timestamp()
+        except Exception:
+            try:
+                return datetime.strptime(value, "%Y-%m-%d %H:%M:%S").timestamp()
+            except Exception:
+                return 0
+
+
+# Atribui função de parsing ao helper para reutilizar o cache acima
+DateTimeSortHelper._parse = _datetime_sort_helper_parse
+
+
 def _haversine_distance_m(lat1, lon1, lat2, lon2):
     """Calcula a distância em metros entre dois pontos lat/lon (Haversine)."""
     try:
@@ -94,11 +123,8 @@ def render_inventory_operation():
         if not user:
             return redirect(url_for('index'))
         db_session = get_session()
-        # Carrega todos os ativos não deletados para exibir no mapa
-        assets = db_session.query(AssetsInventory).filter(AssetsInventory.is_deleted.is_(False)).all()
-        operation_assets = [_serialize_inventory_asset(asset) for asset in assets]
 
-        # Ranking de visitas (mais antigo sem visita -> mais recente)
+        # Subquery com última visita por asset
         visits_subq = (
             db_session.query(
                 AssetInventoryVisit.asset_id,
@@ -108,21 +134,21 @@ def render_inventory_operation():
             .subquery()
         )
 
-        # Para cada asset, pegar a última visita (apenas 1 por asset) e ordenar da mais antiga para a mais recente
-        last_visits = (
+        # Carrega assets + última visita para o mapa/cards
+        assets_with_visit = (
             db_session.query(AssetsInventory, visits_subq.c.last_visit_at)
             .outerjoin(visits_subq, visits_subq.c.asset_id == AssetsInventory.id)
             .filter(AssetsInventory.is_deleted.is_(False))
-            .order_by(visits_subq.c.last_visit_at.asc().nullsfirst())
-            .limit(10)
             .all()
         )
-
-        stale_assets = []
-        for asset, last_visit in last_visits:
+        operation_assets = []
+        for asset, last_visit in assets_with_visit:
             data = _serialize_inventory_asset(asset)
             data['last_visit_at'] = _visit_iso_in_brazil(last_visit)
-            stale_assets.append(data)
+            operation_assets.append(data)
+
+        # Ranking de visitas (mais antigo sem visita -> mais recente) - usa os mesmos dados
+        stale_assets = sorted(operation_assets, key=lambda a: DateTimeSortHelper(a.get('last_visit_at')))[:10]
 
         return render_template('inventory/operation.html', user=user, operation_assets=operation_assets, stale_assets=stale_assets)
     except Exception as e:
