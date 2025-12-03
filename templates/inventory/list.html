@@ -1,0 +1,179 @@
+{% extends 'portal/base.html' %}
+
+{% block title %}Inventário - Lista{% endblock %}
+
+{% block page_title %}Inventário - Lista{% endblock %}
+
+{% block extra_css %}
+<style>
+    .inventory-table-card {
+        border-radius: 14px;
+        overflow: hidden;
+        background: linear-gradient(135deg, rgba(12, 20, 36, 0.9), rgba(12, 20, 36, 0.75));
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .inventory-table thead {
+        background: linear-gradient(90deg, #0c1424, #162b4a);
+        color: #f4f7ff;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+        font-size: 12px;
+    }
+
+    .inventory-table tbody tr {
+        color: #f2f4fa;
+        transition: background 180ms ease;
+    }
+
+    .inventory-table tbody tr:nth-child(odd) {
+        background: rgba(255, 255, 255, 0.04);
+    }
+
+    .inventory-table tbody tr:hover {
+        background: rgba(0, 195, 255, 0.18);
+    }
+
+    .inventory-table th,
+    .inventory-table td {
+        padding: 12px 14px;
+        border: none;
+        vertical-align: middle;
+        font-size: 13px;
+        color: #f2f4fa;
+    }
+
+    .badge-outlet {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: rgba(0, 195, 255, 0.12);
+        color: #9be7ff;
+        border: 1px solid rgba(0, 195, 255, 0.35);
+        font-weight: 600;
+        font-size: 12px;
+    }
+
+    .pill-muted {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.06);
+        color: #d6d9e3;
+        font-size: 12px;
+    }
+
+    .table-wrap {
+        overflow-x: auto;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>Lista de Inventário</h2>
+    <p>Bem-vindo ao inventário. Abaixo a listagem dos assets cadastrados.</p>
+
+    <div class="inventory-table-card" style="margin-top: 1rem;">
+        <div class="card-header">
+            <strong>Assets Inventory</strong>
+        </div>
+        <div class="card-body" style="padding: 0;">
+            {% if assets_inventory %}
+            <div class="table-wrap">
+            <table class="table inventory-table" style="width: 100%; min-width: 860px;">
+                <thead>
+                    <tr>
+                        <th>Serial</th>
+                        <th>Tipo</th>
+                        <th>Material</th>
+                        <th>Outlet</th>
+                        <th>Latitude</th>
+                        <th>Longitude</th>
+                        <th>Distância (m)</th>
+                        <th>Cidade</th>
+                        <th>Rua</th>
+                        <th>Criado em</th>
+                        <th>Criado por</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for asset in assets_inventory %}
+                    <tr>
+                        <td>{{ asset.serial_number }}</td>
+                        <td>{{ asset.asset_type or '-' }}</td>
+                        <td>{{ asset.material or '-' }}</td>
+                        <td>
+                            {% if asset.outlet_name %}
+                                <span class="badge-outlet">{{ asset.outlet_name }}</span>
+                            {% else %}
+                                <span class="pill-muted">Sem outlet</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ asset.last_latitude or '-' }}</td>
+                        <td>{{ asset.last_longitude or '-' }}</td>
+                        <td>{{ asset.last_visit_distance_m is not none and ('%.2f' % asset.last_visit_distance_m) or '-' }}</td>
+                        <td>{{ asset.city or '-' }}</td>
+                        <td>{{ asset.street or '-' }}</td>
+                        <td>{{ asset.created_at or '-' }}</td>
+                        <td>{{ asset.created_by_user or '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            </div>
+            {% else %}
+            <div style="padding: 16px;">Nenhum asset cadastrado.</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block sidebar %}
+<!-- Inventory sidebar for list -->
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="VivaAI Logo">
+    </div>
+    <div class="sidebar-header">
+        <a href="{{ url_for('inventory.render_inventory_list') }}" class="sidebar-title">
+            <span>Inventário Viva<sup>AI</sup></span>
+        </a>
+    </div>
+    <nav class="sidebar-nav">
+        <div class="sidebar-nav-section">
+            <div class="sidebar-nav-title">Principal</div>
+            <a href="{{ url_for('inventory.render_inventory_list') }}"
+                class="sidebar-nav-link {% if request.path.startswith('/inventory/list') or request.path == '/inventory/' or request.path == '/inventory' %}active{% endif %}">
+                <i class="fas fa-boxes"></i>
+                <span>Inventário</span>
+            </a>
+            <a href="{{ url_for('inventory.render_inventory_operation') }}"
+                class="sidebar-nav-link {% if request.path.startswith('/inventory/operation') %}active{% endif %}">
+                <i class="fas fa-cogs"></i>
+                <span>Operação</span>
+            </a>
+        </div>
+        <!-- Adicione outras seções se necessário -->
+    </nav>
+    <div class="sidebar-footer">
+        <div class="sidebar-user">
+            <div class="sidebar-user-avatar">
+                {{ user_name[0:2].upper() if user_name else 'US' }}
+            </div>
+            <div class="sidebar-user-info">
+                <span class="sidebar-user-name">{{ user_name or 'Usuário' }}</span>
+                <span class="sidebar-user-role">{{ user_email or '' }}</span>
+            </div>
+        </div>
+        <form action="{{ url_for('logout') }}" method="post" style="margin: 0;">
+            <button type="submit" class="btn-logout" title="Sair do sistema">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Sair</span>
+            </button>
+        </form>
+    </div>
+</aside>
+{% endblock %}
