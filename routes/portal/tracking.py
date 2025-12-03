@@ -197,7 +197,9 @@ def get_assets_optimized():
     - load_all: Se true, carrega TODOS os assets (sem paginação) para o mapa
     """
     db_session = get_session()
-    client_code = session.get("user", {}).get("client")
+    client_code = request.args.get('client')
+    if not client_code:
+        client_code = session.get("user", {}).get("client")
 
     try:
         # 1. Construir query SQL com filtros dinâmicos
@@ -279,9 +281,9 @@ def get_assets_optimized():
             where_clauses.append("last_movement_time< NOW() - INTERVAL '24 hours'")
         
         temp_alert_definition_sql = text("""
-        SELECT vco.applied_min, vco.applied_max
-        FROM mv_client_overview vco
-        WHERE vco.client = :client
+        SELECT mco.applied_min, mco.applied_max
+        FROM mv_client_overview mco
+        WHERE mco.client = :client
         """)
         temp_alert_definition = db_session.execute(temp_alert_definition_sql, {"client": client_code}).fetchone()
     
@@ -295,7 +297,7 @@ def get_assets_optimized():
             params['temp_min'] = temp_min
             params['temp_max'] = temp_max
         elif temp_is_ok in ('false', '0', 'no'):
-            where_clauses.append("(temperature_c <:temp_min OR temperature_c >:temp_max) AND temperature_c IS NOT NULL")
+            where_clauses.append("(temperature_c <:temp_min OR temperature_c >:temp_max) AND temperature_c IS NOT NULL AND temperature_c>=-50 AND temperature_c<=50")
             params['temp_min'] = temp_min
             params['temp_max'] = temp_max
 
@@ -314,7 +316,7 @@ def get_assets_optimized():
         total_count = db_session.execute(sql_count, params).scalar() or 0
         
         # 3. Paginação para a LISTA
-        items_per_page = 50
+        items_per_page = 3
         page = request.args.get('page', 1, type=int)
         list_offset = (page - 1) * items_per_page
         total_pages = (total_count + items_per_page - 1) // items_per_page
@@ -333,6 +335,8 @@ def get_assets_optimized():
             asset_data['latitude'] = lat
             asset_data['longitude'] = lon
             asset_data['has_location'] = bool(lat and lon)
+            asset_data['temp_min'] = temp_min
+            asset_data['temp_max'] = temp_max
             list_data.append(asset_data)
         
         # 5. Se load_all=true, buscar TODOS os assets para o MAPA (sem paginação)
@@ -347,6 +351,8 @@ def get_assets_optimized():
                 asset_data['latitude'] = lat
                 asset_data['longitude'] = lon
                 asset_data['has_location'] = bool(lat and lon)
+                asset_data['temp_min'] = temp_min
+                asset_data['temp_max'] = temp_max
                 map_data.append(asset_data)
             print(f"[INFO] Carregando TODOS os {len(map_data)} assets para o mapa (load_all=true)")
         else:
@@ -469,10 +475,6 @@ def get_asset_details(serial_number):
                 outlet_type
             FROM assets_health_latest_event_24h_view
             WHERE client = :client AND asset_serial_number = :serial
-                AND (temperature_c IS NULL OR temperature_c BETWEEN -30 AND 20)
-                AND (evaporator_temperature_c IS NULL OR evaporator_temperature_c BETWEEN -30 AND 20) 
-                AND (condensor_temperature_c IS NULL OR condensor_temperature_c BETWEEN -30 AND 20)
-                AND (ambient_temperature_c IS NULL OR ambient_temperature_c BETWEEN -30 AND 20)
             ORDER BY event_time DESC
             LIMIT 1
         """)
@@ -482,10 +484,9 @@ def get_asset_details(serial_number):
         # 3. Estatísticas do dashboard (mv_dashboard_stats_main)
         stats_sql = text("""
             SELECT
-                latest_battery,
-                latest_temperature_c,
-                has_recent_movement_24h
-            FROM mv_dashboard_stats_main
+                battery,
+                temperature_c
+            FROM mv_asset_current_status
             WHERE client = :client AND oem_serial_number = :serial
         """)
         
@@ -626,7 +627,6 @@ def get_asset_analytics(serial_number):
                 WHERE client = :client 
                     AND asset_serial_number = :serial
                     AND event_time >= :thirty_days_ago
-                    AND (temperature_c IS NULL OR temperature_c BETWEEN -30 AND 20)
             )
             SELECT
                 AVG(CAST(temperature_c as FLOAT)) as avg_temperature,
@@ -788,7 +788,7 @@ def get_simple_movements():
         device_number = request.args.get('device_number', '').strip()
         days = request.args.get('days', 30, type=int)
         page = request.args.get('page', 1, type=int)
-        limit = request.args.get('limit', 50, type=int)
+        limit = request.args.get('limit', 5, type=int)
 
         # Construir query base
         query = db_session.query(MovementsFindHub).filter(

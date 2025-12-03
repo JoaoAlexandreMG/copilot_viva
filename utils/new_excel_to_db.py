@@ -1835,13 +1835,11 @@ def importar_dados_generico(db_session, model_name: str, file_path: str):
                 try:
                     from sqlalchemy import text
                     try:
-                        db_session.execute(text("REFRESH MATERIALIZED VIEW CONCURRENTLY mv_client_assets_report;"))
-                        db_session.execute(text("REFRESH MATERIALIZED VIEW CONCURRENTLY mv_dashboard_stats_main;"))
+                        db_session.execute(text("REFRESH MATERIALIZED VIEW CONCURRENTLY mv_client_overview;"))
                         db_session.execute(text("REFRESH MATERIALIZED VIEW CONCURRENTLY mv_asset_current_status;"))
                     except:
                          db_session.rollback()
-                         db_session.execute(text("REFRESH MATERIALIZED VIEW mv_client_assets_report;"))
-                         db_session.execute(text("REFRESH MATERIALIZED VIEW mv_dashboard_stats_main;"))
+                         db_session.execute(text("REFRESH MATERIALIZED VIEW mv_client_overview;"))
                          db_session.execute(text("REFRESH MATERIALIZED VIEW mv_asset_current_status;"))
                     
                     db_session.commit()

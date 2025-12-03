@@ -4,14 +4,16 @@
 
 .stats-grid {
     display: grid;
-    /* Cards responsivos: mínimo de 300px, se esticam para encher a linha */
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 2.5rem;
+    grid-template-columns: auto auto auto;
+    gap: 1.5rem;
     margin-bottom: 2rem;
+    align-items: stretch;
+    column-gap: 5vh;
+    row-gap: 1vh;
 }
 
 .stat-card {
-    position: relative; /* Essencial para o badge funcionar */
+    position: relative;
     background: linear-gradient(135deg, rgba(31, 31, 35, 0.8) 0%, rgba(45, 45, 55, 0.6) 100%);
     border-radius: var(--radius-lg);
     padding: 1.5rem;
@@ -21,8 +23,8 @@
     box-shadow: 0 8px 32px rgba(0, 195, 255, 0.1);
     border: 1px solid rgba(0, 195, 255, 0.1);
     transition: all var(--transition-base);
-    min-height: 110px; /* Garante altura visual uniforme */
     backdrop-filter: blur(10px);
+    overflow: clip;
 }
 
 .stat-card:hover {
@@ -59,7 +61,7 @@ a.stat-card.clickable:hover { background: linear-gradient(135deg, rgba(31, 31, 3
 
 .stat-label {
     font-size: var(--text-xs);
-    color: rgba(255, 255, 255, 0.6);
+    color: #00C3FF;
     font-weight: var(--font-weight-semibold);
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -79,7 +81,6 @@ a.stat-card.clickable:hover { background: linear-gradient(135deg, rgba(31, 31, 3
    Posicionada no topo direito absoluto
    ========================================= */
 .period-badge {
-    position: absolute;
     top: 12px;
     right: 12px;
     background: linear-gradient(135deg, rgba(0, 195, 255, 0.1) 0%, rgba(0, 140, 255, 0.05) 100%);
@@ -163,7 +164,6 @@ a.stat-card.clickable:hover { background: linear-gradient(135deg, rgba(31, 31, 3
 /* Adiciona um pequeno ícone de link no canto para indicar clicabilidade */
 .clickable-split::after {
     content: "↗";
-    position: absolute;
     top: 4px;
     right: 6px;
     font-size: 10px;
@@ -367,8 +367,8 @@ a.stat-card.clickable:hover { background: linear-gradient(135deg, rgba(31, 31, 3
 }
 
 .period-btn.active {
-    background: var(--atlas-white);
-    color: var(--atlas-blue-electric);
+    background: #00C3FF;
+    color: #0B0B0D;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     font-weight: 700;
 }
@@ -452,7 +452,7 @@ a.stat-card.clickable:hover { background: linear-gradient(135deg, rgba(31, 31, 3
     margin: 0;
     font-size: var(--text-lg);
     font-weight: var(--font-weight-bold);
-    color: var(--atlas-white);
+    color: #00C3FF;
 }
 
 .chart-body {
@@ -576,20 +576,7 @@ a.stat-card.clickable:hover { background: linear-gradient(135deg, rgba(31, 31, 3
     backdrop-filter: blur(10px);
 }
 
-.top10-container::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(0, 195, 255, 0.2), transparent);
-}
 
-.top10-container:hover {
-    box-shadow: var(--shadow-md);
-    border-color: rgba(0, 195, 255, 0.2);
-}
 
 /* HEADER */
 .top10-header {
@@ -610,7 +597,7 @@ a.stat-card.clickable:hover { background: linear-gradient(135deg, rgba(31, 31, 3
     margin: 0 0 0.5rem 0;
     font-size: var(--text-2xl);
     font-weight: var(--font-weight-bold);
-    color: var(--atlas-white);
+    color: #00C3FF;
     letter-spacing: -0.3px;
     text-transform: uppercase;
 }
@@ -738,29 +725,16 @@ a.stat-card.clickable:hover { background: linear-gradient(135deg, rgba(31, 31, 3
     gap: 1.5rem;
     align-items: center;
     padding: 1.25rem 1.5rem;
-    background: linear-gradient(135deg, rgba(31, 31, 35, 0.6) 0%, rgba(31, 31, 35, 0.4) 100%);
+    background: rgba(31, 31, 35, 0.5);
     border: 1px solid rgba(0, 195, 255, 0.15);
     border-radius: 12px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: border-color 0.2s ease;
     position: relative;
     overflow: hidden;
 }
 
-.top10-asset-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(0, 195, 255, 0.2), transparent);
-}
-
 .top10-asset-card:hover {
-    background: linear-gradient(135deg, rgba(10, 31, 68, 0.4) 0%, rgba(31, 31, 35, 0.6) 100%);
-    border-color: rgba(0, 195, 255, 0.35);
-    box-shadow: 0 12px 32px rgba(0, 195, 255, 0.2), inset 0 1px 0 rgba(0, 195, 255, 0.1);
-    transform: translateY(-2px);
+    border-color: rgba(0, 195, 255, 0.25);
 }
 
 /* RANK */
@@ -780,18 +754,9 @@ a.stat-card.clickable:hover { background: linear-gradient(135deg, rgba(31, 31, 3
     font-weight: 900;
     font-size: 1.1rem;
     letter-spacing: -1px;
-    transition: all 0.3s ease;
+    transition: box-shadow 0.2s ease;
     position: relative;
     overflow: hidden;
-}
-
-.rank-number::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: 14px;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, transparent 100%);
-    pointer-events: none;
 }
 
 .rank-gold {
@@ -801,8 +766,7 @@ a.stat-card.clickable:hover { background: linear-gradient(135deg, rgba(31, 31, 3
 }
 
 .rank-gold:hover {
-    box-shadow: 0 12px 32px rgba(255, 201, 60, 0.45);
-    transform: scale(1.1);
+    box-shadow: 0 8px 24px rgba(255, 201, 60, 0.4);
 }
 
 .rank-silver {
@@ -812,8 +776,7 @@ a.stat-card.clickable:hover { background: linear-gradient(135deg, rgba(31, 31, 3
 }
 
 .rank-silver:hover {
-    box-shadow: 0 12px 32px rgba(0, 195, 255, 0.45);
-    transform: scale(1.1);
+    box-shadow: 0 8px 24px rgba(0, 195, 255, 0.4);
 }
 
 .rank-bronze {
@@ -823,8 +786,7 @@ a.stat-card.clickable:hover { background: linear-gradient(135deg, rgba(31, 31, 3
 }
 
 .rank-bronze:hover {
-    box-shadow: 0 12px 32px rgba(0, 245, 181, 0.45);
-    transform: scale(1.1);
+    box-shadow: 0 8px 24px rgba(0, 245, 181, 0.4);
 }
 
 .rank-default {
@@ -834,8 +796,7 @@ a.stat-card.clickable:hover { background: linear-gradient(135deg, rgba(31, 31, 3
 }
 
 .rank-default:hover {
-    box-shadow: 0 12px 32px rgba(76, 58, 255, 0.45);
-    transform: scale(1.1);
+    box-shadow: 0 8px 24px rgba(76, 58, 255, 0.4);
 }
 
 /* CARD CONTENT */
@@ -901,23 +862,12 @@ a.stat-card.clickable:hover { background: linear-gradient(135deg, rgba(31, 31, 3
     position: relative;
 }
 
-.displacement-bar-fill::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: 4px;
-    background: linear-gradient(90deg, rgba(255, 255, 255, 0.3) 0%, transparent 70%);
-}
-
 .displacement-value {
     font-size: 1rem;
     font-weight: 800;
     letter-spacing: 0.2px;
     font-family: 'Menlo', 'Monaco', monospace;
-    background: linear-gradient(135deg, #00C3FF 0%, #008CFF 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: var(--atlas-blue-electric);
 }
 
 /* RESPONSIVE */

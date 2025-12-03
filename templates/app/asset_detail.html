@@ -5,8 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#0066FF">
+    <meta name="theme-color" content="#0A1F44">
     <title>{{ asset['oem_serial_number'] }} - Detalhes</title>
+    <!-- Inter Font -->
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * {
@@ -17,21 +19,33 @@
         }
 
         :root {
-            --primary: #0066FF;
+            --primary: #00C3FF;
+            --primary-glow: #008CFF;
+            --deep-blue: #0A1F44;
+            --background-dark: #0B0B0D;
+            --card-dark: #1F1F23;
             --success: #34C759;
-            --danger: #FF3B30;
-            --warning: #FF9500;
-            --light: #F5F5F7;
-            --border: #E0E0E0;
-            --text: #1C1C1E;
-            --text-secondary: #8E8E93;
+            --danger: #FF5A5F;
+            --warning: #FFB800;
+            --border: rgba(0, 195, 255, 0.25);
+            --text: #FFFFFF;
+            --text-secondary: rgba(255, 255, 255, 0.7);
             --spacing: 1rem;
             --radius: 12px;
+            
+            /* Inter Font Weights */
+            --font-black: 900;
+            --font-bold: 700;
+            --font-semibold: 600;
+            --font-medium: 500;
+            --font-regular: 400;
+            --font-light: 300;
         }
 
         html, body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: var(--light);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-weight: var(--font-regular);
+            background: radial-gradient(circle at top right, rgba(0,195,255,0.15), transparent 45%), var(--background-dark);
             color: var(--text);
             line-height: 1.4;
             font-size: 16px;
@@ -44,12 +58,13 @@
 
         /* ========== HEADER ========== */
         .header {
-            background: white;
-            border-bottom: 1px solid var(--border);
+            background: linear-gradient(120deg, var(--deep-blue), #08152d);
+            border-bottom: 1px solid rgba(0, 195, 255, 0.2);
             padding: var(--spacing);
             position: sticky;
             top: 0;
             z-index: 100;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
         }
 
         .header-content {
@@ -66,20 +81,28 @@
             padding: 0.5rem 1rem;
             border-radius: var(--radius);
             text-decoration: none;
-            font-weight: 600;
+            font-weight: var(--font-semibold);
             font-size: 0.9rem;
             flex-shrink: 0;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 15px rgba(0, 195, 255, 0.3);
+        }
+
+        .back-btn:hover {
+            background: var(--primary-glow);
+            box-shadow: 0 6px 20px rgba(0, 195, 255, 0.4);
         }
 
         .back-btn:active {
             opacity: 0.8;
+            transform: scale(0.98);
         }
 
         .header-title {
             flex: 1;
             text-align: center;
             font-size: 1.1rem;
-            font-weight: 700;
+            font-weight: var(--font-bold);
             min-width: 0;
         }
 
@@ -95,16 +118,17 @@
         }
 
         .section {
-            background: white;
+            background: var(--card-dark);
             border-radius: var(--radius);
             padding: var(--spacing);
             margin-bottom: var(--spacing);
             border: 1px solid var(--border);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
         }
 
         .section-title {
             font-size: 1rem;
-            font-weight: 700;
+            font-weight: var(--font-bold);
             margin-bottom: var(--spacing);
             display: flex;
             align-items: center;
@@ -119,7 +143,7 @@
 
         .asset-serial {
             font-size: 1.8rem;
-            font-weight: 800;
+            font-weight: var(--font-black);
             color: var(--primary);
             margin-bottom: 0.5rem;
             word-break: break-all;
@@ -143,14 +167,30 @@
             padding: 0.4rem 0.8rem;
             border-radius: 20px;
             font-size: 0.8rem;
-            font-weight: 600;
+            font-weight: var(--font-semibold);
             white-space: nowrap;
         }
 
-        .badge.success { background: #E5F5E5; color: var(--success); }
-        .badge.danger { background: #FFE5E5; color: var(--danger); }
-        .badge.warning { background: #FFF3CD; color: var(--warning); }
-        .badge.info { background: #E3F2FD; color: var(--primary); }
+        .badge.success { 
+            background: rgba(52, 199, 89, 0.2); 
+            color: var(--success); 
+            border: 1px solid rgba(52, 199, 89, 0.3);
+        }
+        .badge.danger { 
+            background: rgba(255, 90, 95, 0.2); 
+            color: var(--danger); 
+            border: 1px solid rgba(255, 90, 95, 0.3);
+        }
+        .badge.warning { 
+            background: rgba(255, 184, 0, 0.2); 
+            color: var(--warning); 
+            border: 1px solid rgba(255, 184, 0, 0.3);
+        }
+        .badge.info { 
+            background: rgba(0, 195, 255, 0.2); 
+            color: var(--primary); 
+            border: 1px solid rgba(0, 195, 255, 0.3);
+        }
 
         /* ========== METRICS GRID ========== */
         .metrics {
@@ -160,7 +200,7 @@
         }
 
         .metric {
-            background: var(--light);
+            background: var(--background-dark);
             border-radius: var(--radius);
             padding: var(--spacing);
             text-align: center;
@@ -168,6 +208,13 @@
             display: flex;
             flex-direction: column;
             justify-content: center;
+            border: 1px solid var(--border);
+            transition: all 0.2s ease;
+        }
+
+        .metric:hover {
+            border-color: var(--primary);
+            box-shadow: 0 0 15px rgba(0, 195, 255, 0.2);
         }
 
         .metric-icon {
@@ -178,7 +225,7 @@
 
         .metric-value {
             font-size: 1.2rem;
-            font-weight: 700;
+            font-weight: var(--font-bold);
             margin-bottom: 0.25rem;
             word-break: break-word;
             line-height: 1.3;
@@ -213,7 +260,7 @@
         .metric-label {
             font-size: 0.8rem;
             color: var(--text-secondary);
-            font-weight: 600;
+            font-weight: var(--font-semibold);
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
@@ -248,7 +295,7 @@
         }
 
         .info-label {
-            font-weight: 600;
+            font-weight: var(--font-semibold);
             color: var(--text);
             flex-shrink: 0;
             min-width: 0;
@@ -256,7 +303,7 @@
         }
 
         .info-value {
-            color: var(--text-secondary);
+            color: rgba(255, 255, 255, 0.8);
             text-align: right;
             word-break: break-all;
             min-width: 0;
@@ -276,26 +323,38 @@
             padding: 0.75rem;
             border: none;
             border-radius: var(--radius);
-            font-weight: 600;
+            font-weight: var(--font-semibold);
             text-decoration: none;
             text-align: center;
             cursor: pointer;
             font-size: 0.9rem;
+            transition: all 0.2s ease;
         }
 
         .action-btn.primary {
             background: var(--primary);
             color: white;
+            box-shadow: 0 4px 15px rgba(0, 195, 255, 0.3);
+        }
+
+        .action-btn.primary:hover {
+            background: var(--primary-glow);
+            box-shadow: 0 6px 20px rgba(0, 195, 255, 0.4);
         }
 
         .action-btn.secondary {
-            background: var(--light);
+            background: var(--card-dark);
             color: var(--text);
             border: 1px solid var(--border);
         }
 
+        .action-btn.secondary:hover {
+            border-color: var(--primary);
+        }
+
         .action-btn:active {
             opacity: 0.8;
+            transform: scale(0.98);
         }
 
         /* ========== RESPONSIVE ========== */
@@ -766,16 +825,27 @@
             }
         }
         
-        // Common chart options
+        // Common chart options - Viva AI theme
         const commonOptions = {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: { display: false }
+                legend: { 
+                    display: false,
+                    labels: { color: '#FFFFFF' }
+                }
             },
             scales: {
-                y: { beginAtZero: false },
-                x: { display: true }
+                y: { 
+                    beginAtZero: false,
+                    ticks: { color: 'rgba(255,255,255,0.7)' },
+                    grid: { color: 'rgba(0,195,255,0.1)' }
+                },
+                x: { 
+                    display: true,
+                    ticks: { color: 'rgba(255,255,255,0.7)' },
+                    grid: { color: 'rgba(0,195,255,0.1)' }
+                }
             }
         };
         
@@ -799,12 +869,13 @@
                 datasets: [{
                     label: 'Temperatura (°C)',
                     data: chartData.temperature.map(d => d.temperature),
-                    borderColor: '#FF3B30',
-                    backgroundColor: 'rgba(255, 59, 48, 0.1)',
+                    borderColor: '#00C3FF',
+                    backgroundColor: 'rgba(0, 195, 255, 0.15)',
                     tension: 0.4,
                     fill: true,
                     pointRadius: 3,
-                    pointHoverRadius: 5
+                    pointHoverRadius: 5,
+                    pointBackgroundColor: '#00C3FF'
                 }]
             },
             options: {
@@ -813,7 +884,7 @@
                     ...commonOptions.scales,
                     y: {
                         ...commonOptions.scales.y,
-                        title: { display: true, text: 'Temperatura (°C)' }
+                        title: { display: true, text: 'Temperatura (°C)', color: 'rgba(255,255,255,0.8)' }
                     }
                 }
             }
@@ -861,7 +932,7 @@
                 datasets: [{
                     label: 'Aberturas de Porta',
                     data: doorCounts,
-                    backgroundColor: '#667eea',
+                    backgroundColor: '#00C3FF',
                     borderRadius: 4,
                     maxBarThickness: 40
                 }]
@@ -873,7 +944,7 @@
                     y: {
                         ...commonOptions.scales.y,
                         beginAtZero: true,
-                        title: { display: true, text: 'Número de Aberturas' }
+                        title: { display: true, text: 'Número de Aberturas', color: 'rgba(255,255,255,0.8)' }
                     }
                 },
                 plugins: {
@@ -916,7 +987,7 @@
                     label: 'Duração (min)',
                     data: chartData.movements.map(d => Math.round(d.duration / 60)),
                     backgroundColor: chartData.movements.map(d => 
-                        d.door_open ? '#FF3B30' : '#34C759'
+                        d.door_open ? '#FF5A5F' : '#34C759'
                     ),
                     borderRadius: 4,
                     maxBarThickness: 40
@@ -929,7 +1000,7 @@
                     y: {
                         ...commonOptions.scales.y,
                         beginAtZero: true,
-                        title: { display: true, text: 'Duração (min)' }
+                        title: { display: true, text: 'Duração (min)', color: 'rgba(255,255,255,0.8)' }
                     }
                 }
             }
