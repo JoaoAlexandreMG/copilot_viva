@@ -7,6 +7,8 @@
 {% block extra_css %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
 <style>
     /* Tamanho fixo para o mapa sem interferir nos demais cards */
     #operation-map {
@@ -586,11 +588,12 @@
     }};
     let staleAssetsData = {{ stale_assets | default ([]) | tojson }};
     if (!staleAssetsData.length) staleAssetsData = [...assetsData];
-    let map;
-    let markers = [];
-    const markersBySerial = {};
-    let qrScanner = null;
-    let mapStatusEl = null;
+        let map;
+        let markers = [];
+        const markersBySerial = {};
+        let clusterGroup = null;
+        let qrScanner = null;
+        let mapStatusEl = null;
 
     const formModal = document.getElementById('form-modal');
     const methodModal = document.getElementById('method-modal');
@@ -646,11 +649,11 @@
     }
 
     function loadScriptIfNeeded(checkFn, primaryUrl, fallbackUrl) {
-        return new Promise((resolve) => {
-            if (checkFn()) return resolve(true);
-            const script = document.createElement('script');
-            script.src = primaryUrl;
-            script.onload = () => resolve(true);
+            return new Promise((resolve) => {
+                if (checkFn()) return resolve(true);
+                const script = document.createElement('script');
+                script.src = primaryUrl;
+                script.onload = () => resolve(true);
             script.onerror = () => {
                 if (!fallbackUrl) return resolve(false);
                 const fallback = document.createElement('script');
@@ -663,35 +666,60 @@
         });
     }
 
-    async function initMap() {
-        const leafletLoaded = await loadScriptIfNeeded(
-            () => window.L,
-            'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
-            'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js'
-        );
+        async function initMap() {
+            const leafletLoaded = await loadScriptIfNeeded(
+                () => window.L,
+                'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
+                'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js'
+            );
 
-        if (!leafletLoaded || !window.L) {
-            mapContainer.innerHTML = '<div class="map-status">Não foi possível carregar o mapa (biblioteca não carregada).</div>';
-            return;
+            if (!leafletLoaded || !window.L) {
+                mapContainer.innerHTML = '<div class="map-status">Não foi possível carregar o mapa (biblioteca não carregada).</div>';
+                return;
+            }
+
+            const clusterLoaded = await loadScriptIfNeeded(
+                () => window.L && !!L.MarkerClusterGroup,
+                'https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js',
+                'https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js'
+            );
+
+            if (!clusterLoaded || !L.MarkerClusterGroup) {
+                mapContainer.innerHTML = '<div class="map-status">Não foi possível carregar o mapa (cluster não carregado).</div>';
+                return;
+            }
+
+            map = L.map('operation-map').setView([-15.7801, -47.9292], 4);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+
+            clusterGroup = L.markerClusterGroup({
+                showCoverageOnHover: false,
+                zoomToBoundsOnClick: false,
+                spiderfyOnMaxZoom: true,
+                spiderfyOnEveryZoom: true,
+                spiderfyDistanceMultiplier: 1.6,
+                disableClusteringAtZoom: null
+            });
+            clusterGroup.on('clusterclick', (e) => {
+                // Ao clicar em clusters, sempre abra o spiderfy para ver todos os pontos sobrepostos
+                e.layer.spiderfy();
+            });
+            map.addLayer(clusterGroup);
+
+            // Após inicializar o mapa, tente capturar localização atual
+            requestCurrentLocation();
+            applyFilters();
         }
 
-        map = L.map('operation-map').setView([-15.7801, -47.9292], 4);
-
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(map);
-
-        // Após inicializar o mapa, tente capturar localização atual
-        requestCurrentLocation();
-        applyFilters();
-    }
-
-    function addAssetMarker(asset, { skipFit = false } = {}) {
-        if (!map) return;
-        const lat = parseFloat(asset.last_latitude);
-        const lng = parseFloat(asset.last_longitude);
-        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+        function addAssetMarker(asset, { skipFit = false } = {}) {
+            if (!map || !clusterGroup) return;
+            const lat = parseFloat(asset.last_latitude);
+            const lng = parseFloat(asset.last_longitude);
+            if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
 
         const title = asset.serial_number || 'Asset sem serial';
         const popupLines = [
@@ -710,14 +738,14 @@
             markers = markers.filter(m => m !== markersBySerial[markerKey]);
         }
 
-        const marker = L.marker([lat, lng], { icon: createAssetIcon(color) }).addTo(map).bindPopup(popupLines.join('<br>'));
-        markers.push(marker);
-        markersBySerial[markerKey] = marker;
-        if (!skipFit) {
-            const group = L.featureGroup(markers);
-            map.fitBounds(group.getBounds(), { padding: [24, 24] });
+            const marker = L.marker([lat, lng], { icon: createAssetIcon(color) }).bindPopup(popupLines.join('<br>'));
+            clusterGroup.addLayer(marker);
+            markers.push(marker);
+            markersBySerial[markerKey] = marker;
+            if (!skipFit) {
+                map.fitBounds(clusterGroup.getBounds(), { padding: [24, 24] });
+            }
         }
-    }
 
     function upsertAssetData(asset) {
         const idx = assetsData.findIndex((a) => a.serial_number === asset.serial_number);
@@ -827,18 +855,15 @@
         return copy;
     }
 
-    function renderMarkers(assetList) {
-        if (!map) return;
-        // remove asset markers only (keep current location)
-        markers.forEach(m => map.removeLayer(m));
-        markers = [];
-        Object.keys(markersBySerial).forEach(key => {
-            if (markersBySerial[key] && map.hasLayer(markersBySerial[key])) {
-                map.removeLayer(markersBySerial[key]);
-            }
-            delete markersBySerial[key];
-        });
-        Object.keys(outletColorMap).forEach(key => delete outletColorMap[key]);
+        function renderMarkers(assetList) {
+            if (!map || !clusterGroup) return;
+            // limpa somente assets (mantém localização atual)
+            clusterGroup.clearLayers();
+            markers = [];
+            Object.keys(markersBySerial).forEach(key => {
+                delete markersBySerial[key];
+            });
+            Object.keys(outletColorMap).forEach(key => delete outletColorMap[key]);
 
         if (!mapStatusEl) {
             mapStatusEl = document.createElement('div');
@@ -855,13 +880,12 @@
             mapStatusEl.style.display = 'none';
         }
 
-        assetList.forEach(asset => addAssetMarker(asset, { skipFit: true }));
-        if (markers.length) {
-            const group = L.featureGroup(markers);
-            map.fitBounds(group.getBounds(), { padding: [24, 24] });
+            assetList.forEach(asset => addAssetMarker(asset, { skipFit: true }));
+            if (markers.length) {
+                map.fitBounds(clusterGroup.getBounds(), { padding: [24, 24] });
+            }
+            updateLegend();
         }
-        updateLegend();
-    }
 
     function applyFilters() {
         const outletVal = filterOutlet?.value || 'all';
