@@ -1,0 +1,246 @@
+from flask import Blueprint, render_template, session, redirect, url_for, jsonify, request
+import math
+from datetime import datetime
+from routes.portal.decorators import require_authentication
+from db.database import get_session
+from models.models import AssetsInventory, AssetInventoryVisit
+
+inventory_bp = Blueprint("inventory", __name__, url_prefix="/inventory")
+
+
+def _serialize_inventory_asset(asset: AssetsInventory) -> dict:
+    data = asset.to_dict()
+    # Normaliza campos de data para strings ISO legíveis no front
+    for date_field in ("created_at", ):
+        if data.get(date_field):
+            data[date_field] = data[date_field].isoformat()
+    return data
+
+
+def _haversine_distance_m(lat1, lon1, lat2, lon2):
+    """Calcula a distância em metros entre dois pontos lat/lon (Haversine)."""
+    try:
+        R = 6371000  # raio da Terra em metros
+        phi1 = math.radians(lat1)
+        phi2 = math.radians(lat2)
+        dphi = math.radians(lat2 - lat1)
+        dlambda = math.radians(lon2 - lon1)
+        a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+        return R * c
+    except Exception:
+        return None
+
+
+@inventory_bp.route('/', methods=['GET'])
+@require_authentication
+def render_inventory_index():
+    """Render the inventory index page."""
+    try:
+        user = session.get('user')
+        if not user:
+            return redirect(url_for('index'))
+
+        # Redirect /inventory/ to the list page to keep URLs consistent
+        return redirect(url_for('inventory.render_inventory_list'))
+
+    except Exception as e:
+        print(f"[ERROR] Error rendering inventory index: {e}")
+        return redirect(url_for('index'))
+
+
+    # Inventory list route (user-facing list under /inventory/list)
+
+@inventory_bp.route('/list', methods=['GET'])
+@require_authentication
+def render_inventory_list():
+    """Render the main inventory dashboard page."""
+    try:
+        user = session.get('user')
+        if not user:
+            return redirect(url_for('index'))
+        db_session = get_session()
+        assets = db_session.query(AssetsInventory).filter(AssetsInventory.is_deleted.is_(False)).all()
+        return render_template('inventory/list.html', user=user, assets_inventory=assets)
+    except Exception as e:
+        print(f"[ERROR] Error rendering inventory dashboard: {e}")
+        return redirect(url_for('inventory.render_inventory_index'))
+
+
+@inventory_bp.route('/dashboard', methods=['GET'])
+@require_authentication
+def legacy_inventory_dashboard_redirect():
+    """Compat redirect from old /dashboard path to /list."""
+    return redirect(url_for('inventory.render_inventory_list'))
+
+
+@inventory_bp.route('/operation', methods=['GET'])
+@require_authentication
+def render_inventory_operation():
+    """Render the inventory operations page."""
+    try:
+        user = session.get('user')
+        if not user:
+            return redirect(url_for('index'))
+        db_session = get_session()
+        # Carrega todos os ativos não deletados para exibir no mapa
+        assets = db_session.query(AssetsInventory).filter(AssetsInventory.is_deleted.is_(False)).all()
+        operation_assets = [_serialize_inventory_asset(asset) for asset in assets]
+
+        return render_template('inventory/operation.html', user=user, operation_assets=operation_assets)
+    except Exception as e:
+        print(f"[ERROR] Error rendering inventory operation: {e}")
+        return redirect(url_for('inventory.render_inventory_index'))
+
+
+@inventory_bp.route('/operation/data', methods=['GET'])
+@require_authentication
+def get_inventory_operation_data():
+    """JSON endpoint com os assets para o mapa de operações."""
+    try:
+        db_session = get_session()
+        assets = db_session.query(AssetsInventory).filter(AssetsInventory.is_deleted.is_(False)).all()
+        return jsonify([_serialize_inventory_asset(asset) for asset in assets])
+    except Exception as e:
+        print(f"[ERROR] Error fetching inventory operation data: {e}")
+        return jsonify({"error": "Erro ao buscar dados de inventário"}), 500
+
+
+@inventory_bp.route('/operation/check/<serial_number>', methods=['GET'])
+@require_authentication
+def check_inventory_asset(serial_number):
+    """Retorna o asset pelo serial, se existir (uso para pré-checagem no front)."""
+    try:
+        db_session = get_session()
+        asset = db_session.query(AssetsInventory).filter(
+            AssetsInventory.serial_number == serial_number,
+            AssetsInventory.is_deleted.is_(False)
+        ).first()
+        if not asset:
+            return jsonify({"error": "Not found"}), 404
+        return jsonify(_serialize_inventory_asset(asset)), 200
+    except Exception as e:
+        print(f"[ERROR] Error checking inventory asset: {e}")
+        return jsonify({"error": "Erro ao buscar asset"}), 500
+
+
+@inventory_bp.route('/operation/create', methods=['POST'])
+@require_authentication
+def create_inventory_asset():
+    """Cria um novo asset no inventário via JSON ou form."""
+    try:
+        payload = request.get_json(silent=True) or request.form
+
+        serial_number = (payload.get('serial_number') or '').strip()
+        if not serial_number:
+            return jsonify({"error": "O campo serial_number é obrigatório."}), 400
+
+        asset_type = (payload.get('asset_type') or '').strip() or None
+        material = (payload.get('material') or '').strip() or None
+        outlet_name = (payload.get('outlet_name') or '').strip() or None
+        street = (payload.get('street') or '').strip() or None
+        city = (payload.get('city') or '').strip() or None
+        notes = (payload.get('notes') or '').strip() or None
+
+        def to_float(value):
+            try:
+                return float(value) if value not in (None, '') else None
+            except (TypeError, ValueError):
+                return None
+
+        last_latitude = to_float(payload.get('last_latitude'))
+        last_longitude = to_float(payload.get('last_longitude'))
+
+        db_session = get_session()
+
+        # Evita duplicidade simples pelo serial_number quando não deletado
+        existing = db_session.query(AssetsInventory).filter(
+            AssetsInventory.serial_number == serial_number,
+            AssetsInventory.is_deleted.is_(False)
+        ).first()
+
+        user = session.get('user') or {}
+        created_by = user.get('upn') or user.get('email') or 'system'
+
+        if existing:
+            # Atualiza coordenadas e calcula distância se possível
+            prev_lat = existing.last_latitude
+            prev_lng = existing.last_longitude
+            prev_time = existing.created_at
+
+            if last_latitude is not None:
+                existing.last_latitude = last_latitude
+            if last_longitude is not None:
+                existing.last_longitude = last_longitude
+
+            if prev_lat is not None and prev_lng is not None and last_latitude is not None and last_longitude is not None:
+                existing.last_visit_distance_m = _haversine_distance_m(prev_lat, prev_lng, last_latitude, last_longitude)
+
+            # Opcional: atualiza metadados se enviados
+            if asset_type is not None:
+                existing.asset_type = asset_type
+            if material is not None:
+                existing.material = material
+            if outlet_name is not None:
+                existing.outlet_name = outlet_name
+            if street is not None:
+                existing.street = street
+            if city is not None:
+                existing.city = city
+            if notes is not None:
+                existing.notes = notes
+
+            # Registrar visita/movimento
+            visit = AssetInventoryVisit(
+                asset_id=existing.id,
+                visit_at=datetime.utcnow(),
+                latitude=last_latitude if last_latitude is not None else prev_lat or 0,
+                longitude=last_longitude if last_longitude is not None else prev_lng or 0,
+                prev_visit_at=prev_time,
+                prev_latitude=prev_lat,
+                prev_longitude=prev_lng,
+                distance_from_prev_m=existing.last_visit_distance_m,
+                scanned_by=created_by,
+                notes=notes
+            )
+            db_session.add(visit)
+
+            db_session.commit()
+            return jsonify({"asset": _serialize_inventory_asset(existing), "updated": True}), 200
+
+        asset = AssetsInventory(
+            serial_number=serial_number,
+            asset_type=asset_type,
+            material=material,
+            outlet_name=outlet_name,
+            street=street,
+            city=city,
+            notes=notes,
+            last_latitude=last_latitude,
+            last_longitude=last_longitude,
+            created_by_user=created_by
+        )
+
+        db_session.add(asset)
+        db_session.flush()
+
+        visit = AssetInventoryVisit(
+            asset_id=asset.id,
+            visit_at=datetime.utcnow(),
+            latitude=last_latitude or 0,
+            longitude=last_longitude or 0,
+            prev_visit_at=None,
+            prev_latitude=None,
+            prev_longitude=None,
+            distance_from_prev_m=None,
+            scanned_by=created_by,
+            notes=notes
+        )
+        db_session.add(visit)
+
+        db_session.commit()
+
+        return jsonify({"asset": _serialize_inventory_asset(asset), "created": True}), 201
+    except Exception as e:
+        print(f"[ERROR] Error creating inventory asset: {e}")
+        return jsonify({"error": "Erro ao criar asset"}), 500
