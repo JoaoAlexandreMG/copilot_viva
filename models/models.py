@@ -456,6 +456,25 @@ class AssetsInventory(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     created_by_user = Column(String(100))
 
+
+class AssetInventoryVisit(Base):
+    __tablename__ = 'asset_inventory_visits'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    asset_id = Column(Integer, ForeignKey('assets_inventory.id', ondelete='CASCADE'), nullable=False)
+    visit_at = Column(DateTime, default=datetime.utcnow)
+    latitude = Column(Float, nullable=False)
+    longitude = Column(Float, nullable=False)
+
+    prev_visit_at = Column(DateTime)
+    prev_latitude = Column(Float)
+    prev_longitude = Column(Float)
+
+    distance_from_prev_m = Column(Float)
+    scanned_by = Column(String(150))
+    notes = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
 class Alert(Base):
     __tablename__ = 'alerts'
 
