@@ -236,6 +236,14 @@
         transition: background var(--transition-base, 0.2s ease), transform 120ms ease;
     }
 
+    .method-divider {
+        text-align: center;
+        color: #c6cedd;
+        margin: 8px 0;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+    }
+
     .pill-option:hover {
         background: rgba(0, 195, 255, 0.16);
         transform: translateY(-1px);
@@ -249,6 +257,33 @@
 
     .location-status {
         margin-top: 8px;
+    }
+
+    .toast {
+        position: fixed;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(12, 20, 36, 0.95);
+        color: #f4f7ff;
+        padding: 16px 18px;
+        border-radius: 12px;
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+        border: 1px solid rgba(0, 195, 255, 0.35);
+        min-width: 280px;
+        z-index: 12000;
+        display: none;
+        text-align: center;
+    }
+
+    .toast.show {
+        display: block;
+        animation: fadeInUp 200ms ease;
+    }
+
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translate(-50%, -46%); }
+        to { opacity: 1; transform: translate(-50%, -50%); }
     }
 
     .btn-light {
@@ -285,26 +320,33 @@
         <button type="button" class="btn btn-primary" id="open-scan-btn">Scan</button>
     </div>
 
+    <div class="toast" id="scan-toast"></div>
+
     <!-- Modal: Escolher método -->
     <div class="modal-backdrop" id="method-modal">
-        <div class="modal-card">
-            <div class="modal-header">
-                <h4>Adicionar asset</h4>
-                <button type="button" class="modal-close" data-close-modal="method-modal"><i class="fas fa-times"></i> Fechar</button>
-            </div>
-            <div class="modal-body">
-                <p>Escolha como deseja adicionar o asset:</p>
-                <div class="form-grid">
-                    <button type="button" class="pill-option" id="choose-qr">
-                        <i class="fas fa-qrcode"></i> Scanear QR Code
-                    </button>
-                    <button type="button" class="pill-option" id="choose-manual">
-                        <i class="fas fa-keyboard"></i> Inserir manualmente
-                    </button>
+    <div class="modal-card">
+        <div class="modal-header">
+            <h4>Adicionar asset</h4>
+            <button type="button" class="modal-close" data-close-modal="method-modal"><i class="fas fa-times"></i> Fechar</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-grid">
+                <button type="button" class="pill-option" id="choose-qr" style="grid-column: 1 / -1;">
+                    <i class="fas fa-qrcode"></i> Scanear QR Code
+                </button>
+                <div class="method-divider" style="grid-column: 1 / -1;">ou</div>
+                <div style="grid-column: 1 / -1;">
+                    <label for="method-serial">Serial Number *</label>
+                    <input id="method-serial" placeholder="Informe o serial" />
                 </div>
+                <button type="button" class="pill-option" id="choose-manual" style="grid-column: 1 / -1;">
+                    <i class="fas fa-keyboard"></i> Inserir manualmente
+                </button>
             </div>
+            <div class="status-text" id="method-status"></div>
         </div>
     </div>
+</div>
 
     <!-- Modal: QR Scanner -->
     <div class="modal-backdrop" id="qr-modal">
@@ -397,6 +439,8 @@
         const formElement = document.getElementById('inventory-form');
         const statusText = document.getElementById('form-status');
         const locationStatus = document.getElementById('location-status');
+        const serialInput = document.getElementById('method-serial');
+        const methodStatus = document.getElementById('method-status');
 
         const fieldSerial = document.getElementById('serial_number');
         const fieldType = document.getElementById('asset_type');
@@ -415,6 +459,7 @@
         const outletColorPalette = ['#00C3FF', '#4C3AFF', '#FFC93C', '#00F5B5', '#FF6B6B', '#1F8EF1', '#7C4DFF', '#FF8A65'];
         const legendContainer = document.getElementById('map-legend');
         const currentIcon = L.divIcon({ className: 'current-location-icon' });
+        const toastEl = document.getElementById('scan-toast');
 
         function setModal(modal, isOpen) {
             if (!modal) return;
@@ -682,15 +727,48 @@
 
         const chooseManual = document.getElementById('choose-manual');
         if (chooseManual) {
-            chooseManual.addEventListener('click', () => {
+            chooseManual.addEventListener('click', async () => {
+                const serial = (serialInput?.value || '').trim();
+                if (!serial) {
+                    if (methodStatus) methodStatus.textContent = 'Informe o Serial Number antes de continuar.';
+                    return;
+                }
+                if (methodStatus) methodStatus.textContent = 'Verificando asset...';
+
+                const prefillLoc = {};
+                if (userLat !== null && userLng !== null) {
+                    prefillLoc.last_latitude = userLat;
+                    prefillLoc.last_longitude = userLng;
+                }
+
+                try {
+                    const checkUrl = `${window.location.origin}/inventory/operation/check/${encodeURIComponent(serial)}`;
+                    const checkResp = await fetch(checkUrl, { credentials: 'same-origin' });
+                    if (checkResp.ok) {
+                        const payload = {
+                            serial_number: serial,
+                            last_latitude: prefillLoc.last_latitude,
+                            last_longitude: prefillLoc.last_longitude
+                        };
+                        await saveAsset(payload, { skipFormClose: false });
+                        setModal(methodModal, false);
+                        if (methodStatus) methodStatus.textContent = '';
+                        return;
+                    }
+                } catch (err) {
+                    // segue fluxo padrão
+                }
+
+                if (methodStatus) methodStatus.textContent = '';
                 setModal(methodModal, false);
-                openForm();
+                openForm({ serial_number: serial, ...prefillLoc });
             });
         }
 
         const chooseQr = document.getElementById('choose-qr');
         if (chooseQr) {
             chooseQr.addEventListener('click', () => {
+                if (serialInput) serialInput.value = serialInput.value.trim();
                 setModal(methodModal, false);
                 setModal(qrModal, true);
                 startQrScanner();
@@ -706,10 +784,57 @@
             });
         });
 
+        async function saveAsset(payload, { skipFormClose = false } = {}) {
+            statusText.textContent = 'Enviando...';
+            try {
+                const response = await fetch('{{ url_for('inventory.create_inventory_asset') }}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                if (!response.ok) {
+                    statusText.textContent = result.error || 'Erro ao salvar asset.';
+                    return { ok: false };
+                }
+
+                statusText.textContent = 'Asset salvo com sucesso!';
+                if (!skipFormClose) setModal(formModal, false);
+
+                if (result.asset) {
+                    assetsData.push(result.asset);
+                    addAssetMarker(result.asset);
+                }
+
+                if (toastEl) {
+                    const lines = [];
+                    lines.push(result.updated ? 'Asset atualizado' : 'Asset criado');
+
+                    if (result.asset) {
+                        const distVal = result.asset.last_visit_distance_m;
+                        const latVal = result.asset.last_latitude;
+                        const lngVal = result.asset.last_longitude;
+                        if (distVal !== undefined && distVal !== null && !Number.isNaN(Number(distVal))) {
+                            lines.push(`Movimentação: ${Number(distVal).toFixed(2)} m`);
+                        } else if (latVal !== undefined && lngVal !== undefined) {
+                            lines.push(`Lat/Lng atualizados: ${latVal}, ${lngVal}`);
+                        }
+                    }
+
+                    toastEl.innerHTML = lines.join('<br>');
+                    toastEl.classList.add('show');
+                    setTimeout(() => toastEl.classList.remove('show'), 4000);
+                }
+                return { ok: true };
+            } catch (err) {
+                statusText.textContent = 'Erro de rede ao salvar asset.';
+                return { ok: false };
+            }
+        }
+
         formElement.addEventListener('submit', async (event) => {
             event.preventDefault();
-            statusText.textContent = 'Enviando...';
-
             const payload = {
                 serial_number: fieldSerial.value.trim(),
                 asset_type: fieldType.value.trim(),
@@ -721,37 +846,15 @@
                 last_longitude: fieldLng.value.trim(),
                 notes: fieldNotes.value.trim(),
             };
-
-            try {
-                const response = await fetch('{{ url_for('inventory.create_inventory_asset') }}', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                const result = await response.json();
-                if (!response.ok) {
-                    statusText.textContent = result.error || 'Erro ao salvar asset.';
-                    return;
-                }
-
-                statusText.textContent = 'Asset salvo com sucesso!';
-                setModal(formModal, false);
-
-                // Atualiza mapa com o novo asset
-                if (result.asset) {
-                    assetsData.push(result.asset);
-                    addAssetMarker(result.asset);
-                }
-            } catch (err) {
-                statusText.textContent = 'Erro de rede ao salvar asset.';
-            }
+            await saveAsset(payload);
         });
 
         initMap();
     });
 </script>
 {% endblock %}
+
+<div class="toast" id="scan-toast"></div>
 
 {% block sidebar %}
 <!-- Inventory sidebar with Operação link -->
