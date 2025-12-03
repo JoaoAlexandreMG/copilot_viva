@@ -91,6 +91,7 @@
                         <th>Outlet</th>
                         <th>Latitude</th>
                         <th>Longitude</th>
+                        <th>Distância (m)</th>
                         <th>Cidade</th>
                         <th>Rua</th>
                         <th>Criado em</th>
@@ -112,6 +113,7 @@
                         </td>
                         <td>{{ asset.last_latitude or '-' }}</td>
                         <td>{{ asset.last_longitude or '-' }}</td>
+                        <td>{{ asset.last_visit_distance_m is not none and ('%.2f' % asset.last_visit_distance_m) or '-' }}</td>
                         <td>{{ asset.city or '-' }}</td>
                         <td>{{ asset.street or '-' }}</td>
                         <td>{{ asset.created_at or '-' }}</td>

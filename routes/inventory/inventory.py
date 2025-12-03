@@ -1,4 +1,5 @@
 from flask import Blueprint, render_template, session, redirect, url_for, jsonify, request
+import math
 from routes.portal.decorators import require_authentication
 from db.database import get_session
 from models.models import AssetsInventory
@@ -13,6 +14,21 @@ def _serialize_inventory_asset(asset: AssetsInventory) -> dict:
         if data.get(date_field):
             data[date_field] = data[date_field].isoformat()
     return data
+
+
+def _haversine_distance_m(lat1, lon1, lat2, lon2):
+    """Calcula a distância em metros entre dois pontos lat/lon (Haversine)."""
+    try:
+        R = 6371000  # raio da Terra em metros
+        phi1 = math.radians(lat1)
+        phi2 = math.radians(lat2)
+        dphi = math.radians(lat2 - lat1)
+        dlambda = math.radians(lon2 - lon1)
+        a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+        return R * c
+    except Exception:
+        return None
 
 
 @inventory_bp.route('/', methods=['GET'])
@@ -89,6 +105,24 @@ def get_inventory_operation_data():
         return jsonify({"error": "Erro ao buscar dados de inventário"}), 500
 
 
+@inventory_bp.route('/operation/check/<serial_number>', methods=['GET'])
+@require_authentication
+def check_inventory_asset(serial_number):
+    """Retorna o asset pelo serial, se existir (uso para pré-checagem no front)."""
+    try:
+        db_session = get_session()
+        asset = db_session.query(AssetsInventory).filter(
+            AssetsInventory.serial_number == serial_number,
+            AssetsInventory.is_deleted.is_(False)
+        ).first()
+        if not asset:
+            return jsonify({"error": "Not found"}), 404
+        return jsonify(_serialize_inventory_asset(asset)), 200
+    except Exception as e:
+        print(f"[ERROR] Error checking inventory asset: {e}")
+        return jsonify({"error": "Erro ao buscar asset"}), 500
+
+
 @inventory_bp.route('/operation/create', methods=['POST'])
 @require_authentication
 def create_inventory_asset():
@@ -123,11 +157,39 @@ def create_inventory_asset():
             AssetsInventory.serial_number == serial_number,
             AssetsInventory.is_deleted.is_(False)
         ).first()
-        if existing:
-            return jsonify({"error": "Já existe um asset com este serial_number."}), 409
 
         user = session.get('user') or {}
         created_by = user.get('upn') or user.get('email') or 'system'
+
+        if existing:
+            # Atualiza coordenadas e calcula distância se possível
+            prev_lat = existing.last_latitude
+            prev_lng = existing.last_longitude
+
+            if last_latitude is not None:
+                existing.last_latitude = last_latitude
+            if last_longitude is not None:
+                existing.last_longitude = last_longitude
+
+            if prev_lat is not None and prev_lng is not None and last_latitude is not None and last_longitude is not None:
+                existing.last_visit_distance_m = _haversine_distance_m(prev_lat, prev_lng, last_latitude, last_longitude)
+
+            # Opcional: atualiza metadados se enviados
+            if asset_type is not None:
+                existing.asset_type = asset_type
+            if material is not None:
+                existing.material = material
+            if outlet_name is not None:
+                existing.outlet_name = outlet_name
+            if street is not None:
+                existing.street = street
+            if city is not None:
+                existing.city = city
+            if notes is not None:
+                existing.notes = notes
+
+            db_session.commit()
+            return jsonify({"asset": _serialize_inventory_asset(existing), "updated": True}), 200
 
         asset = AssetsInventory(
             serial_number=serial_number,
@@ -145,7 +207,7 @@ def create_inventory_asset():
         db_session.add(asset)
         db_session.commit()
 
-        return jsonify({"asset": _serialize_inventory_asset(asset)}), 201
+        return jsonify({"asset": _serialize_inventory_asset(asset), "created": True}), 201
     except Exception as e:
         print(f"[ERROR] Error creating inventory asset: {e}")
         return jsonify({"error": "Erro ao criar asset"}), 500
