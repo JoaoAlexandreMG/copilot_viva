@@ -114,6 +114,50 @@ def legacy_inventory_dashboard_redirect():
     return redirect(url_for('inventory.render_inventory_list'))
 
 
+@inventory_bp.route('/visits', methods=['GET'])
+@require_authentication
+def render_inventory_visits():
+    """Renderiza a página com o histórico de visitas dos assets."""
+    try:
+        user = session.get('user')
+        if not user:
+            return redirect(url_for('index'))
+
+        db_session = get_session()
+        visits_query = (
+            db_session.query(AssetInventoryVisit, AssetsInventory)
+            .join(AssetsInventory, AssetInventoryVisit.asset_id == AssetsInventory.id)
+            .filter(AssetsInventory.is_deleted.is_(False))
+            .order_by(AssetInventoryVisit.visit_at.desc())
+        )
+
+        visits = []
+        for visit, asset in visits_query:
+            visits.append({
+                "id": visit.id,
+                "asset_id": asset.id,
+                "serial_number": asset.serial_number,
+                "asset_type": asset.asset_type,
+                "outlet_name": asset.outlet_name,
+                "city": asset.city,
+                "street": asset.street,
+                "visit_at": _visit_iso_in_brazil(visit.visit_at),
+                "prev_visit_at": _visit_iso_in_brazil(visit.prev_visit_at),
+                "latitude": visit.latitude,
+                "longitude": visit.longitude,
+                "prev_latitude": visit.prev_latitude,
+                "prev_longitude": visit.prev_longitude,
+                "distance_from_prev_m": visit.distance_from_prev_m,
+                "scanned_by": visit.scanned_by,
+                "notes": visit.notes,
+            })
+
+        return render_template('inventory/visits.html', user=user, visits=visits)
+    except Exception as e:
+        print(f"[ERROR] Error rendering inventory visits: {e}")
+        return redirect(url_for('inventory.render_inventory_index'))
+
+
 @inventory_bp.route('/operation', methods=['GET'])
 @require_authentication
 def render_inventory_operation():

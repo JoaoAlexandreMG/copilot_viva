@@ -1258,6 +1258,11 @@
                 <i class="fas fa-cogs"></i>
                 <span>Operação</span>
             </a>
+            <a href="{{ url_for('inventory.render_inventory_visits') }}"
+                class="sidebar-nav-link {% if request.path.startswith('/inventory/visits') %}active{% endif %}">
+                <i class="fas fa-route"></i>
+                <span>Visitas</span>
+            </a>
         </div>
     </nav>
     <div class="sidebar-footer">
