@@ -1,9 +1,11 @@
 from flask import Blueprint, render_template, session, redirect, url_for, jsonify, request
 import math
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from routes.portal.decorators import require_authentication
 from db.database import get_session
 from models.models import AssetsInventory, AssetInventoryVisit
+from sqlalchemy import func
 
 inventory_bp = Blueprint("inventory", __name__, url_prefix="/inventory")
 
@@ -15,6 +17,44 @@ def _serialize_inventory_asset(asset: AssetsInventory) -> dict:
         if data.get(date_field):
             data[date_field] = data[date_field].isoformat()
     return data
+
+
+def _visit_iso_in_brazil(dt):
+    if not dt:
+        return None
+    if dt.tzinfo is None:
+        # Assume que valores salvos sem timezone estão em UTC
+        dt = dt.replace(tzinfo=ZoneInfo("UTC"))
+    return dt.astimezone(ZoneInfo("America/Sao_Paulo")).isoformat()
+
+
+def DateTimeSortHelper(value):
+    try:
+        return DateTimeSortHelper._cache.setdefault(value, DateTimeSortHelper._parse(value))
+    except Exception:
+        return 0
+
+
+DateTimeSortHelper._cache = {}
+
+
+def _datetime_sort_helper_parse(value):
+    if not value:
+        return 0
+    try:
+        return datetime.fromisoformat(value).timestamp()
+    except Exception:
+        try:
+            return datetime.strptime(value, "%Y-%m-%dT%H:%M:%S%z").timestamp()
+        except Exception:
+            try:
+                return datetime.strptime(value, "%Y-%m-%d %H:%M:%S").timestamp()
+            except Exception:
+                return 0
+
+
+# Atribui função de parsing ao helper para reutilizar o cache acima
+DateTimeSortHelper._parse = _datetime_sort_helper_parse
 
 
 def _haversine_distance_m(lat1, lon1, lat2, lon2):
@@ -74,6 +114,50 @@ def legacy_inventory_dashboard_redirect():
     return redirect(url_for('inventory.render_inventory_list'))
 
 
+@inventory_bp.route('/visits', methods=['GET'])
+@require_authentication
+def render_inventory_visits():
+    """Renderiza a página com o histórico de visitas dos assets."""
+    try:
+        user = session.get('user')
+        if not user:
+            return redirect(url_for('index'))
+
+        db_session = get_session()
+        visits_query = (
+            db_session.query(AssetInventoryVisit, AssetsInventory)
+            .join(AssetsInventory, AssetInventoryVisit.asset_id == AssetsInventory.id)
+            .filter(AssetsInventory.is_deleted.is_(False))
+            .order_by(AssetInventoryVisit.visit_at.desc())
+        )
+
+        visits = []
+        for visit, asset in visits_query:
+            visits.append({
+                "id": visit.id,
+                "asset_id": asset.id,
+                "serial_number": asset.serial_number,
+                "asset_type": asset.asset_type,
+                "outlet_name": asset.outlet_name,
+                "city": asset.city,
+                "street": asset.street,
+                "visit_at": _visit_iso_in_brazil(visit.visit_at),
+                "prev_visit_at": _visit_iso_in_brazil(visit.prev_visit_at),
+                "latitude": visit.latitude,
+                "longitude": visit.longitude,
+                "prev_latitude": visit.prev_latitude,
+                "prev_longitude": visit.prev_longitude,
+                "distance_from_prev_m": visit.distance_from_prev_m,
+                "scanned_by": visit.scanned_by,
+                "notes": visit.notes,
+            })
+
+        return render_template('inventory/visits.html', user=user, visits=visits)
+    except Exception as e:
+        print(f"[ERROR] Error rendering inventory visits: {e}")
+        return redirect(url_for('inventory.render_inventory_index'))
+
+
 @inventory_bp.route('/operation', methods=['GET'])
 @require_authentication
 def render_inventory_operation():
@@ -83,11 +167,34 @@ def render_inventory_operation():
         if not user:
             return redirect(url_for('index'))
         db_session = get_session()
-        # Carrega todos os ativos não deletados para exibir no mapa
-        assets = db_session.query(AssetsInventory).filter(AssetsInventory.is_deleted.is_(False)).all()
-        operation_assets = [_serialize_inventory_asset(asset) for asset in assets]
 
-        return render_template('inventory/operation.html', user=user, operation_assets=operation_assets)
+        # Subquery com última visita por asset
+        visits_subq = (
+            db_session.query(
+                AssetInventoryVisit.asset_id,
+                func.max(AssetInventoryVisit.visit_at).label('last_visit_at')
+            )
+            .group_by(AssetInventoryVisit.asset_id)
+            .subquery()
+        )
+
+        # Carrega assets + última visita para o mapa/cards
+        assets_with_visit = (
+            db_session.query(AssetsInventory, visits_subq.c.last_visit_at)
+            .outerjoin(visits_subq, visits_subq.c.asset_id == AssetsInventory.id)
+            .filter(AssetsInventory.is_deleted.is_(False))
+            .all()
+        )
+        operation_assets = []
+        for asset, last_visit in assets_with_visit:
+            data = _serialize_inventory_asset(asset)
+            data['last_visit_at'] = _visit_iso_in_brazil(last_visit)
+            operation_assets.append(data)
+
+        # Ranking de visitas (mais antigo sem visita -> mais recente) - usa os mesmos dados
+        stale_assets = sorted(operation_assets, key=lambda a: DateTimeSortHelper(a.get('last_visit_at')))[:10]
+
+        return render_template('inventory/operation.html', user=user, operation_assets=operation_assets, stale_assets=stale_assets)
     except Exception as e:
         print(f"[ERROR] Error rendering inventory operation: {e}")
         return redirect(url_for('inventory.render_inventory_index'))
@@ -167,6 +274,7 @@ def create_inventory_asset():
             prev_lat = existing.last_latitude
             prev_lng = existing.last_longitude
             prev_time = existing.created_at
+            visit_time = datetime.now(ZoneInfo("America/Sao_Paulo"))
 
             if last_latitude is not None:
                 existing.last_latitude = last_latitude
@@ -193,7 +301,7 @@ def create_inventory_asset():
             # Registrar visita/movimento
             visit = AssetInventoryVisit(
                 asset_id=existing.id,
-                visit_at=datetime.utcnow(),
+                visit_at=visit_time,
                 latitude=last_latitude if last_latitude is not None else prev_lat or 0,
                 longitude=last_longitude if last_longitude is not None else prev_lng or 0,
                 prev_visit_at=prev_time,
@@ -206,7 +314,9 @@ def create_inventory_asset():
             db_session.add(visit)
 
             db_session.commit()
-            return jsonify({"asset": _serialize_inventory_asset(existing), "updated": True}), 200
+            asset_payload = _serialize_inventory_asset(existing)
+            asset_payload["last_visit_at"] = _visit_iso_in_brazil(visit_time)
+            return jsonify({"asset": asset_payload, "updated": True}), 200
 
         asset = AssetsInventory(
             serial_number=serial_number,
@@ -223,10 +333,11 @@ def create_inventory_asset():
 
         db_session.add(asset)
         db_session.flush()
+        visit_time = datetime.now(ZoneInfo("America/Sao_Paulo"))
 
         visit = AssetInventoryVisit(
             asset_id=asset.id,
-            visit_at=datetime.utcnow(),
+            visit_at=visit_time,
             latitude=last_latitude or 0,
             longitude=last_longitude or 0,
             prev_visit_at=None,
@@ -240,7 +351,10 @@ def create_inventory_asset():
 
         db_session.commit()
 
-        return jsonify({"asset": _serialize_inventory_asset(asset), "created": True}), 201
+        asset_payload = _serialize_inventory_asset(asset)
+        asset_payload["last_visit_at"] = _visit_iso_in_brazil(visit_time)
+
+        return jsonify({"asset": asset_payload, "created": True}), 201
     except Exception as e:
         print(f"[ERROR] Error creating inventory asset: {e}")
         return jsonify({"error": "Erro ao criar asset"}), 500

@@ -7,6 +7,8 @@
 {% block extra_css %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
 <style>
     /* Tamanho fixo para o mapa sem interferir nos demais cards */
     #operation-map {
@@ -83,7 +85,7 @@
         border-left: 9px solid transparent;
         border-right: 9px solid transparent;
         border-bottom: 14px solid var(--color, #00c3ff);
-        filter: drop-shadow(0 0 4px rgba(0,0,0,0.25));
+        filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.25));
         transform: translateY(-2px);
     }
 
@@ -259,6 +261,69 @@
         margin-top: 8px;
     }
 
+    /* Mini cards (assets mais antigos) */
+    .stale-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 240px));
+        gap: 12px;
+        justify-content: flex-start;
+    }
+
+    .stale-card {
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        padding: 12px;
+        background: rgba(12, 20, 36, 0.75);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        color: #eef2fb;
+        min-width: 210px;
+        max-width: 260px;
+        font-size: 14px;
+        word-break: break-word;
+    }
+
+    .stale-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+        gap: 8px;
+    }
+
+    .stale-serial {
+        font-weight: 700;
+        font-size: 16px;
+        line-height: 1.2;
+        max-width: 70%;
+        word-break: break-word;
+    }
+
+    .stale-outlet {
+        padding: 4px 8px;
+        border-radius: 10px;
+        background: rgba(0, 195, 255, 0.14);
+        border: 1px solid rgba(0, 195, 255, 0.3);
+        font-size: 12px;
+        color: #9be7ff;
+        max-width: 90px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .stale-meta {
+        display: flex;
+        gap: 4px;
+        font-size: 13px;
+        color: #cfd6e6;
+        margin-bottom: 4px;
+    }
+
+    .stale-meta .label {
+        opacity: 0.75;
+        min-width: 100px;
+    }
+
     .toast {
         position: fixed;
         left: 50%;
@@ -282,8 +347,15 @@
     }
 
     @keyframes fadeInUp {
-        from { opacity: 0; transform: translate(-50%, -46%); }
-        to { opacity: 1; transform: translate(-50%, -50%); }
+        from {
+            opacity: 0;
+            transform: translate(-50%, -46%);
+        }
+
+        to {
+            opacity: 1;
+            transform: translate(-50%, -50%);
+        }
     }
 
     .btn-light {
@@ -296,13 +368,44 @@
         background: rgba(255, 255, 255, 0.22);
         color: #fff;
     }
+
+    .operation-actions {
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: flex-end;
+    }
+
+    .filter-control {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        min-width: 180px;
+    }
+
+    .filter-control label {
+        font-weight: 600;
+        font-size: 13px;
+    }
+
+    .filter-control select,
+    .filter-control input {
+        padding: 8px 10px;
+        border-radius: 10px;
+        border: 1px solid rgba(0, 0, 0, 0.18);
+        background: #f5f8ff;
+        font-size: 14px;
+    }
+
+    .filter-control small {
+        color: #6c7a93;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container">
     <h2>Operações do Inventário</h2>
-    <p>Acompanhe as operações em andamento e o posicionamento das movimentações.</p>
+    <p>Atualize e adicione localização dos seus ativos.</p>
 
     <div class="card" style="margin-top: 1rem;">
         <div class="card-header">
@@ -317,47 +420,100 @@
     <div class="status-text" id="location-status"></div>
 
     <div class="operation-actions">
-        <button type="button" class="btn btn-primary" id="open-scan-btn">Scan</button>
+        <div class="filter-control">
+            <label for="filter-outlet">Outlet</label>
+            <select id="filter-outlet">
+                <option value="all">Todos</option>
+            </select>
+        </div>
+        <div class="filter-control">
+            <label for="filter-radius">Raio (km)</label>
+            <input type="number" min="0" step="0.1" id="filter-radius" placeholder="ex: 5">
+        </div>
+        <div class="filter-control">
+            <label for="filter-order">Ordenar</label>
+            <select id="filter-order">
+                <option value="oldest">Mais desatualizados</option>
+                <option value="newest">Mais atualizados</option>
+            </select>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <button type="button" class="btn btn-light" id="apply-filters-btn">Aplicar filtros</button>
+            <button type="button" class="btn btn-primary" id="open-scan-btn">Scan</button>
+        </div>
     </div>
 
     <div class="toast" id="scan-toast"></div>
 
-    <!-- Modal: Escolher método -->
-    <div class="modal-backdrop" id="method-modal">
-    <div class="modal-card">
-        <div class="modal-header">
-            <h4>Adicionar asset</h4>
-            <button type="button" class="modal-close" data-close-modal="method-modal"><i class="fas fa-times"></i> Fechar</button>
+    <div class="card" style="margin-top: 1.25rem;">
+        <div class="card-header">
+            <strong>Assets</strong>
         </div>
-        <div class="modal-body">
-            <div class="form-grid">
-                <button type="button" class="pill-option" id="choose-qr" style="grid-column: 1 / -1;">
-                    <i class="fas fa-qrcode"></i> Scanear QR Code
-                </button>
-                <div class="method-divider" style="grid-column: 1 / -1;">ou</div>
-                <div style="grid-column: 1 / -1;">
-                    <label for="method-serial">Serial Number *</label>
-                    <input id="method-serial" placeholder="Informe o serial" />
+        <div class="card-body" style="padding: 12px;">
+            {% if stale_assets %}
+            <div class="stale-grid" id="stale-grid" style="margin: 0; width: 100%;">
+                {% for asset in stale_assets %}
+                <div class="stale-card">
+                    <div class="stale-header">
+                        <div class="stale-serial">{{ asset.serial_number }}</div>
+                        <div class="stale-outlet">{{ asset.outlet_name or 'Sem outlet' }}</div>
+                    </div>
+                    <div class="stale-meta">
+                        <span class="label">Última visita:</span>
+                        <span class="value">{{ asset.last_visit_at or 'Sem registro' }}</span>
+                    </div>
+                    <div class="stale-meta">
+                        <span class="label">Lat/Lng:</span>
+                        <span class="value">{{ asset.last_latitude or '-' }}, {{ asset.last_longitude or '-' }}</span>
+                    </div>
                 </div>
-                <button type="button" class="pill-option" id="choose-manual" style="grid-column: 1 / -1;">
-                    <i class="fas fa-keyboard"></i> Inserir manualmente
-                </button>
+                {% endfor %}
             </div>
-            <div class="status-text" id="method-status"></div>
+            {% else %}
+            <div style="padding: 8px;">Nenhuma visita registrada ainda.</div>
+            {% endif %}
         </div>
     </div>
-</div>
+
+    <!-- Modal: Escolher método -->
+    <div class="modal-backdrop" id="method-modal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h4>Adicionar asset</h4>
+                <button type="button" class="modal-close" data-close-modal="method-modal"><i class="fas fa-times"></i>
+                    Fechar</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-grid">
+                    <button type="button" class="pill-option" id="choose-qr" style="grid-column: 1 / -1;">
+                        <i class="fas fa-qrcode"></i> Scanear QR Code
+                    </button>
+                    <div class="method-divider" style="grid-column: 1 / -1;">ou</div>
+                    <div style="grid-column: 1 / -1;">
+                        <label for="method-serial">Serial Number *</label>
+                        <input id="method-serial" placeholder="Informe o serial" />
+                    </div>
+                    <button type="button" class="pill-option" id="choose-manual" style="grid-column: 1 / -1;">
+                        <i class="fas fa-keyboard"></i> Inserir manualmente
+                    </button>
+                </div>
+                <div class="status-text" id="method-status"></div>
+            </div>
+        </div>
+    </div>
 
     <!-- Modal: QR Scanner -->
     <div class="modal-backdrop" id="qr-modal">
         <div class="modal-card">
             <div class="modal-header">
                 <h4>Scanear QR Code</h4>
-                <button type="button" class="modal-close" data-close-modal="qr-modal"><i class="fas fa-times"></i> Fechar</button>
+                <button type="button" class="modal-close" data-close-modal="qr-modal"><i class="fas fa-times"></i>
+                    Fechar</button>
             </div>
             <div class="modal-body">
                 <div id="qr-reader"></div>
-                <p class="status-text">Aponte a câmera para o QR Code. Após ler, os dados serão preenchidos automaticamente.</p>
+                <p class="status-text">Aponte a câmera para o QR Code. Após ler, os dados serão preenchidos
+                    automaticamente.</p>
             </div>
         </div>
     </div>
@@ -367,7 +523,8 @@
         <div class="modal-card">
             <div class="modal-header">
                 <h4>Cadastro de Asset</h4>
-                <button type="button" class="modal-close" data-close-modal="form-modal"><i class="fas fa-times"></i> Fechar</button>
+                <button type="button" class="modal-close" data-close-modal="form-modal"><i class="fas fa-times"></i>
+                    Fechar</button>
             </div>
             <form id="inventory-form">
                 <div class="modal-body">
@@ -427,77 +584,87 @@
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const mapContainer = document.getElementById('operation-map');
-        const assetsData = {{ operation_assets | default([]) | tojson }};
+        const assetsData = {{ operation_assets | default ([]) | tojson
+    }};
+    let staleAssetsData = {{ stale_assets | default ([]) | tojson }};
+    if (!staleAssetsData.length) staleAssetsData = [...assetsData];
         let map;
         let markers = [];
         const markersBySerial = {};
+        let clusterGroup = null;
         let qrScanner = null;
+        let mapStatusEl = null;
 
-        const formModal = document.getElementById('form-modal');
-        const methodModal = document.getElementById('method-modal');
-        const qrModal = document.getElementById('qr-modal');
-        const openScanBtn = document.getElementById('open-scan-btn');
-        const formElement = document.getElementById('inventory-form');
-        const statusText = document.getElementById('form-status');
-        const locationStatus = document.getElementById('location-status');
-        const serialInput = document.getElementById('method-serial');
-        const methodStatus = document.getElementById('method-status');
+    const formModal = document.getElementById('form-modal');
+    const methodModal = document.getElementById('method-modal');
+    const qrModal = document.getElementById('qr-modal');
+    const openScanBtn = document.getElementById('open-scan-btn');
+    const formElement = document.getElementById('inventory-form');
+    const statusText = document.getElementById('form-status');
+    const locationStatus = document.getElementById('location-status');
+    const serialInput = document.getElementById('method-serial');
+    const methodStatus = document.getElementById('method-status');
 
-        const fieldSerial = document.getElementById('serial_number');
-        const fieldType = document.getElementById('asset_type');
-        const fieldMaterial = document.getElementById('material');
-        const fieldOutlet = document.getElementById('outlet_name');
-        const fieldStreet = document.getElementById('street');
-        const fieldCity = document.getElementById('city');
-        const fieldLat = document.getElementById('last_latitude');
-        const fieldLng = document.getElementById('last_longitude');
-        const fieldNotes = document.getElementById('notes');
-        let currentLocationMarker = null;
-        let userLat = null;
-        let userLng = null;
-        let geoWatchId = null;
-        const outletColorMap = {};
-        const outletColorPalette = ['#00C3FF', '#4C3AFF', '#FFC93C', '#00F5B5', '#FF6B6B', '#1F8EF1', '#7C4DFF', '#FF8A65'];
-        const legendContainer = document.getElementById('map-legend');
-        const currentIcon = L.divIcon({ className: 'current-location-icon' });
-        const toastEl = document.getElementById('scan-toast');
+    const fieldSerial = document.getElementById('serial_number');
+    const fieldType = document.getElementById('asset_type');
+    const fieldMaterial = document.getElementById('material');
+    const fieldOutlet = document.getElementById('outlet_name');
+    const fieldStreet = document.getElementById('street');
+    const fieldCity = document.getElementById('city');
+    const fieldLat = document.getElementById('last_latitude');
+    const fieldLng = document.getElementById('last_longitude');
+    const fieldNotes = document.getElementById('notes');
+    let currentLocationMarker = null;
+    let userLat = null;
+    let userLng = null;
+    let geoWatchId = null;
+    const outletColorMap = {};
+    const outletColorPalette = ['#00C3FF', '#4C3AFF', '#FFC93C', '#00F5B5', '#FF6B6B', '#1F8EF1', '#7C4DFF', '#FF8A65'];
+    const legendContainer = document.getElementById('map-legend');
+    const currentIcon = L.divIcon({ className: 'current-location-icon' });
+    const toastEl = document.getElementById('scan-toast');
+    const staleGridEl = document.getElementById('stale-grid');
+    const filterOutlet = document.getElementById('filter-outlet');
+    const filterRadius = document.getElementById('filter-radius');
+    const filterOrder = document.getElementById('filter-order');
+    const applyFiltersBtn = document.getElementById('apply-filters-btn');
 
-        function setModal(modal, isOpen) {
-            if (!modal) return;
-            if (isOpen) modal.classList.add('active');
-            else modal.classList.remove('active');
-        }
+    function setModal(modal, isOpen) {
+        if (!modal) return;
+        if (isOpen) modal.classList.add('active');
+        else modal.classList.remove('active');
+    }
 
-        function fillLocationFields(prefill = {}) {
-            const latValue = prefill.last_latitude ?? userLat;
-            const lngValue = prefill.last_longitude ?? userLng;
-            if (fieldLat && latValue !== null && latValue !== undefined) fieldLat.value = latValue;
-            if (fieldLng && lngValue !== null && lngValue !== undefined) fieldLng.value = lngValue;
-        }
+    function fillLocationFields(prefill = {}) {
+        const latValue = prefill.last_latitude ?? userLat;
+        const lngValue = prefill.last_longitude ?? userLng;
+        if (fieldLat && latValue !== null && latValue !== undefined) fieldLat.value = latValue;
+        if (fieldLng && lngValue !== null && lngValue !== undefined) fieldLng.value = lngValue;
+    }
 
-        function resetForm() {
-            formElement.reset();
-            statusText.textContent = '';
-            fillLocationFields();
-        }
+    function resetForm() {
+        formElement.reset();
+        statusText.textContent = '';
+        fillLocationFields();
+    }
 
-        function loadScriptIfNeeded(checkFn, primaryUrl, fallbackUrl) {
+    function loadScriptIfNeeded(checkFn, primaryUrl, fallbackUrl) {
             return new Promise((resolve) => {
                 if (checkFn()) return resolve(true);
                 const script = document.createElement('script');
                 script.src = primaryUrl;
                 script.onload = () => resolve(true);
-                script.onerror = () => {
-                    if (!fallbackUrl) return resolve(false);
-                    const fallback = document.createElement('script');
-                    fallback.src = fallbackUrl;
-                    fallback.onload = () => resolve(true);
-                    fallback.onerror = () => resolve(false);
-                    document.body.appendChild(fallback);
-                };
-                document.body.appendChild(script);
-            });
-        }
+            script.onerror = () => {
+                if (!fallbackUrl) return resolve(false);
+                const fallback = document.createElement('script');
+                fallback.src = fallbackUrl;
+                fallback.onload = () => resolve(true);
+                fallback.onerror = () => resolve(false);
+                document.body.appendChild(fallback);
+            };
+            document.body.appendChild(script);
+        });
+    }
 
         async function initMap() {
             const leafletLoaded = await loadScriptIfNeeded(
@@ -511,6 +678,17 @@
                 return;
             }
 
+            const clusterLoaded = await loadScriptIfNeeded(
+                () => window.L && !!L.MarkerClusterGroup,
+                'https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js',
+                'https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js'
+            );
+
+            if (!clusterLoaded || !L.MarkerClusterGroup) {
+                mapContainer.innerHTML = '<div class="map-status">Não foi possível carregar o mapa (cluster não carregado).</div>';
+                return;
+            }
+
             map = L.map('operation-map').setView([-15.7801, -47.9292], 4);
 
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -518,352 +696,538 @@
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             }).addTo(map);
 
-            assetsData.forEach(addAssetMarker);
-
-            if (!markers.length) {
-                const status = document.createElement('div');
-                status.className = 'map-status';
-                status.innerText = 'Sem ativos com localização para exibir no mapa.';
-                mapContainer.appendChild(status);
-            }
+            clusterGroup = L.markerClusterGroup({
+                showCoverageOnHover: false,
+                zoomToBoundsOnClick: false,
+                spiderfyOnMaxZoom: true,
+                spiderfyOnEveryZoom: true,
+                spiderfyDistanceMultiplier: 1.6,
+                disableClusteringAtZoom: null
+            });
+            clusterGroup.on('clusterclick', (e) => {
+                // Ao clicar em clusters, sempre abra o spiderfy para ver todos os pontos sobrepostos
+                e.layer.spiderfy();
+            });
+            map.addLayer(clusterGroup);
 
             // Após inicializar o mapa, tente capturar localização atual
             requestCurrentLocation();
+            applyFilters();
         }
 
-        function addAssetMarker(asset) {
-            if (!map) return;
+        function addAssetMarker(asset, { skipFit = false } = {}) {
+            if (!map || !clusterGroup) return;
             const lat = parseFloat(asset.last_latitude);
             const lng = parseFloat(asset.last_longitude);
             if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
 
-            const title = asset.serial_number || 'Asset sem serial';
-            const popupLines = [
-                `<strong>${title}</strong>`,
-                asset.asset_type ? `Tipo: ${asset.asset_type}` : null,
-                asset.outlet_name ? `Ponto: ${asset.outlet_name}` : null,
-                asset.city || asset.street ? `${asset.street || ''} ${asset.city || ''}`.trim() : null
-            ].filter(Boolean);
+        const title = asset.serial_number || 'Asset sem serial';
+        const popupLines = [
+            `<strong>${title}</strong>`,
+            asset.asset_type ? `Tipo: ${asset.asset_type}` : null,
+            asset.outlet_name ? `Ponto: ${asset.outlet_name}` : null,
+            asset.city || asset.street ? `${asset.street || ''} ${asset.city || ''}`.trim() : null
+        ].filter(Boolean);
 
-            const outletKey = (asset.outlet_name || 'Sem outlet').trim() || 'Sem outlet';
-            const color = getOutletColor(outletKey);
+        const outletKey = (asset.outlet_name || 'Sem outlet').trim() || 'Sem outlet';
+        const color = getOutletColor(outletKey);
 
-            const markerKey = asset.serial_number || `${lat},${lng}`;
-            if (markersBySerial[markerKey]) {
-                map.removeLayer(markersBySerial[markerKey]);
-                markers = markers.filter(m => m !== markersBySerial[markerKey]);
-            }
+        const markerKey = asset.serial_number || `${lat},${lng}`;
+        if (markersBySerial[markerKey]) {
+            map.removeLayer(markersBySerial[markerKey]);
+            markers = markers.filter(m => m !== markersBySerial[markerKey]);
+        }
 
-            const marker = L.marker([lat, lng], { icon: createAssetIcon(color) }).addTo(map).bindPopup(popupLines.join('<br>'));
+            const marker = L.marker([lat, lng], { icon: createAssetIcon(color) }).bindPopup(popupLines.join('<br>'));
+            clusterGroup.addLayer(marker);
             markers.push(marker);
             markersBySerial[markerKey] = marker;
+            if (!skipFit) {
+                map.fitBounds(clusterGroup.getBounds(), { padding: [24, 24] });
+            }
+        }
+
+    function upsertAssetData(asset) {
+        const idx = assetsData.findIndex((a) => a.serial_number === asset.serial_number);
+        if (idx >= 0) assetsData[idx] = asset;
+        else assetsData.push(asset);
+    }
+
+    function upsertStaleAsset(asset) {
+        if (!asset.serial_number) return;
+        const idx = staleAssetsData.findIndex(a => a.serial_number === asset.serial_number);
+        if (idx >= 0) staleAssetsData[idx] = asset;
+        else staleAssetsData.unshift(asset);
+        // Ordena por last_visit_at (mais antigo primeiro)
+        staleAssetsData.sort((a, b) => {
+            const ta = a.last_visit_at ? Date.parse(a.last_visit_at) : 0;
+            const tb = b.last_visit_at ? Date.parse(b.last_visit_at) : 0;
+            return ta - tb;
+        });
+        renderStaleGrid();
+    }
+
+    function formatLocalDate(isoString) {
+        if (!isoString) return null;
+        const d = new Date(isoString);
+        if (Number.isNaN(d.getTime())) return isoString;
+        return d.toLocaleString(undefined, {
+            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            hour12: false
+        });
+    }
+
+    function renderStaleGrid(list = staleAssetsData) {
+        if (!staleGridEl) return;
+        staleGridEl.innerHTML = '';
+        (list || []).slice(0, 10).forEach(asset => {
+            const card = document.createElement('div');
+            card.className = 'stale-card';
+
+            const header = document.createElement('div');
+            header.className = 'stale-header';
+            const serialDiv = document.createElement('div');
+            serialDiv.className = 'stale-serial';
+            serialDiv.textContent = asset.serial_number;
+            const outletDiv = document.createElement('div');
+            outletDiv.className = 'stale-outlet';
+            outletDiv.textContent = asset.outlet_name || 'Sem outlet';
+            header.appendChild(serialDiv);
+            header.appendChild(outletDiv);
+
+            const meta1 = document.createElement('div');
+            meta1.className = 'stale-meta';
+            const lbl1 = document.createElement('span'); lbl1.className = 'label'; lbl1.textContent = 'Última visita:';
+            const val1 = document.createElement('span'); val1.className = 'value'; val1.textContent = formatLocalDate(asset.last_visit_at) || 'Sem registro';
+            meta1.appendChild(lbl1); meta1.appendChild(val1);
+
+            const meta2 = document.createElement('div');
+            meta2.className = 'stale-meta';
+            const lbl2 = document.createElement('span'); lbl2.className = 'label'; lbl2.textContent = 'Lat/Lng:';
+            const val2 = document.createElement('span'); val2.className = 'value'; val2.textContent = `${asset.last_latitude || '-'}, ${asset.last_longitude || '-'}`;
+            meta2.appendChild(lbl2); meta2.appendChild(val2);
+
+            card.appendChild(header);
+            card.appendChild(meta1);
+            card.appendChild(meta2);
+            staleGridEl.appendChild(card);
+        });
+    }
+
+    function buildOutletOptions() {
+        if (!filterOutlet) return;
+        const currentValue = filterOutlet.value;
+        const outlets = new Set();
+        assetsData.forEach(asset => {
+            const key = (asset.outlet_name || 'Sem outlet').trim() || 'Sem outlet';
+            outlets.add(key);
+        });
+        filterOutlet.innerHTML = '<option value="all">Todos</option>';
+        Array.from(outlets).sort().forEach(outlet => {
+            const opt = document.createElement('option');
+            opt.value = outlet;
+            opt.textContent = outlet;
+            filterOutlet.appendChild(opt);
+        });
+        if (currentValue && [...filterOutlet.options].some(o => o.value === currentValue)) {
+            filterOutlet.value = currentValue;
+        }
+    }
+
+    function computeDistanceKm(lat1, lon1, lat2, lon2) {
+        if (![lat1, lon1, lat2, lon2].every(Number.isFinite)) return null;
+        const R = 6371; // km
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+    }
+
+    function sortAssets(list, order = 'oldest') {
+        const copy = [...list];
+        copy.sort((a, b) => {
+            const ta = a.last_visit_at ? Date.parse(a.last_visit_at) : 0;
+            const tb = b.last_visit_at ? Date.parse(b.last_visit_at) : 0;
+            if (order === 'newest') return tb - ta;
+            return ta - tb;
+        });
+        return copy;
+    }
+
+        function renderMarkers(assetList) {
+            if (!map || !clusterGroup) return;
+            // limpa somente assets (mantém localização atual)
+            clusterGroup.clearLayers();
+            markers = [];
+            Object.keys(markersBySerial).forEach(key => {
+                delete markersBySerial[key];
+            });
+            Object.keys(outletColorMap).forEach(key => delete outletColorMap[key]);
+
+        if (!mapStatusEl) {
+            mapStatusEl = document.createElement('div');
+            mapStatusEl.className = 'map-status';
+            mapContainer.appendChild(mapStatusEl);
+        }
+
+        if (!assetList || !assetList.length) {
+            mapStatusEl.innerText = 'Nenhum asset para exibir com os filtros atuais.';
+            mapStatusEl.style.display = 'flex';
             updateLegend();
-
-            const group = L.featureGroup(markers);
-            map.fitBounds(group.getBounds(), { padding: [24, 24] });
+            return;
+        } else {
+            mapStatusEl.style.display = 'none';
         }
 
-        function upsertAssetData(asset) {
-            const idx = assetsData.findIndex((a) => a.serial_number === asset.serial_number);
-            if (idx >= 0) assetsData[idx] = asset;
-            else assetsData.push(asset);
+            assetList.forEach(asset => addAssetMarker(asset, { skipFit: true }));
+            if (markers.length) {
+                map.fitBounds(clusterGroup.getBounds(), { padding: [24, 24] });
+            }
+            updateLegend();
         }
 
-        function createAssetIcon(color) {
-            const html = `<div class="asset-marker-wrapper"><div class="asset-marker-icon" style="--color:${color};"></div></div>`;
-            return L.divIcon({
-                className: 'asset-marker-container',
-                html,
-                iconSize: [18, 18],
-                iconAnchor: [9, 12],
-                popupAnchor: [0, -10]
-            });
+    function applyFilters() {
+        const outletVal = filterOutlet?.value || 'all';
+        const orderVal = filterOrder?.value || 'oldest';
+        const radiusVal = parseFloat(filterRadius?.value);
+        const radiusEnabled = Number.isFinite(radiusVal) && radiusVal > 0;
+        const canUseRadius = radiusEnabled && userLat !== null && userLng !== null;
+
+        if (radiusEnabled && !canUseRadius && locationStatus) {
+            locationStatus.textContent = 'Ative ou permita a localização para filtrar por raio.';
         }
 
-        function getOutletColor(outlet) {
-            if (outletColorMap[outlet]) return outletColorMap[outlet];
-            const idx = Object.keys(outletColorMap).length % outletColorPalette.length;
-            outletColorMap[outlet] = outletColorPalette[idx];
-            return outletColorMap[outlet];
-        }
+        const filtered = assetsData.filter(asset => {
+            const outletKey = (asset.outlet_name || 'Sem outlet').trim() || 'Sem outlet';
+            if (outletVal !== 'all' && outletKey !== outletVal) return false;
 
-        function updateLegend() {
-            if (!legendContainer) return;
-            legendContainer.innerHTML = '<strong>Mapa</strong><div style="height: 6px"></div>';
-
-            // Localização atual
-            const meItem = document.createElement('div');
-            meItem.className = 'legend-item';
-            const meSwatch = document.createElement('div');
-            meSwatch.className = 'legend-swatch current';
-            const meLabel = document.createElement('span');
-            meLabel.textContent = 'Sua localização';
-            meItem.appendChild(meSwatch);
-            meItem.appendChild(meLabel);
-            legendContainer.appendChild(meItem);
-
-            const divider = document.createElement('div');
-            divider.style.height = '6px';
-            legendContainer.appendChild(divider);
-            const title = document.createElement('div');
-            title.style.marginBottom = '4px';
-            title.textContent = 'Outlets';
-            legendContainer.appendChild(title);
-
-            Object.keys(outletColorMap).forEach(outlet => {
-                const item = document.createElement('div');
-                item.className = 'legend-item';
-                const swatch = document.createElement('div');
-                swatch.className = 'legend-swatch asset';
-                swatch.style.setProperty('--color', outletColorMap[outlet]);
-                const label = document.createElement('span');
-                label.textContent = outlet;
-                item.appendChild(swatch);
-                item.appendChild(label);
-                legendContainer.appendChild(item);
-            });
-        }
-
-        function setCurrentLocation(lat, lng) {
-            userLat = lat;
-            userLng = lng;
-            if (fieldLat) fieldLat.value = lat;
-            if (fieldLng) fieldLng.value = lng;
-
-            if (!map || !window.L) return;
-
-            if (currentLocationMarker) {
-                map.removeLayer(currentLocationMarker);
+            if (radiusEnabled && canUseRadius) {
+                const lat = parseFloat(asset.last_latitude);
+                const lng = parseFloat(asset.last_longitude);
+                const dist = computeDistanceKm(userLat, userLng, lat, lng);
+                if (dist === null || dist > radiusVal) return false;
             }
 
-            currentLocationMarker = L.marker([lat, lng], { icon: currentIcon }).addTo(map).bindPopup('Sua localização atual');
+            return true;
+        });
 
-            map.panTo([lat, lng]);
+        const ordered = sortAssets(filtered, orderVal);
+        renderMarkers(ordered);
+        renderStaleGrid(ordered);
+    }
+
+    function createAssetIcon(color) {
+        const html = `<div class="asset-marker-wrapper"><div class="asset-marker-icon" style="--color:${color};"></div></div>`;
+        return L.divIcon({
+            className: 'asset-marker-container',
+            html,
+            iconSize: [18, 18],
+            iconAnchor: [9, 12],
+            popupAnchor: [0, -10]
+        });
+    }
+
+    function getOutletColor(outlet) {
+        if (outletColorMap[outlet]) return outletColorMap[outlet];
+        const idx = Object.keys(outletColorMap).length % outletColorPalette.length;
+        outletColorMap[outlet] = outletColorPalette[idx];
+        return outletColorMap[outlet];
+    }
+
+    function updateLegend() {
+        if (!legendContainer) return;
+        legendContainer.innerHTML = '<strong>Mapa</strong><div style="height: 6px"></div>';
+
+        // Localização atual
+        const meItem = document.createElement('div');
+        meItem.className = 'legend-item';
+        const meSwatch = document.createElement('div');
+        meSwatch.className = 'legend-swatch current';
+        const meLabel = document.createElement('span');
+        meLabel.textContent = 'Sua localização';
+        meItem.appendChild(meSwatch);
+        meItem.appendChild(meLabel);
+        legendContainer.appendChild(meItem);
+
+        const divider = document.createElement('div');
+        divider.style.height = '6px';
+        legendContainer.appendChild(divider);
+        const title = document.createElement('div');
+        title.style.marginBottom = '4px';
+        title.textContent = 'Outlets';
+        legendContainer.appendChild(title);
+
+        Object.keys(outletColorMap).forEach(outlet => {
+            const item = document.createElement('div');
+            item.className = 'legend-item';
+            const swatch = document.createElement('div');
+            swatch.className = 'legend-swatch asset';
+            swatch.style.setProperty('--color', outletColorMap[outlet]);
+            const label = document.createElement('span');
+            label.textContent = outlet;
+            item.appendChild(swatch);
+            item.appendChild(label);
+            legendContainer.appendChild(item);
+        });
+    }
+
+    function setCurrentLocation(lat, lng) {
+        userLat = lat;
+        userLng = lng;
+        if (fieldLat) fieldLat.value = lat;
+        if (fieldLng) fieldLng.value = lng;
+
+        if (!map || !window.L) return;
+
+        if (currentLocationMarker) {
+            map.removeLayer(currentLocationMarker);
         }
 
-        function requestCurrentLocation() {
-            if (!navigator.geolocation) {
-                if (locationStatus) locationStatus.textContent = 'Geolocalização não suportada neste dispositivo.';
-                return;
-            }
+        currentLocationMarker = L.marker([lat, lng], { icon: currentIcon }).addTo(map).bindPopup('Sua localização atual');
 
-            if (locationStatus) locationStatus.textContent = 'Obtendo sua localização...';
+        map.panTo([lat, lng]);
+        const radiusVal = parseFloat(filterRadius?.value);
+        if (Number.isFinite(radiusVal) && radiusVal > 0) applyFilters();
+    }
 
-            const opts = {
-                enableHighAccuracy: true,
-                timeout: 15000,
-                maximumAge: 0
-            };
-
-            const onSuccess = (pos) => {
-                const lat = pos.coords.latitude;
-                const lng = pos.coords.longitude;
-                setCurrentLocation(lat, lng);
-                if (locationStatus) locationStatus.textContent = 'Localização preenchida automaticamente.';
-                if (geoWatchId !== null) navigator.geolocation.clearWatch(geoWatchId);
-                geoWatchId = null;
-            };
-
-            const onError = (err) => {
-                console.warn('Geolocation error', err);
-                if (locationStatus) locationStatus.textContent = 'Não foi possível obter a localização.';
-                if (geoWatchId !== null) navigator.geolocation.clearWatch(geoWatchId);
-                geoWatchId = null;
-            };
-
-            geoWatchId = navigator.geolocation.watchPosition(onSuccess, onError, opts);
+    function requestCurrentLocation() {
+        if (!navigator.geolocation) {
+            if (locationStatus) locationStatus.textContent = 'Geolocalização não suportada neste dispositivo.';
+            return;
         }
 
-        function parseQrText(rawText) {
-            const data = {};
-            const cleaned = rawText.replace(/^Raw text:\s*/i, '').trim();
-            cleaned.split(/\r?\n/).forEach(line => {
-                const [key, ...rest] = line.split(':');
-                if (!key || !rest.length) return;
-                const value = rest.join(':').trim();
-                const normalized = key.trim().toLowerCase();
-                if (normalized === 'type') data.asset_type = value;
-                if (normalized === 'material') data.material = value;
-                if (normalized === 'sn') data.serial_number = value;
-            });
-            return data;
+        if (locationStatus) locationStatus.textContent = 'Obtendo sua localização...';
+
+        const opts = {
+            enableHighAccuracy: true,
+            timeout: 15000,
+            maximumAge: 0
+        };
+
+        const onSuccess = (pos) => {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            setCurrentLocation(lat, lng);
+            if (locationStatus) locationStatus.textContent = 'Localização obtida.';
+            if (geoWatchId !== null) navigator.geolocation.clearWatch(geoWatchId);
+            geoWatchId = null;
+        };
+
+        const onError = (err) => {
+            console.warn('Geolocation error', err);
+            if (locationStatus) locationStatus.textContent = 'Não foi possível obter a localização.';
+            if (geoWatchId !== null) navigator.geolocation.clearWatch(geoWatchId);
+            geoWatchId = null;
+        };
+
+        geoWatchId = navigator.geolocation.watchPosition(onSuccess, onError, opts);
+    }
+
+    function parseQrText(rawText) {
+        const data = {};
+        const cleaned = rawText.replace(/^Raw text:\s*/i, '').trim();
+        cleaned.split(/\r?\n/).forEach(line => {
+            const [key, ...rest] = line.split(':');
+            if (!key || !rest.length) return;
+            const value = rest.join(':').trim();
+            const normalized = key.trim().toLowerCase();
+            if (normalized === 'type') data.asset_type = value;
+            if (normalized === 'material') data.material = value;
+            if (normalized === 'sn') data.serial_number = value;
+        });
+        return data;
+    }
+
+    function openForm(prefill = {}) {
+        resetForm();
+        if (prefill.serial_number) fieldSerial.value = prefill.serial_number;
+        if (prefill.asset_type) fieldType.value = prefill.asset_type;
+        if (prefill.material) fieldMaterial.value = prefill.material;
+        fillLocationFields(prefill);
+        setModal(formModal, true);
+    }
+
+    async function startQrScanner() {
+        const qrLoaded = await loadScriptIfNeeded(
+            () => window.Html5Qrcode,
+            'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js',
+            'https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js'
+        );
+
+        if (!qrLoaded || !window.Html5Qrcode) {
+            statusText.textContent = 'Biblioteca de QR não carregou.';
+            return;
         }
-
-        function openForm(prefill = {}) {
-            resetForm();
-            if (prefill.serial_number) fieldSerial.value = prefill.serial_number;
-            if (prefill.asset_type) fieldType.value = prefill.asset_type;
-            if (prefill.material) fieldMaterial.value = prefill.material;
-            fillLocationFields(prefill);
-            setModal(formModal, true);
-        }
-
-        async function startQrScanner() {
-            const qrLoaded = await loadScriptIfNeeded(
-                () => window.Html5Qrcode,
-                'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js',
-                'https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js'
-            );
-
-            if (!qrLoaded || !window.Html5Qrcode) {
-                statusText.textContent = 'Biblioteca de QR não carregou.';
-                return;
-            }
-            const qrRegionId = 'qr-reader';
-            const config = { fps: 10, qrbox: 250 };
-            qrScanner = new Html5Qrcode(qrRegionId);
-            qrScanner.start({ facingMode: "environment" }, config, (decodedText) => {
-                safeStopQrScanner();
-                setModal(qrModal, false);
-                const parsed = parseQrText(decodedText);
-                openForm(parsed);
-            }, (errorMessage) => {
-                // Ignorar erros de leitura contínuos
-            }).catch(err => {
-                statusText.textContent = 'Não foi possível iniciar a câmera: ' + err;
-            });
-        }
-
-        function safeStopQrScanner() {
-            if (!qrScanner) return;
-            qrScanner.stop().then(() => qrScanner.clear()).catch(() => {}).finally(() => {
-                qrScanner = null;
-            });
-        }
-
-        function stopQrScanner() {
+        const qrRegionId = 'qr-reader';
+        const config = { fps: 10, qrbox: 250 };
+        qrScanner = new Html5Qrcode(qrRegionId);
+        qrScanner.start({ facingMode: "environment" }, config, (decodedText) => {
             safeStopQrScanner();
-        }
+            setModal(qrModal, false);
+            const parsed = parseQrText(decodedText);
+            openForm(parsed);
+        }, (errorMessage) => {
+            // Ignorar erros de leitura contínuos
+        }).catch(err => {
+            statusText.textContent = 'Não foi possível iniciar a câmera: ' + err;
+        });
+    }
 
-        if (openScanBtn) {
+    function safeStopQrScanner() {
+        if (!qrScanner) return;
+        qrScanner.stop().then(() => qrScanner.clear()).catch(() => { }).finally(() => {
+            qrScanner = null;
+        });
+    }
+
+    function stopQrScanner() {
+        safeStopQrScanner();
+    }
+
+    if (openScanBtn) {
         openScanBtn.addEventListener('click', () => setModal(methodModal, true));
-        }
+    }
 
-        const chooseManual = document.getElementById('choose-manual');
-        if (chooseManual) {
-            chooseManual.addEventListener('click', async () => {
-                const serial = (serialInput?.value || '').trim();
-                if (!serial) {
-                    if (methodStatus) methodStatus.textContent = 'Informe o Serial Number antes de continuar.';
+    const chooseManual = document.getElementById('choose-manual');
+    if (chooseManual) {
+        chooseManual.addEventListener('click', async () => {
+            const serial = (serialInput?.value || '').trim();
+            if (!serial) {
+                if (methodStatus) methodStatus.textContent = 'Informe o Serial Number antes de continuar.';
+                return;
+            }
+            if (methodStatus) methodStatus.textContent = 'Verificando asset...';
+
+            const prefillLoc = {};
+            if (userLat !== null && userLng !== null) {
+                prefillLoc.last_latitude = userLat;
+                prefillLoc.last_longitude = userLng;
+            }
+
+            try {
+                const checkUrl = `${window.location.origin}/inventory/operation/check/${encodeURIComponent(serial)}`;
+                const checkResp = await fetch(checkUrl, { credentials: 'same-origin' });
+                if (checkResp.ok) {
+                    const payload = {
+                        serial_number: serial,
+                        last_latitude: prefillLoc.last_latitude,
+                        last_longitude: prefillLoc.last_longitude
+                    };
+                    await saveAsset(payload, { skipFormClose: false });
+                    setModal(methodModal, false);
+                    if (methodStatus) methodStatus.textContent = '';
                     return;
                 }
-                if (methodStatus) methodStatus.textContent = 'Verificando asset...';
-
-                const prefillLoc = {};
-                if (userLat !== null && userLng !== null) {
-                    prefillLoc.last_latitude = userLat;
-                    prefillLoc.last_longitude = userLng;
-                }
-
-                try {
-                    const checkUrl = `${window.location.origin}/inventory/operation/check/${encodeURIComponent(serial)}`;
-                    const checkResp = await fetch(checkUrl, { credentials: 'same-origin' });
-                    if (checkResp.ok) {
-                        const payload = {
-                            serial_number: serial,
-                            last_latitude: prefillLoc.last_latitude,
-                            last_longitude: prefillLoc.last_longitude
-                        };
-                        await saveAsset(payload, { skipFormClose: false });
-                        setModal(methodModal, false);
-                        if (methodStatus) methodStatus.textContent = '';
-                        return;
-                    }
-                } catch (err) {
-                    // segue fluxo padrão
-                }
-
-                if (methodStatus) methodStatus.textContent = '';
-                setModal(methodModal, false);
-                openForm({ serial_number: serial, ...prefillLoc });
-            });
-        }
-
-        const chooseQr = document.getElementById('choose-qr');
-        if (chooseQr) {
-            chooseQr.addEventListener('click', () => {
-                if (serialInput) serialInput.value = serialInput.value.trim();
-                setModal(methodModal, false);
-                setModal(qrModal, true);
-                startQrScanner();
-            });
-        }
-
-        document.querySelectorAll('[data-close-modal]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const target = btn.getAttribute('data-close-modal');
-                const modal = document.getElementById(target);
-                if (modal) setModal(modal, false);
-                if (target === 'qr-modal') stopQrScanner();
-            });
-        });
-
-        async function saveAsset(payload, { skipFormClose = false } = {}) {
-            statusText.textContent = 'Enviando...';
-            try {
-                const response = await fetch('{{ url_for('inventory.create_inventory_asset') }}', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                const result = await response.json();
-                if (!response.ok) {
-                    statusText.textContent = result.error || 'Erro ao salvar asset.';
-                    return { ok: false };
-                }
-
-                statusText.textContent = 'Asset salvo com sucesso!';
-                if (!skipFormClose) setModal(formModal, false);
-
-                if (result.asset) {
-                    upsertAssetData(result.asset);
-                    addAssetMarker(result.asset);
-                }
-
-                if (toastEl) {
-                    const lines = [];
-                    lines.push(result.updated ? 'Asset atualizado' : 'Asset criado');
-
-                    if (result.asset) {
-                        const distVal = result.asset.last_visit_distance_m;
-                        const latVal = result.asset.last_latitude;
-                        const lngVal = result.asset.last_longitude;
-                        if (distVal !== undefined && distVal !== null && !Number.isNaN(Number(distVal))) {
-                            lines.push(`Movimentação: ${Number(distVal).toFixed(2)} m`);
-                        } else if (latVal !== undefined && lngVal !== undefined) {
-                            lines.push(`Lat/Lng atualizados: ${latVal}, ${lngVal}`);
-                        }
-                    }
-
-                    toastEl.innerHTML = lines.join('<br>');
-                    toastEl.classList.add('show');
-                    setTimeout(() => toastEl.classList.remove('show'), 4000);
-                }
-                return { ok: true };
             } catch (err) {
-                statusText.textContent = 'Erro de rede ao salvar asset.';
+                // segue fluxo padrão
+            }
+
+            if (methodStatus) methodStatus.textContent = '';
+            setModal(methodModal, false);
+            openForm({ serial_number: serial, ...prefillLoc });
+        });
+    }
+
+    const chooseQr = document.getElementById('choose-qr');
+    if (chooseQr) {
+        chooseQr.addEventListener('click', () => {
+            if (serialInput) serialInput.value = serialInput.value.trim();
+            setModal(methodModal, false);
+            setModal(qrModal, true);
+            startQrScanner();
+        });
+    }
+
+    if (applyFiltersBtn) applyFiltersBtn.addEventListener('click', applyFilters);
+    if (filterOutlet) filterOutlet.addEventListener('change', applyFilters);
+    if (filterOrder) filterOrder.addEventListener('change', applyFilters);
+    if (filterRadius) filterRadius.addEventListener('change', applyFilters);
+
+    document.querySelectorAll('[data-close-modal]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const target = btn.getAttribute('data-close-modal');
+            const modal = document.getElementById(target);
+            if (modal) setModal(modal, false);
+            if (target === 'qr-modal') stopQrScanner();
+        });
+    });
+
+    async function saveAsset(payload, { skipFormClose = false } = {}) {
+        statusText.textContent = 'Enviando...';
+        try {
+            const response = await fetch('{{ url_for('inventory.create_inventory_asset') }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+            if (!response.ok) {
+                statusText.textContent = result.error || 'Erro ao salvar asset.';
                 return { ok: false };
             }
+
+            statusText.textContent = 'Asset salvo com sucesso!';
+            if (!skipFormClose) setModal(formModal, false);
+
+            if (result.asset) {
+                upsertAssetData(result.asset);
+                // Atualiza mini cards de visitas
+                const stalePayload = { ...result.asset };
+                if (!stalePayload.last_visit_at) {
+                    stalePayload.last_visit_at = new Date().toISOString();
+                }
+                upsertStaleAsset(stalePayload);
+                buildOutletOptions();
+                applyFilters();
+            }
+
+            if (toastEl) {
+                const lines = [];
+                lines.push(result.updated ? 'Asset atualizado' : 'Asset criado');
+
+                if (result.asset) {
+                    const distVal = result.asset.last_visit_distance_m;
+                    const latVal = result.asset.last_latitude;
+                    const lngVal = result.asset.last_longitude;
+                    if (distVal !== undefined && distVal !== null && !Number.isNaN(Number(distVal))) {
+                        lines.push(`Movimentação: ${Number(distVal).toFixed(2)} m`);
+                    } else if (latVal !== undefined && lngVal !== undefined) {
+                        lines.push(`Lat/Lng atualizados: ${latVal}, ${lngVal}`);
+                    }
+                }
+
+                toastEl.innerHTML = lines.join('<br>');
+                toastEl.classList.add('show');
+                setTimeout(() => toastEl.classList.remove('show'), 4000);
+            }
+            return { ok: true };
+        } catch (err) {
+            statusText.textContent = 'Erro de rede ao salvar asset.';
+            return { ok: false };
         }
+    }
 
-        formElement.addEventListener('submit', async (event) => {
-            event.preventDefault();
-            const payload = {
-                serial_number: fieldSerial.value.trim(),
-                asset_type: fieldType.value.trim(),
-                material: fieldMaterial.value.trim(),
-                outlet_name: fieldOutlet.value.trim(),
-                street: fieldStreet.value.trim(),
-                city: fieldCity.value.trim(),
-                last_latitude: fieldLat.value.trim(),
-                last_longitude: fieldLng.value.trim(),
-                notes: fieldNotes.value.trim(),
-            };
-            await saveAsset(payload);
-        });
+    formElement.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const payload = {
+            serial_number: fieldSerial.value.trim(),
+            asset_type: fieldType.value.trim(),
+            material: fieldMaterial.value.trim(),
+            outlet_name: fieldOutlet.value.trim(),
+            street: fieldStreet.value.trim(),
+            city: fieldCity.value.trim(),
+            last_latitude: fieldLat.value.trim(),
+            last_longitude: fieldLng.value.trim(),
+            notes: fieldNotes.value.trim(),
+        };
+        await saveAsset(payload);
+    });
 
-        initMap();
+    buildOutletOptions();
+    applyFilters();
+    initMap();
     });
 </script>
 {% endblock %}
@@ -893,6 +1257,11 @@
                 class="sidebar-nav-link {% if request.path.startswith('/inventory/operation') %}active{% endif %}">
                 <i class="fas fa-cogs"></i>
                 <span>Operação</span>
+            </a>
+            <a href="{{ url_for('inventory.render_inventory_visits') }}"
+                class="sidebar-nav-link {% if request.path.startswith('/inventory/visits') %}active{% endif %}">
+                <i class="fas fa-route"></i>
+                <span>Visitas</span>
             </a>
         </div>
     </nav>

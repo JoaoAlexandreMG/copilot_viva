@@ -18,6 +18,14 @@ from routes.portal.alerts import alerts_bp as portal_alerts_bp
 from utils.vision_accounts import create_accounts_for_all_clients
 from swagger import register_swagger
 
+# Clients autorizados para usar a seção de Inventário (case-insensitive)
+INVENTORY_AUTHORIZED_CLIENTS = {
+    c.lower() for c in (
+         "Redbull",
+        # "Nome do Cliente 2",
+    )
+}
+
 app = Flask(__name__, template_folder="templates", static_folder="static", static_url_path="/static")
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-secret-key")
 
@@ -192,6 +200,10 @@ def index():
         # Update last login
         user.last_login_on = datetime.now()
         db_session.commit()
+
+        # Força inventário se o client estiver na lista autorizada
+        if user.client and user.client.lower() in INVENTORY_AUTHORIZED_CLIENTS:
+            destination = "inventory"
 
         # Redirect based on destination
         # Check `inventory` explicitly before `portal` to permit custom inventory redirect
