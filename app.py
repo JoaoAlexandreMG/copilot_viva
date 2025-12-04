@@ -21,7 +21,7 @@ from swagger import register_swagger
 # Clients autorizados para usar a seção de Inventário (case-insensitive)
 INVENTORY_AUTHORIZED_CLIENTS = {
     c.lower() for c in (
-         "Redbull"
+         "Redbull",
         # "Nome do Cliente 2",
     )
 }
