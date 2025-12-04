@@ -472,21 +472,21 @@
                     <div class="metric-label">Bateria</div>
                 </div>
                 <div class="metric">
-                    <span class="metric-icon">🏪</span>
-                    <div class="metric-value">{{ asset.get('outlet', '—') }}</div>
-                    <div class="metric-label">Outlet</div>
+                    <span class="metric-icon">🔌</span>
+                    <div class="metric-value">{{ asset.get('latest_power_consumption')|round(2) }} kW</div>
+                    <div class="metric-label">Consumo</div>
                 </div>
                 <div class="metric">
-                    <span class="metric-icon">📍</span>
-                    <div class="metric-value">{{ asset.get('city', '—') }}</div>
-                    <div class="metric-label">Cidade</div>
+                    <span class="metric-icon">⏱️</span>
+                    <div class="metric-value">{{ asset.get('compressor_time') }} %</div>
+                    <div class="metric-label">Compressor ON</div>
                 </div>
             </div>
         </div>
 
         <!-- Technical Information from Views -->
         {% if asset.get('latest_voltage') or asset.get('latest_power_consumption') or asset.get('compressor_time') %}
-        <div class="section">
+        <!-- <div class="section">
             <div class="section-title">⚙️ Informações Técnicas</div>
             <div class="info-list">
                 {% if asset.get('latest_voltage') %}
@@ -498,7 +498,7 @@
                 {% if asset.get('latest_power_consumption') %}
                 <div class="info-item">
                     <div class="info-label">🔌 Consumo Médio</div>
-                    <div class="info-value">{{ asset.get('latest_power_consumption')|round(2) }}W</div>
+                    <div class="info-value">{{ asset.get('latest_power_consumption')|round(2) }}kW</div>
                 </div>
                 {% endif %}
                 {% if asset.get('compressor_time') %}
@@ -508,7 +508,7 @@
                 </div>
                 {% endif %}
             </div>
-        </div>
+        </div> -->
         {% endif %}
 
         <!-- Door Event Statistics -->
@@ -609,7 +609,19 @@
             </div>
         </div>
         {% endif %}
-
+        <!-- Actions -->
+        <div class="section">
+            <div class="section-title">⚡ Ações</div>
+            <div class="actions">
+                {% if asset.get('latitude') and asset.get('longitude') %}
+                <a href="https://www.google.com/maps?q={{ asset.get('latitude') }},{{ asset.get('longitude') }}" 
+                   target="_blank" class="action-btn primary">
+                    🗺️ Ver no Mapa
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        
         <!-- Temperature Chart -->
         {% if chart_data.temperature and chart_data.temperature|length > 0 %}
         <div class="section">
@@ -619,7 +631,7 @@
             </div>
         </div>
         {% endif %}
-
+        
         <!-- Door Activity Chart -->
         {% if chart_data.door_events and chart_data.door_events|length > 0 %}
         <div class="section">
@@ -636,7 +648,7 @@
             </div>
         </div>
         {% endif %}
-
+        
         <!-- Asset Information -->
         <div class="section">
             <div class="section-title">ℹ️ Informações Completas</div>
@@ -650,6 +662,12 @@
                 <div class="info-item">
                     <div class="info-label">⚙️ Equipamento (Bottler)</div>
                     <div class="info-value">{{ asset.get('bottler_equipment_number') }}</div>
+                </div>
+                {% endif %}
+                {% if asset.get('device_type') %}
+                <div class="info-item">
+                    <div class="info-label">⚙️ Tipo de Dispositivo</div>
+                    <div class="info-value">{{ asset.get('device_type') }}</div>
                 </div>
                 {% endif %}
                 
@@ -778,18 +796,6 @@
             </div>
         </div>
 
-        <!-- Actions -->
-        <div class="section">
-            <div class="section-title">⚡ Ações</div>
-            <div class="actions">
-                {% if asset.get('latitude') and asset.get('longitude') %}
-                <a href="https://www.google.com/maps?q={{ asset.get('latitude') }},{{ asset.get('longitude') }}" 
-                   target="_blank" class="action-btn primary">
-                    🗺️ Ver no Mapa
-                </a>
-                {% endif %}
-            </div>
-        </div>
     </main>
 
     <script>
