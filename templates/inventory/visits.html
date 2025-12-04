@@ -1,0 +1,313 @@
+{% extends 'portal/base.html' %}
+
+{% block title %}Visitas - Inventário{% endblock %}
+
+{% block page_title %}Visitas (Inventário){% endblock %}
+
+{% block extra_css %}
+<style>
+    .inventory-table-card {
+        border-radius: 14px;
+        overflow: hidden;
+        background: linear-gradient(135deg, rgba(12, 20, 36, 0.9), rgba(12, 20, 36, 0.75));
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .inventory-table thead {
+        background: linear-gradient(90deg, #0c1424, #162b4a);
+        color: #f4f7ff;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+        font-size: 12px;
+    }
+
+    .inventory-table tbody tr {
+        color: #f2f4fa;
+        transition: background 180ms ease;
+    }
+
+    .inventory-table tbody tr:nth-child(odd) {
+        background: rgba(255, 255, 255, 0.04);
+    }
+
+    .inventory-table tbody tr:hover {
+        background: rgba(0, 195, 255, 0.18);
+    }
+
+    .inventory-table th,
+    .inventory-table td {
+        padding: 12px 14px;
+        border: none;
+        vertical-align: middle;
+        font-size: 13px;
+        color: #f2f4fa;
+    }
+
+    .badge-outlet {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: rgba(0, 195, 255, 0.12);
+        color: #9be7ff;
+        border: 1px solid rgba(0, 195, 255, 0.35);
+        font-weight: 600;
+        font-size: 12px;
+    }
+
+    .pill-muted {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.06);
+        color: #d6d9e3;
+        font-size: 12px;
+    }
+
+    .table-wrap {
+        overflow-x: auto;
+    }
+
+    .muted {
+        color: #cfd3df;
+        font-size: 12px;
+    }
+
+    .location-from {
+        color: #ff6b6b;
+        font-weight: 700;
+    }
+
+    .location-to {
+        color: #2dd36f;
+        font-weight: 700;
+    }
+
+    .location-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 12px;
+        letter-spacing: 0.01em;
+        border: 1px solid transparent;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+    }
+
+    .location-chip small {
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-weight: 600;
+        opacity: 0.9;
+    }
+
+    .location-chip.to {
+        color: #2dd36f;
+        background: rgba(45, 211, 111, 0.12);
+        border-color: rgba(45, 211, 111, 0.35);
+    }
+
+    .location-chip.from {
+        color: #ff6b6b;
+        background: rgba(255, 107, 107, 0.12);
+        border-color: rgba(255, 107, 107, 0.35);
+    }
+
+    .location-stack {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+    }
+
+    .prev-visit-block {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        align-items: flex-start;
+    }
+
+    .prev-visit-date {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+    }
+
+    .previous-visit-cell {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        align-items: flex-start;
+    }
+
+    .first-visit-pill {
+        display: inline-flex;
+        padding: 6px 12px;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.06);
+        color: #d6d9e3;
+        font-size: 12px;
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>Histórico de Visitas</h2>
+    <p>Visualize todas as visitas registradas para os assets do inventário.</p>
+
+    <div class="inventory-table-card" style="margin-top: 1rem;">
+        <div class="card-header">
+            <strong>Visitas dos Assets</strong>
+        </div>
+        <div class="card-body" style="padding: 0;">
+            {% if visits %}
+            <div class="table-wrap">
+                <table class="table inventory-table" style="width: 100%; min-width: 1100px;">
+                    <thead>
+                        <tr>
+                            <th>Serial</th>
+                            <th>Visitado em</th>
+                            <th>Localização</th>
+                            <th>Distância da visita anterior (m)</th>
+                            <th>Visita anterior</th>
+                            <th>Localização anterior</th>
+                            <th>Outlet</th>
+                            <th>Local</th>
+                            <th>Scanner</th>
+                            <th>Notas</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for visit in visits %}
+                        <tr>
+                            <td>
+                                <div><strong>{{ visit.serial_number }}</strong></div>
+                                <div class="muted">{{ visit.asset_type or 'Tipo não informado' }}</div>
+                            </td>
+                            <td>{{ visit.visit_at or '-' }}</td>
+                            <td>
+                                {% if visit.latitude is not none or visit.longitude is not none %}
+                                    <div class="location-stack">
+                                        {% if visit.latitude is not none %}
+                                            <span class="location-chip to">
+                                                <small>Lat</small> {{ '%.6f' % visit.latitude }}
+                                            </span>
+                                        {% endif %}
+                                        {% if visit.longitude is not none %}
+                                            <span class="location-chip to">
+                                                <small>Lng</small> {{ '%.6f' % visit.longitude }}
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>{{ visit.distance_from_prev_m is not none and ('%.2f' % visit.distance_from_prev_m) or '-' }}</td>
+                            <td>
+                                {% if visit.prev_visit_at %}
+                                    <span class="muted prev-visit-date">{{ visit.prev_visit_at }}</span>
+                                {% else %}
+                                    <span class="first-visit-pill">Primeira visita</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if visit.prev_visit_at and (visit.prev_latitude is not none or visit.prev_longitude is not none) %}
+                                    <div class="location-stack">
+                                        {% if visit.prev_latitude is not none %}
+                                            <span class="location-chip from">
+                                                <small>Lat</small> {{ '%.6f' % visit.prev_latitude }}
+                                            </span>
+                                        {% endif %}
+                                        {% if visit.prev_longitude is not none %}
+                                            <span class="location-chip from">
+                                                <small>Lng</small> {{ '%.6f' % visit.prev_longitude }}
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                {% elif visit.prev_visit_at %}
+                                    <span class="pill-muted">Sem coordenadas</span>
+                                {% else %}
+                                    <span class="first-visit-pill">Primeira visita</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if visit.outlet_name %}
+                                    <span class="badge-outlet">{{ visit.outlet_name }}</span>
+                                {% else %}
+                                    <span class="pill-muted">Sem outlet</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div>{{ visit.city or '-' }}</div>
+                                <div class="muted">{{ visit.street or '' }}</div>
+                            </td>
+                            <td>{{ visit.scanned_by or '-' }}</td>
+                            <td>{{ visit.notes or '-' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div style="padding: 16px;">Nenhuma visita registrada até o momento.</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block sidebar %}
+<!-- Inventory sidebar with Visitas link -->
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="VivaAI Logo">
+    </div>
+    <div class="sidebar-header">
+        <a href="{{ url_for('inventory.render_inventory_list') }}" class="sidebar-title">
+            <span>Inventário Viva<sup>AI</sup></span>
+        </a>
+    </div>
+    <nav class="sidebar-nav">
+        <div class="sidebar-nav-section">
+            <div class="sidebar-nav-title">Principal</div>
+            <a href="{{ url_for('inventory.render_inventory_list') }}"
+                class="sidebar-nav-link {% if request.path.startswith('/inventory/list') or request.path == '/inventory/' or request.path == '/inventory' %}active{% endif %}">
+                <i class="fas fa-boxes"></i>
+                <span>Inventário</span>
+            </a>
+            <a href="{{ url_for('inventory.render_inventory_operation') }}"
+                class="sidebar-nav-link {% if request.path.startswith('/inventory/operation') %}active{% endif %}">
+                <i class="fas fa-cogs"></i>
+                <span>Operação</span>
+            </a>
+            <a href="{{ url_for('inventory.render_inventory_visits') }}"
+                class="sidebar-nav-link {% if request.path.startswith('/inventory/visits') %}active{% endif %}">
+                <i class="fas fa-route"></i>
+                <span>Visitas</span>
+            </a>
+        </div>
+    </nav>
+    <div class="sidebar-footer">
+        <div class="sidebar-user">
+            <div class="sidebar-user-avatar">
+                {{ user_name[0:2].upper() if user_name else 'US' }}
+            </div>
+            <div class="sidebar-user-info">
+                <span class="sidebar-user-name">{{ user_name or 'Usuário' }}</span>
+                <span class="sidebar-user-role">{{ user_email or '' }}</span>
+            </div>
+        </div>
+        <form action="{{ url_for('logout') }}" method="post" style="margin: 0;">
+            <button type="submit" class="btn-logout" title="Sair do sistema">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Sair</span>
+            </button>
+        </form>
+    </div>
+</aside>
+{% endblock %}
