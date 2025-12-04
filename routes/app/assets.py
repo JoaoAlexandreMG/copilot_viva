@@ -709,8 +709,8 @@ def asset_detail(asset_serial_number):
                 HealthEvent.asset_serial_number == asset_serial_number,
                 HealthEvent.event_type == "Cabinet Temperature",
                 HealthEvent.temperature_c.isnot(None),
-                HealthEvent.temperature_c >= -30,
-                HealthEvent.temperature_c <= 20,
+                HealthEvent.temperature_c > -50,
+                HealthEvent.temperature_c < 50,
             )
             .order_by(HealthEvent.event_time.desc())
             .limit(30)
@@ -1065,7 +1065,7 @@ def get_asset_temperature_history(asset_oem_serial_number):
                 HealthEvent.temperature_c.isnot(None),
             )
             .order_by(HealthEvent.event_time.desc())
-            .limit(10)
+            .limit(30)
             .all()
         )
 
