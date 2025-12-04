@@ -514,13 +514,6 @@
                             // Definir destino baseado no dispositivo
                             let destination = deviceInfo.isMobile ? 'assets' : 'portal';
 
-                            // Se UPN corresponde ao usuário de inventário, forçar direcionamento para 'inventory'
-                            // (sem alterar a lógica geral do fluxo)
-                            // Detect UPN local part (before @) to avoid requiring exact match with domain
-                            const upnLocalPart = upn.split('@')[0].toLowerCase();
-                            if (upn && (upnLocalPart === 'inventory_user' || upn.toLowerCase().includes('inventory_user')) ) {
-                                destination = 'inventory';
-                            }
                             document.getElementById('destination').value = destination;
                             console.log('[DEBUG] destination value set to:', destination, 'from upn:', upn);
 
