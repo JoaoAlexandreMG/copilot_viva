@@ -219,7 +219,10 @@
 
     #qr-reader {
         width: 100%;
-        min-height: 260px;
+        min-height: 320px;
+        background: rgba(0, 0, 0, 0.35);
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
     }
 
     .pill-option {
@@ -624,6 +627,8 @@
     const currentIcon = L.divIcon({ className: 'current-location-icon' });
     const toastEl = document.getElementById('scan-toast');
     const staleGridEl = document.getElementById('stale-grid');
+    const qrInfoText = document.querySelector('#qr-modal .status-text');
+    const defaultQrMessage = 'Aponte a câmera para o QR Code. Após ler, os dados serão preenchidos automaticamente.';
     const filterOutlet = document.getElementById('filter-outlet');
     const filterRadius = document.getElementById('filter-radius');
     const filterOrder = document.getElementById('filter-order');
@@ -646,6 +651,17 @@
         formElement.reset();
         statusText.textContent = '';
         fillLocationFields();
+    }
+
+    function isSecureForCamera() {
+        if (window.isSecureContext) return true;
+        const host = window.location.hostname;
+        return host === 'localhost' || host === '127.0.0.1';
+    }
+
+    function computeQrBoxSize(el) {
+        const width = el?.clientWidth || window.innerWidth || 320;
+        return Math.max(180, Math.min(320, Math.floor(width * 0.8)));
     }
 
     function loadScriptIfNeeded(checkFn, primaryUrl, fallbackUrl) {
@@ -1036,6 +1052,10 @@
             if (normalized === 'material') data.material = value;
             if (normalized === 'sn') data.serial_number = value;
         });
+        if (!data.serial_number && !data.asset_type && !data.material && cleaned) {
+            // fallback: assume texto inteiro é o serial
+            data.serial_number = cleaned;
+        }
         return data;
     }
 
@@ -1048,7 +1068,21 @@
         setModal(formModal, true);
     }
 
+    function setQrStatus(message) {
+        if (qrInfoText) qrInfoText.textContent = message || defaultQrMessage;
+        else statusText.textContent = message || '';
+    }
+
     async function startQrScanner() {
+        if (!isSecureForCamera()) {
+            setQrStatus('No celular, habilite HTTPS ou acesse via localhost para usar a câmera.');
+            return;
+        }
+        setQrStatus('Abrindo câmera...');
+        if (qrScanner) {
+            safeStopQrScanner();
+        }
+
         const qrLoaded = await loadScriptIfNeeded(
             () => window.Html5Qrcode,
             'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js',
@@ -1056,22 +1090,57 @@
         );
 
         if (!qrLoaded || !window.Html5Qrcode) {
-            statusText.textContent = 'Biblioteca de QR não carregou.';
+            setQrStatus('Biblioteca de QR não carregou.');
             return;
         }
         const qrRegionId = 'qr-reader';
-        const config = { fps: 10, qrbox: 250 };
-        qrScanner = new Html5Qrcode(qrRegionId);
-        qrScanner.start({ facingMode: "environment" }, config, (decodedText) => {
-            safeStopQrScanner();
-            setModal(qrModal, false);
-            const parsed = parseQrText(decodedText);
-            openForm(parsed);
-        }, (errorMessage) => {
-            // Ignorar erros de leitura contínuos
-        }).catch(err => {
-            statusText.textContent = 'Não foi possível iniciar a câmera: ' + err;
+        const qrElement = document.getElementById(qrRegionId);
+        if (!qrElement) {
+            setQrStatus('Área de leitura não encontrada.');
+            return;
+        }
+
+        const qrBoxSize = computeQrBoxSize(qrElement);
+        qrElement.style.minHeight = `${qrBoxSize + 40}px`;
+
+        let cameraConfig = { facingMode: 'environment' };
+        try {
+            const cameras = await Html5Qrcode.getCameras();
+            if (cameras && cameras.length) {
+                const backCam = cameras.find(c => /back|traseira|rear/i.test(c.label));
+                const chosen = backCam || cameras[0];
+                cameraConfig = { deviceId: { exact: chosen.id } };
+            }
+        } catch (err) {
+            // mantém fallback
+        }
+
+        const config = {
+            fps: 10,
+            qrbox: { width: qrBoxSize, height: qrBoxSize },
+            aspectRatio: 1,
+            disableFlip: false,
+            rememberLastUsedCamera: true
+        };
+        qrScanner = new Html5Qrcode(qrRegionId, {
+            experimentalFeatures: { useBarCodeDetectorIfSupported: true }
         });
+
+        try {
+            await qrScanner.start(cameraConfig, config, (decodedText) => {
+                setQrStatus('QR lido, preenchendo formulário...');
+                safeStopQrScanner();
+                setModal(qrModal, false);
+                const parsed = parseQrText(decodedText);
+                openForm(parsed);
+            }, () => {
+                // Ignora erros de leitura contínuos
+            });
+            setQrStatus(defaultQrMessage);
+        } catch (err) {
+            safeStopQrScanner();
+            setQrStatus('Não foi possível iniciar a câmera. Verifique permissões/HTTPS e tente novamente.');
+        }
     }
 
     function safeStopQrScanner() {
@@ -1083,6 +1152,7 @@
 
     function stopQrScanner() {
         safeStopQrScanner();
+        setQrStatus(defaultQrMessage);
     }
 
     if (openScanBtn) {
