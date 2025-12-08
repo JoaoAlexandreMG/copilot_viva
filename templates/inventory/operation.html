@@ -1159,6 +1159,11 @@
         openScanBtn.addEventListener('click', () => setModal(methodModal, true));
     }
 
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('open') === 'add' && methodModal) {
+        setModal(methodModal, true);
+    }
+
     const chooseManual = document.getElementById('choose-manual');
     if (chooseManual) {
         chooseManual.addEventListener('click', async () => {
