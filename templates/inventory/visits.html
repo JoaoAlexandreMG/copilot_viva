@@ -22,17 +22,30 @@
         font-size: 12px;
     }
 
+    .inventory-table {
+        table-layout: fixed;
+    }
+
     .inventory-table tbody tr {
         color: #f2f4fa;
-        transition: background 180ms ease;
+        transition: background 180ms ease, transform 120ms ease;
     }
 
     .inventory-table tbody tr:nth-child(odd) {
-        background: rgba(255, 255, 255, 0.04);
+        background: rgba(255, 255, 255, 0.06);
+    }
+
+    .inventory-table tbody tr:nth-child(even) {
+        background: rgba(255, 255, 255, 0.03);
+    }
+
+    .inventory-table tbody tr + tr {
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
     }
 
     .inventory-table tbody tr:hover {
         background: rgba(0, 195, 255, 0.18);
+        transform: translateY(-1px);
     }
 
     .inventory-table th,
@@ -42,6 +55,8 @@
         vertical-align: middle;
         font-size: 13px;
         color: #f2f4fa;
+        word-break: break-word;
+        white-space: normal;
     }
 
     .badge-outlet {
@@ -65,7 +80,7 @@
     }
 
     .table-wrap {
-        overflow-x: auto;
+        overflow-x: hidden;
     }
 
     .muted {
@@ -151,6 +166,47 @@
         font-size: 12px;
         font-weight: 600;
     }
+
+    @media (max-width: 1024px) {
+        .inventory-table {
+            min-width: unset;
+        }
+
+        .inventory-table thead {
+            display: none;
+        }
+
+        .inventory-table tbody tr {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+            padding: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.15));
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
+            margin-bottom: 12px;
+        }
+
+        .inventory-table td {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 4px 0;
+        }
+
+        .inventory-table td::before {
+            content: attr(data-label);
+            font-weight: 700;
+            color: #9be7ff;
+            min-width: 120px;
+        }
+
+        .inventory-table-card .card-body {
+            padding: 8px 10px 14px;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -166,7 +222,7 @@
         <div class="card-body" style="padding: 0;">
             {% if visits %}
             <div class="table-wrap">
-                <table class="table inventory-table" style="width: 100%; min-width: 1100px;">
+                <table class="table inventory-table" style="width: 100%;">
                     <thead>
                         <tr>
                             <th>Serial</th>
@@ -184,12 +240,12 @@
                     <tbody>
                         {% for visit in visits %}
                         <tr>
-                            <td>
+                            <td data-label="Serial">
                                 <div><strong>{{ visit.serial_number }}</strong></div>
                                 <div class="muted">{{ visit.asset_type or 'Tipo não informado' }}</div>
                             </td>
-                            <td>{{ visit.visit_at or '-' }}</td>
-                            <td>
+                            <td data-label="Visitado em">{{ visit.visit_at or '-' }}</td>
+                            <td data-label="Localização">
                                 {% if visit.latitude is not none or visit.longitude is not none %}
                                     <div class="location-stack">
                                         {% if visit.latitude is not none %}
@@ -207,15 +263,15 @@
                                     -
                                 {% endif %}
                             </td>
-                            <td>{{ visit.distance_from_prev_m is not none and ('%.2f' % visit.distance_from_prev_m) or '-' }}</td>
-                            <td>
+                            <td data-label="Distância anterior (m)">{{ visit.distance_from_prev_m is not none and ('%.2f' % visit.distance_from_prev_m) or '-' }}</td>
+                            <td data-label="Visita anterior">
                                 {% if visit.prev_visit_at %}
                                     <span class="muted prev-visit-date">{{ visit.prev_visit_at }}</span>
                                 {% else %}
                                     <span class="first-visit-pill">Primeira visita</span>
                                 {% endif %}
                             </td>
-                            <td>
+                            <td data-label="Localização anterior">
                                 {% if visit.prev_visit_at and (visit.prev_latitude is not none or visit.prev_longitude is not none) %}
                                     <div class="location-stack">
                                         {% if visit.prev_latitude is not none %}
@@ -235,19 +291,19 @@
                                     <span class="first-visit-pill">Primeira visita</span>
                                 {% endif %}
                             </td>
-                            <td>
+                            <td data-label="Outlet">
                                 {% if visit.outlet_name %}
                                     <span class="badge-outlet">{{ visit.outlet_name }}</span>
                                 {% else %}
                                     <span class="pill-muted">Sem outlet</span>
                                 {% endif %}
                             </td>
-                            <td>
+                            <td data-label="Local">
                                 <div>{{ visit.city or '-' }}</div>
                                 <div class="muted">{{ visit.street or '' }}</div>
                             </td>
-                            <td>{{ visit.scanned_by or '-' }}</td>
-                            <td>{{ visit.notes or '-' }}</td>
+                            <td data-label="Scanner">{{ visit.scanned_by or '-' }}</td>
+                            <td data-label="Notas">{{ visit.notes or '-' }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>

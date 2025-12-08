@@ -24,15 +24,24 @@
 
     .inventory-table tbody tr {
         color: #f2f4fa;
-        transition: background 180ms ease;
+        transition: background 180ms ease, transform 120ms ease;
     }
 
     .inventory-table tbody tr:nth-child(odd) {
-        background: rgba(255, 255, 255, 0.04);
+        background: rgba(255, 255, 255, 0.06);
+    }
+
+    .inventory-table tbody tr:nth-child(even) {
+        background: rgba(255, 255, 255, 0.03);
+    }
+
+    .inventory-table tbody tr + tr {
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
     }
 
     .inventory-table tbody tr:hover {
         background: rgba(0, 195, 255, 0.18);
+        transform: translateY(-1px);
     }
 
     .inventory-table th,
@@ -67,6 +76,48 @@
     .table-wrap {
         overflow-x: auto;
     }
+
+    @media (max-width: 768px) {
+        .inventory-table {
+            min-width: unset;
+        }
+
+        .inventory-table thead {
+            display: none;
+        }
+
+        .inventory-table tbody tr {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+            padding: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.15));
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
+            margin-bottom: 12px;
+        }
+
+        .inventory-table td {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 4px 0;
+            font-size: 13px;
+        }
+
+        .inventory-table td::before {
+            content: attr(data-label);
+            font-weight: 700;
+            color: #9be7ff;
+            min-width: 110px;
+        }
+
+        .inventory-table-card .card-body {
+            padding: 8px 10px 14px;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -82,7 +133,7 @@
         <div class="card-body" style="padding: 0;">
             {% if assets_inventory %}
             <div class="table-wrap">
-            <table class="table inventory-table" style="width: 100%; min-width: 860px;">
+            <table class="table inventory-table" style="width: 100%;">
                 <thead>
                     <tr>
                         <th>Serial</th>
@@ -101,23 +152,23 @@
                 <tbody>
                     {% for asset in assets_inventory %}
                     <tr>
-                        <td>{{ asset.serial_number }}</td>
-                        <td>{{ asset.asset_type or '-' }}</td>
-                        <td>{{ asset.material or '-' }}</td>
-                        <td>
+                        <td data-label="Serial">{{ asset.serial_number }}</td>
+                        <td data-label="Tipo">{{ asset.asset_type or '-' }}</td>
+                        <td data-label="Material">{{ asset.material or '-' }}</td>
+                        <td data-label="Outlet">
                             {% if asset.outlet_name %}
                                 <span class="badge-outlet">{{ asset.outlet_name }}</span>
                             {% else %}
                                 <span class="pill-muted">Sem outlet</span>
                             {% endif %}
                         </td>
-                        <td>{{ asset.last_latitude or '-' }}</td>
-                        <td>{{ asset.last_longitude or '-' }}</td>
-                        <td>{{ asset.last_visit_distance_m is not none and ('%.2f' % asset.last_visit_distance_m) or '-' }}</td>
-                        <td>{{ asset.city or '-' }}</td>
-                        <td>{{ asset.street or '-' }}</td>
-                        <td>{{ asset.created_at or '-' }}</td>
-                        <td>{{ asset.created_by_user or '-' }}</td>
+                        <td data-label="Latitude">{{ asset.last_latitude or '-' }}</td>
+                        <td data-label="Longitude">{{ asset.last_longitude or '-' }}</td>
+                        <td data-label="Distância (m)">{{ asset.last_visit_distance_m is not none and ('%.2f' % asset.last_visit_distance_m) or '-' }}</td>
+                        <td data-label="Cidade">{{ asset.city or '-' }}</td>
+                        <td data-label="Rua">{{ asset.street or '-' }}</td>
+                        <td data-label="Criado em">{{ asset.created_at or '-' }}</td>
+                        <td data-label="Criado por">{{ asset.created_by_user or '-' }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
