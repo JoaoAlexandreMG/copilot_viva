@@ -144,7 +144,7 @@ if __name__ == "__main__":
     # Uso: python scraping_parallel.py [static|daily] [num_workers]
     
     tipo = "daily"
-    workers = 2
+    workers = 3
     
     if len(sys.argv) > 1:
         if sys.argv[1] == "static":
