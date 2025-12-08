@@ -22,9 +22,18 @@
 <!-- Search and Filters -->
 <div class="card mb-lg">
     <div class="card-body">
-        <div class="search-bar">
-            <i class="fas fa-search"></i>
-            <input type="text" id="searchBar" class="form-control" placeholder="Buscar por nome, email..." onkeyup="filterUsers(event)">
+        <div class="search-bar" style="position: relative;">
+            <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--color-gray-400);"></i>
+            <input
+                type="text"
+                id="searchBar"
+                class="form-control"
+                placeholder="Buscar por nome, email, UPN..."
+                autocomplete="off"
+                style="padding-left: 36px;">
+            <div id="searchIndicator" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); display: none;">
+                <i class="fas fa-spinner fa-spin" style="color: var(--color-primary);"></i>
+            </div>
         </div>
     </div>
 </div>
@@ -134,32 +143,32 @@
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                     <!-- Basic Info -->
                     <div class="form-group">
-                        <label for="first_name" class="form-label">Nome</label>
-                        <input type="text" class="form-control" id="first_name" name="first_name">
+                        <label for="first_name" class="form-label">Nome <span style="color: var(--color-red-500);">*</span></label>
+                        <input type="text" class="form-control" id="first_name" name="first_name" required>
                     </div>
                     <div class="form-group">
-                        <label for="last_name" class="form-label">Sobrenome</label>
-                        <input type="text" class="form-control" id="last_name" name="last_name">
+                        <label for="last_name" class="form-label">Sobrenome <span style="color: var(--color-red-500);">*</span></label>
+                        <input type="text" class="form-control" id="last_name" name="last_name" required>
                     </div>
                     <div class="form-group">
-                        <label for="user_name" class="form-label">Nome de Usuário</label>
-                        <input type="text" class="form-control" id="user_name" name="user_name">
+                        <label for="user_name" class="form-label">Nome de Usuário <span style="color: var(--color-red-500);">*</span></label>
+                        <input type="text" class="form-control" id="user_name" name="user_name" required>
                     </div>
                     <div class="form-group">
                         <label for="email" class="form-label">Email</label>
                         <input type="email" class="form-control" id="email" name="email">
                     </div>
                     <div class="form-group">
-                        <label for="upn" class="form-label">UPN</label>
-                        <input type="text" class="form-control" id="upn" name="upn">
+                        <label for="upn" class="form-label">UPN <span style="color: var(--color-red-500);">*</span></label>
+                        <input type="text" class="form-control" id="upn" name="upn" required>
                     </div>
                     <div class="form-group">
                         <label for="phone" class="form-label">Telefone</label>
                         <input type="text" class="form-control" id="phone" name="phone">
                     </div>
                     <div class="form-group">
-                        <label for="role" class="form-label">Função</label>
-                        <input type="text" class="form-control" id="role" name="role">
+                        <label for="role" class="form-label">Função <span style="color: var(--color-red-500);">*</span></label>
+                        <input type="text" class="form-control" id="role" name="role" required>
                     </div>
                     <div class="form-group">
                         <label for="reporting_manager" class="form-label">Gerente</label>
@@ -182,12 +191,14 @@
                         <input type="text" class="form-control" id="sales_office" name="sales_office">
                     </div>
                     <div class="form-group">
-                        <label for="client" class="form-label">Cliente</label>
-                        <input type="text" class="form-control" id="client" name="client">
-                    </div>
-                    <div class="form-group">
                         <label for="preferred_notification_type" class="form-label">Notificação</label>
-                        <input type="text" class="form-control" id="preferred_notification_type" name="preferred_notification_type">
+                        <select class="form-control" id="preferred_notification_type" name="preferred_notification_type">
+                            <option value="">Selecione...</option>
+                            <option value="DnD">DnD</option>
+                            <option value="Email">Email</option>
+                            <option value="Text">Text</option>
+                            <option value="Mobile Notification">Mobile Notification</option>
+                        </select>
                     </div>
                 </div>
 
@@ -210,7 +221,7 @@
                             <input type="text" class="form-control" id="sales_territory" name="sales_territory">
                         </div>
                         <div class="form-group">
-                            <label for="teleselling_territory" class="form-label">Terr. Teleselling</label>
+                            <label for="teleselling_territory" class="form-label">Território de Televendas</label>
                             <input type="text" class="form-control" id="teleselling_territory" name="teleselling_territory">
                         </div>
                         <div class="form-group">
@@ -268,6 +279,18 @@
 
 {% block extra_js %}
 <script>
+// State management
+let searchState = {
+    originalTableHTML: null,
+    isSearching: false,
+    searchTimeout: null
+};
+
+// Save original table for reset
+window.addEventListener('DOMContentLoaded', () => {
+    searchState.originalTableHTML = document.querySelector('table tbody').innerHTML;
+});
+
 // Modal Management
 function showViewModal() {
     document.getElementById('viewModal').style.display = 'flex';
@@ -310,7 +333,7 @@ function toggleAdvancedFields() {
 function showCreateForm() {
     document.getElementById('formTitle').textContent = 'Criar Novo Usuário';
     document.getElementById('userForm').reset();
-    document.getElementById('userForm').action = '/portal_associacao/users';
+    document.getElementById('userForm').action = '/portal_associacao/users/';
     document.getElementById('userForm').method = 'POST';
     document.getElementById('advancedFields').style.display = 'none';
     document.getElementById('advancedToggleIcon').className = 'fas fa-chevron-down';
@@ -324,7 +347,6 @@ function showEditForm(userUpn) {
         .then(data => {
             document.getElementById('formTitle').textContent = 'Editar Usuário';
 
-            // Fill all fields
             const fields = ['first_name', 'last_name', 'user_name', 'email', 'upn', 'phone', 'role',
                           'reporting_manager', 'country', 'responsible_country', 'sales_organization',
                           'sales_office', 'sales_group', 'sales_territory', 'teleselling_territory',
@@ -368,7 +390,7 @@ function showViewDetails(userUpn) {
                 { label: 'Escritório Vendas', value: data.sales_office },
                 { label: 'Grupo Vendas', value: data.sales_group },
                 { label: 'Território Vendas', value: data.sales_territory },
-                { label: 'Território Teleselling', value: data.teleselling_territory },
+                { label: 'Território de Televendas', value: data.teleselling_territory },
                 { label: 'Território BD', value: data.bd_territory_name },
                 { label: 'Território CA', value: data.ca_territory_name },
                 { label: 'Território MC', value: data.mc_territory_name },
@@ -409,6 +431,40 @@ function showViewDetails(userUpn) {
 
 function submitForm() {
     const form = document.getElementById('userForm');
+    
+    // Validate form using browser's built-in validation
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+    
+    // Validate required fields (legacy check, kept for specific alerts if needed)
+    const requiredFields = [
+        { id: 'user_name', label: 'Nome de Usuário' },
+        { id: 'upn', label: 'UPN' },
+        { id: 'first_name', label: 'Nome' },
+        { id: 'last_name', label: 'Sobrenome' },
+        { id: 'role', label: 'Função' }
+    ];
+    
+    const missingFields = [];
+    requiredFields.forEach(field => {
+        const input = document.getElementById(field.id);
+        if (!input.value.trim()) {
+            input.style.borderColor = 'var(--color-red-500)';
+            missingFields.push(field.label);
+        } else {
+            input.style.borderColor = '';
+        }
+    });
+    
+    // If browser validation passed but custom validation failed (should be rare if attributes are set correctly)
+    if (missingFields.length > 0) {
+        // Alert is shown but modal is NOT closed
+        alert(`Por favor, preencha os campos obrigatórios:\n\n${missingFields.join('\n')}`);
+        return;
+    }
+    
     const action = form.action;
     const lastSegment = action.split('/').pop();
     const userIdentifier = lastSegment ? decodeURIComponent(lastSegment) : '';
@@ -462,66 +518,97 @@ function deleteUser(userUpn) {
     }
 }
 
-function filterUsers(event) {
-    const searchInput = document.getElementById('searchBar').value.toLowerCase();
-
-    if (!searchInput.trim()) {
+// Optimized Search Function
+function performSearch(query) {
+    if (!query || query.length < 2) {
+        resetSearch();
         return;
     }
 
-    fetch(`/portal_associacao/users/search?q=${encodeURIComponent(searchInput)}`)
+    searchState.isSearching = true;
+    document.getElementById('searchIndicator').style.display = 'block';
+
+    fetch(`/portal_associacao/users/search?q=${encodeURIComponent(query)}`)
         .then(response => response.json())
         .then(data => {
             const tbody = document.querySelector('table tbody');
-            tbody.innerHTML = '';
 
-            if (data.length === 0) {
+            if (!data || data.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem; color: var(--color-gray-500);">Nenhum usuário encontrado.</td></tr>';
                 return;
             }
 
-            data.forEach(user => {
-                const row = document.createElement('tr');
+            tbody.innerHTML = data.map(user => {
                 const encodedUpn = encodeURIComponent(user.upn || '');
-                row.innerHTML = `
-                    <td><span class="badge badge-secondary">${user.upn || '-'}</span></td>
-                    <td style="font-weight: 500;">${user.first_name} ${user.last_name}</td>
-                    <td style="color: var(--color-gray-600);">${user.email}</td>
-                    <td>${user.role || '-'}</td>
-                    <td>${user.country || '-'}</td>
-                    <td>${user.client || '-'}</td>
-                    <td>
-                        <div style="display: flex; gap: 0.5rem; justify-content: center;">
-                            <button class="btn btn-info btn-icon-sm" data-upn="${encodedUpn}" onclick="showViewDetails(decodeURIComponent(this.dataset.upn))" title="Visualizar">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                            <button class="btn btn-warning btn-icon-sm" data-upn="${encodedUpn}" onclick="showEditForm(decodeURIComponent(this.dataset.upn))" title="Editar">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="btn btn-danger btn-icon-sm" data-upn="${encodedUpn}" onclick="deleteUser(decodeURIComponent(this.dataset.upn))" title="Deletar">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                    </td>
+                return `
+                    <tr>
+                        <td><span class="badge badge-secondary">${user.upn || '-'}</span></td>
+                        <td style="font-weight: 500;">${escapeHtml(user.first_name)} ${escapeHtml(user.last_name)}</td>
+                        <td style="color: var(--color-gray-600);">${escapeHtml(user.email)}</td>
+                        <td>${escapeHtml(user.role || '-')}</td>
+                        <td>${escapeHtml(user.country || '-')}</td>
+                        <td>${escapeHtml(user.client || '-')}</td>
+                        <td>
+                            <div style="display: flex; gap: 0.5rem; justify-content: center;">
+                                <button class="btn btn-info btn-icon-sm" data-upn="${encodedUpn}" onclick="showViewDetails(decodeURIComponent(this.dataset.upn))" title="Visualizar">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="btn btn-warning btn-icon-sm" data-upn="${encodedUpn}" onclick="showEditForm(decodeURIComponent(this.dataset.upn))" title="Editar">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-danger btn-icon-sm" data-upn="${encodedUpn}" onclick="deleteUser(decodeURIComponent(this.dataset.upn))" title="Deletar">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
                 `;
-                tbody.appendChild(row);
-            });
+            }).join('');
         })
         .catch(error => {
             console.error('Erro na busca:', error);
-            alert('Erro ao buscar usuários.');
+            document.querySelector('table tbody').innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem; color: var(--color-red-500);">Erro ao buscar usuários.</td></tr>';
+        })
+        .finally(() => {
+            searchState.isSearching = false;
+            document.getElementById('searchIndicator').style.display = 'none';
         });
 }
 
-// Debounce search
-let searchTimeout;
+// Reset to original table
+function resetSearch() {
+    if (searchState.originalTableHTML) {
+        document.querySelector('table tbody').innerHTML = searchState.originalTableHTML;
+    }
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+    if (!text) return '';
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, m => map[m]);
+}
+
+// Attach debounced search listener
 document.getElementById('searchBar')?.addEventListener('input', (e) => {
-    clearTimeout(searchTimeout);
-    if (!e.target.value.trim()) {
-        location.reload();
+    const query = e.target.value.trim();
+
+    clearTimeout(searchState.searchTimeout);
+
+    if (!query) {
+        resetSearch();
         return;
     }
-    searchTimeout = setTimeout(() => filterUsers(e), 500);
+
+    searchState.searchTimeout = setTimeout(() => {
+        performSearch(query);
+    }, 400);
 });
 </script>
 {% endblock %}

@@ -126,6 +126,26 @@ function buildOutletRow(outlet) {
 
 let outletSearchTimeout;
 
+function reloadOutlets() {
+    // Reload all outlets without page refresh
+    fetch(`${manager.baseUrl}`)
+        .then(response => response.text())
+        .then(html => {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const newTbody = doc.querySelector('table tbody');
+            const currentTbody = document.querySelector('table tbody');
+            
+            if (newTbody && currentTbody) {
+                currentTbody.innerHTML = newTbody.innerHTML;
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao recarregar outlets:', error);
+            location.reload(); // Fallback to full reload if fetch fails
+        });
+}
+
 function filterOutlets(event) {
     clearTimeout(outletSearchTimeout);
     
@@ -135,7 +155,8 @@ function filterOutlets(event) {
     const searchValue = searchInput.value.trim().toLowerCase();
 
     if (!searchValue) {
-        location.reload();
+        // Reload data without reloading page to maintain focus
+        reloadOutlets();
         return;
     }
 

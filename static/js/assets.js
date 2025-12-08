@@ -136,6 +136,26 @@ function buildAssetRow(asset) {
 
 let assetSearchTimeout;
 
+function reloadAssets() {
+    // Reload all assets without page refresh
+    fetch(`${manager.baseUrl}`)
+        .then(response => response.text())
+        .then(html => {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const newTbody = doc.querySelector('table tbody');
+            const currentTbody = document.querySelector('table tbody');
+            
+            if (newTbody && currentTbody) {
+                currentTbody.innerHTML = newTbody.innerHTML;
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao recarregar assets:', error);
+            location.reload(); // Fallback to full reload if fetch fails
+        });
+}
+
 function filterAssets(event) {
     clearTimeout(assetSearchTimeout);
     
@@ -145,7 +165,8 @@ function filterAssets(event) {
     const searchValue = searchInput.value.trim().toLowerCase();
 
     if (!searchValue) {
-        location.reload();
+        // Reload data without reloading page to maintain focus
+        reloadAssets();
         return;
     }
 

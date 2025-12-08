@@ -1,24 +1,38 @@
-from sqlalchemy import Column, Float, Float, String, Integer, BigInteger, Boolean, DateTime, Text
+from sqlalchemy import (
+    Column,
+    Float,
+    Float,
+    String,
+    Integer,
+    BigInteger,
+    Boolean,
+    DateTime,
+    Text,
+)
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from sqlalchemy import ForeignKey
 
+
 class Base(declarative_base()):
     __abstract__ = True
 
     def to_dict(self):
-        return {column.name: getattr(self, column.name) for column in self.__table__.columns}
+        return {
+            column.name: getattr(self, column.name) for column in self.__table__.columns
+        }
+
 
 class User(Base):
-    __tablename__ = 'users'
-    first_name = Column(String(50))
-    last_name = Column(String(50))
-    user_name = Column(String(50))
-    upn = Column(String(100), primary_key=True)
+    __tablename__ = "users"
+    first_name = Column(String(50), nullable=False)
+    last_name = Column(String(50), nullable=False)
+    user_name = Column(String(50), nullable=False)
+    upn = Column(String(100), primary_key=True, nullable=False)
     email = Column(String(100))
     phone = Column(String(20))
-    role = Column(String(50))
+    role = Column(String(50), nullable=False)
     reporting_manager = Column(String(100))
     preferred_notification_type = Column(String(50))
     country = Column(String(50))
@@ -46,8 +60,9 @@ class User(Base):
     modified_by = Column(String(50))
     reward_point = Column(Integer)
 
+
 class Outlet(Base):
-    __tablename__ = 'outlets'
+    __tablename__ = "outlets"
 
     name = Column(String(100))
     code = Column(String(50), primary_key=True)
@@ -125,8 +140,9 @@ class Outlet(Base):
     tsm_name = Column(String(50))
     tsm_email = Column(String(100))
 
+
 class Asset(Base):
-    __tablename__ = 'assets'
+    __tablename__ = "assets"
 
     asset_type = Column(String(50))
     bottler_equipment_number = Column(String(50))
@@ -210,8 +226,9 @@ class Asset(Base):
     static_longitude = Column(String(50))
     static_movement_status = Column(String(50))
 
+
 class SmartDevice(Base):
-    __tablename__ = 'smart_devices'
+    __tablename__ = "smart_devices"
 
     device_type = Column(String(50))
     manufacturer = Column(String(50))
@@ -285,8 +302,9 @@ class SmartDevice(Base):
             return datetime.utcnow() - self.last_ping < timedelta(days=30)
         return False
 
+
 class Movement(Base):
-    __tablename__ = 'movements'
+    __tablename__ = "movements"
 
     id = Column(Integer, primary_key=True)
     movement_type = Column(String(50))
@@ -327,9 +345,10 @@ class Movement(Base):
     time_zone = Column(String(150))
     client = Column(String(50))
     sub_client = Column(String(50))
-    
+
+
 class HealthEvent(Base):
-    __tablename__ = 'health_events'
+    __tablename__ = "health_events"
 
     id = Column(String(50), primary_key=True)
     event_type = Column(String(50))
@@ -384,8 +403,9 @@ class HealthEvent(Base):
     client = Column(String(50))
     sub_client = Column(String(50))
 
+
 class DoorEvent(Base):
-    __tablename__ = 'door'
+    __tablename__ = "door"
 
     id = Column(String(50), primary_key=True)
     open_event_time = Column(DateTime(timezone=True))
@@ -433,7 +453,7 @@ class DoorEvent(Base):
 
 
 class AssetsInventory(Base):
-    __tablename__ = 'assets_inventory'
+    __tablename__ = "assets_inventory"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
 
@@ -454,16 +474,24 @@ class AssetsInventory(Base):
     street = Column(String(150))
     city = Column(String(100))
 
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(ZoneInfo("America/Sao_Paulo")))
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(ZoneInfo("America/Sao_Paulo")),
+    )
     created_by_user = Column(String(100))
 
 
 class AssetInventoryVisit(Base):
-    __tablename__ = 'asset_inventory_visits'
+    __tablename__ = "asset_inventory_visits"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    asset_id = Column(Integer, ForeignKey('assets_inventory.id', ondelete='CASCADE'), nullable=False)
-    visit_at = Column(DateTime(timezone=True), default=lambda: datetime.now(ZoneInfo("America/Sao_Paulo")))
+    asset_id = Column(
+        Integer, ForeignKey("assets_inventory.id", ondelete="CASCADE"), nullable=False
+    )
+    visit_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(ZoneInfo("America/Sao_Paulo")),
+    )
     latitude = Column(Float, nullable=False)
     longitude = Column(Float, nullable=False)
 
@@ -474,10 +502,14 @@ class AssetInventoryVisit(Base):
     distance_from_prev_m = Column(Float)
     scanned_by = Column(String(150))
     notes = Column(Text)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(ZoneInfo("America/Sao_Paulo")))
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(ZoneInfo("America/Sao_Paulo")),
+    )
+
 
 class Alert(Base):
-    __tablename__ = 'alerts'
+    __tablename__ = "alerts"
 
     id = Column(String(50), primary_key=True)
     alert_type = Column(String(50))
@@ -523,8 +555,9 @@ class Alert(Base):
     acknowledge_comment = Column(String(255))
     created_on = Column(DateTime(timezone=True))
 
+
 class Client(Base):
-    __tablename__ = 'clients'
+    __tablename__ = "clients"
 
     id = Column(String(50))
     client_code = Column(String(50), primary_key=True)
@@ -569,8 +602,9 @@ class Client(Base):
     default_recognition_mode = Column(String(50))
     disable_geo_data_collection = Column(Boolean)
 
+
 class VisionAccount(Base):
-    __tablename__ = 'vision_accounts'
+    __tablename__ = "vision_accounts"
 
     id = Column(String(50), primary_key=True)
     client_id = Column(String(50))
@@ -579,8 +613,9 @@ class VisionAccount(Base):
     created_on = Column(DateTime(timezone=True))
     created_by = Column(String(100))
 
+
 class SubClient(Base):
-    __tablename__ = 'subclients'
+    __tablename__ = "subclients"
 
     id = Column(Text)
     subclient_name = Column(String(255))
@@ -588,8 +623,9 @@ class SubClient(Base):
     scene_mode = Column(String(50))
     client = Column(String(50))
 
+
 class AlertsDefinition(Base):
-    __tablename__ = 'alerts_definition'
+    __tablename__ = "alerts_definition"
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(100))
     type = Column(String(100))
@@ -639,8 +675,9 @@ class AlertsDefinition(Base):
     modified_on = Column(DateTime(timezone=True))
     modified_by = Column(String(100))
 
+
 class MovementsFindHub(Base):
-    __tablename__ = 'movements_find_hub'
+    __tablename__ = "movements_find_hub"
 
     id = Column(BigInteger, primary_key=True)
     client = Column(String)
@@ -652,8 +689,9 @@ class MovementsFindHub(Base):
     start_time = Column(DateTime(timezone=True))
     created_on = Column(DateTime(timezone=True))
 
+
 class GhostAsset(Base):
-    __tablename__ = 'ghost_assets'
+    __tablename__ = "ghost_assets"
 
     id = Column(BigInteger, primary_key=True)
     serial_number = Column(String(100))
@@ -671,6 +709,6 @@ class GhostAsset(Base):
     is_commissioned = Column(Boolean)
     client_id = Column(Integer)
     manufacturer = Column(String(150))
-    created_by = Column(String(50), default='import')
+    created_by = Column(String(50), default="import")
     modified_on = Column(DateTime(timezone=True))
-    modified_by = Column(String(50), default='import')
+    modified_by = Column(String(50), default="import")
