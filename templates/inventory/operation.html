@@ -269,7 +269,7 @@
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 240px));
         gap: 12px;
-        justify-content: flex-start;
+        justify-content: center;
     }
 
     .stale-card {
@@ -373,9 +373,9 @@
     }
 
     .operation-actions {
-        flex-wrap: wrap;
-        gap: 12px;
-        align-items: flex-end;
+        margin-top: 12px;
+        flex-direction: column;
+        gap: 16px;
     }
 
     .filter-control {
@@ -383,6 +383,63 @@
         flex-direction: column;
         gap: 4px;
         min-width: 180px;
+    }
+
+    .filter-card {
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(0, 0, 0, 0.15));
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 16px;
+        padding: 14px 14px 16px;
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.25);
+    }
+
+    .filter-card-header {
+        display: flex;
+        justify-content: flex-start;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+
+    .filter-card-header h4 {
+        margin: 0;
+        font-size: 16px;
+        color: #e8f0ff;
+    }
+
+    .filter-card-header p {
+        margin: 2px 0 0;
+        color: #b9c6df;
+        font-size: 13px;
+    }
+
+    .filter-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .filter-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+        margin-top: 6px;
+    }
+
+    .filter-actions .btn {
+        width: 100%;
+    }
+
+    @media (min-width: 640px) {
+        .filter-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @media (min-width: 960px) {
+        .filter-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
     }
 
     .filter-control label {
@@ -422,26 +479,34 @@
 
     <div class="status-text" id="location-status"></div>
 
-    <div class="operation-actions">
-        <div class="filter-control">
-            <label for="filter-outlet">Outlet</label>
-            <select id="filter-outlet">
-                <option value="all">Todos</option>
-            </select>
+    <div class="filter-card">
+        <div class="filter-card-header">
+            <div>
+                <h4>Filtros rápidos</h4>
+                <p>Refine o mapa antes de escanear</p>
+            </div>
         </div>
-        <div class="filter-control">
-            <label for="filter-radius">Raio (km)</label>
-            <input type="number" min="0" step="0.1" id="filter-radius" placeholder="ex: 5">
+        <div class="filter-grid">
+            <div class="filter-control">
+                <label for="filter-outlet">Outlet</label>
+                <select id="filter-outlet">
+                    <option value="all">Todos</option>
+                </select>
+            </div>
+            <div class="filter-control">
+                <label for="filter-radius">Raio (km)</label>
+                <input type="number" min="0" step="0.1" id="filter-radius" placeholder="ex: 5">
+                <small>Use 0 para desativar raio.</small>
+            </div>
+            <div class="filter-control">
+                <label for="filter-order">Ordenar</label>
+                <select id="filter-order">
+                    <option value="oldest">Mais desatualizados</option>
+                    <option value="newest">Mais atualizados</option>
+                </select>
+            </div>
         </div>
-        <div class="filter-control">
-            <label for="filter-order">Ordenar</label>
-            <select id="filter-order">
-                <option value="oldest">Mais desatualizados</option>
-                <option value="newest">Mais atualizados</option>
-            </select>
-        </div>
-        <div style="display: flex; gap: 10px;">
-            <button type="button" class="btn btn-light" id="apply-filters-btn">Aplicar filtros</button>
+        <div class="filter-actions">
             <button type="button" class="btn btn-primary" id="open-scan-btn">Scan</button>
         </div>
     </div>
@@ -632,7 +697,6 @@
     const filterOutlet = document.getElementById('filter-outlet');
     const filterRadius = document.getElementById('filter-radius');
     const filterOrder = document.getElementById('filter-order');
-    const applyFiltersBtn = document.getElementById('apply-filters-btn');
 
     function setModal(modal, isOpen) {
         if (!modal) return;
@@ -1155,9 +1219,8 @@
         setQrStatus(defaultQrMessage);
     }
 
-    if (openScanBtn) {
-        openScanBtn.addEventListener('click', () => setModal(methodModal, true));
-    }
+    const openScan = () => setModal(methodModal, true);
+    if (openScanBtn) openScanBtn.addEventListener('click', openScan);
 
     const params = new URLSearchParams(window.location.search);
     if (params.get('open') === 'add' && methodModal) {
@@ -1214,7 +1277,6 @@
         });
     }
 
-    if (applyFiltersBtn) applyFiltersBtn.addEventListener('click', applyFilters);
     if (filterOutlet) filterOutlet.addEventListener('change', applyFilters);
     if (filterOrder) filterOrder.addEventListener('change', applyFilters);
     if (filterRadius) filterRadius.addEventListener('change', applyFilters);
