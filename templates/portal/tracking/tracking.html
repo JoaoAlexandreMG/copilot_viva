@@ -4,7 +4,7 @@
 {% block page_title %}Rastreio de Assets{% endblock %}
 
 {% block breadcrumb %}
-<span class="breadcrumb-separator">/</span>
+<i class="fas fa-home"></i><span class="breadcrumb-separator">/</span>
 <span class="breadcrumb-item">Rastreio</span>
 {% endblock %}
 
@@ -14,6 +14,28 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
 <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 <style>
+    #detailsPanel {
+        position: fixed;
+        right: calc(-1 * min(600px, 100vw));
+        top: var(--header-height) + var(--spacing-xl);
+        width: min(500px, 100vw);
+        height: 100d;
+        background: #0a1f44;
+        box-shadow: -2px 0 12px rgba(0, 0, 0, .15);
+        overflow-y: auto;
+        transition: right .3s ease;
+        z-index: 1000;
+        border-radius: 5%;
+        margin-top: 0.5%;
+        margin-right: 1.5%;
+    }
+    #detailsContent{
+        color: #008CFF;
+        text-align: center;
+    }
+    #detailContent div{
+        background: #1F1F23 !important;
+    }
     .tracking-container {
         display: flex;
         gap: 20px;
@@ -21,21 +43,25 @@
     }
 
     .tracking-sidebar {
-        width: 320px;
-        background: white;
+        width: 350px;
+        background: linear-gradient(135deg, rgba(31, 31, 35, .9) 0%, rgba(11, 11, 13, .95) 100%);
+        border: 1px solid rgba(0, 195, 255, .15);
         border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 8px 32px rgba(0, 195, 255, .1);
         padding: 20px;
         overflow-y: auto;
+        backdrop-filter: blur(10px);
     }
 
     .tracking-map-container {
         flex: 1 1 auto;
-        background: white;
+        background: linear-gradient(135deg, rgba(31, 31, 35, 0.9) 0%, rgba(11, 11, 13, 0.95) 100%);
+        border: 1px solid rgba(0, 195, 255, 0.15);
         border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 8px 32px rgba(0, 195, 255, 0.1);
         overflow: hidden;
         min-height: 500px;
+        backdrop-filter: blur(10px);
     }
 
     #map {
@@ -53,22 +79,26 @@
     }
 
     .stat-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: #4C3AFF;
         padding: 15px;
         border-radius: 8px;
         color: white;
+        border: 1px solid rgba(0, 195, 255, 0.3);
     }
 
     .stat-card.success {
-        background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%);
+        background: linear-gradient(135deg, var(--atlas-green) 0%, #00D9A3 100%);
+        border-color: rgba(0, 245, 181, 0.3);
     }
 
     .stat-card.warning {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        background: linear-gradient(135deg, var(--atlas-yellow) 0%, #FFB81A 100%);
+        border-color: rgba(255, 201, 60, 0.3);
     }
 
     .stat-card.info {
-        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        background: linear-gradient(135deg, var(--atlas-blue-electric) 0%, var(--atlas-blue-neon) 100%);
+        border-color: rgba(0, 195, 255, 0.3);
     }
 
     .stat-value {
@@ -90,17 +120,18 @@
     .device-filter select {
         width: 100%;
         padding: 10px;
-        border: 1px solid #e0e0e0;
+        border: 1px solid rgba(0, 195, 255, 0.25);
         border-radius: 8px;
         font-size: 14px;
-        background-color: white;
+        background-color: rgba(0, 0, 0, 0.3);
+        color: var(--atlas-white);
     }
 
     .device-filter select:focus,
     .device-filter input:focus {
         outline: none;
-        border-color: #667eea;
-        box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+        border-color: rgba(0, 195, 255, 0.6);
+        box-shadow: 0 0 0 2px rgba(0, 195, 255, 0.15);
     }
 
     .device-list {
@@ -111,38 +142,39 @@
 
     .device-item {
         padding: 12px;
-        border: 1px solid #e0e0e0;
+        border: 1px solid rgba(0, 195, 255, 0.2);
         border-radius: 8px;
         margin-bottom: 10px;
         cursor: pointer;
         transition: all 0.3s ease;
+        background-color: rgba(0, 0, 0, 0.2);
     }
 
     .device-item:hover {
-        border-color: #667eea;
-        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
-        background-color: #f8f9fa;
+        border-color: rgba(0, 195, 255, 0.5);
+        box-shadow: 0 2px 8px rgba(0, 195, 255, 0.15);
+        background-color: rgba(0, 195, 255, 0.05);
     }
     .device-item-disabled {
         cursor: not-allowed;
-        opacity: 0.75;
+        opacity: 0.5;
     }
     .device-item-disabled:hover {
-        border-color: #e0e0e0;
+        border-color: rgba(0, 195, 255, 0.2);
         box-shadow: none;
-        background-color: #fff;
+        background-color: rgba(0, 0, 0, 0.2);
     }
 
     .device-name {
         font-weight: 600;
         margin-bottom: 5px;
-        color: #333;
+        color: var(--atlas-white);
         font-size: 14px;
     }
 
     .device-info {
         font-size: 12px;
-        color: #666;
+        color: rgba(255, 255, 255, 0.6);
         margin-bottom: 3px;
     }
 
@@ -154,20 +186,20 @@
         font-weight: 600;
         font-size: 14px;
         margin-bottom: 8px;
-        color: #333;
+        color: var(--atlas-black-tech);
     }
 
     .popup-info {
         font-size: 12px;
         margin-bottom: 4px;
-        color: #666;
+        color: rgba(0, 0, 0, 0.7);
     }
 
 
     .no-devices {
         text-align: center;
         padding: 40px 20px;
-        color: #999;
+        color: rgba(255, 255, 255, 0.6);
     }
 
     .custom-marker .device-marker {
@@ -181,6 +213,44 @@
         50% {
             box-shadow: 0 0 0 15px rgba(255, 215, 0, 0);
         }
+    }
+
+    /* Dark Theme Overrides for Inline Styles */
+    select[style*="border: 1px solid #e0e0e0"] {
+        border-color: rgba(0, 195, 255, 0.25) !important;
+        background-color: rgba(0, 0, 0, 0.3) !important;
+        color: var(--atlas-white) !important;
+    }
+
+    div[style*="border: 1px solid #e0e0e0"] {
+        border-color: rgba(0, 195, 255, 0.25) !important;
+        background-color: transparent !important;
+    }
+
+    button[onclick*="toggleAdvancedFilters"] {
+        background-color: rgba(0, 195, 255, 0.1) !important;
+        color: var(--atlas-white) !important;
+        border-color: rgba(0, 195, 255, 0.2) !important;
+    }
+
+    #advancedFiltersPanel {
+        background-color: rgba(0, 0, 0, 0.2) !important;
+        border-top: 1px solid rgba(0, 195, 255, 0.15) !important;
+    }
+
+    label[style*="color: #333"] {
+        color: var(--atlas-white) !important;
+    }
+
+    input[style*="border: 1px solid #e0e0e0"],
+    input[placeholder] {
+        border-color: rgba(0, 195, 255, 0.25) !important;
+        background-color: rgba(0, 0, 0, 0.3) !important;
+        color: var(--atlas-white) !important;
+    }
+
+    input::placeholder {
+        color: rgba(255, 255, 255, 0.5) !important;
     }
 
     @media (max-width: 768px) {
@@ -333,21 +403,9 @@
     </div>
 
     <!-- Painel de Detalhes (Sidebar Direita) -->
-    <div id="detailsPanel" style="
-        position: fixed;
-        right: calc(-1 * min(500px, 100vw));
-        top: 0;
-        width: min(500px, 100vw);
-        height: calc(100vh - var(--header-height));
-        background: white;
-        box-shadow: -2px 0 12px rgba(0, 0, 0, 0.15);
-        overflow-y: auto;
-        transition: right 0.3s ease;
-        z-index: 1000;
-        border-left: 4px solid var(--primary);
-    ">
+    <div id="detailsPanel">
         <!-- Header com fechar -->
-        <div style="position: sticky; top: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; color: white; z-index: 10;">
+        <div style="position: sticky; top: 0; background: #4C3AFF; padding: 20px; color: white; z-index: 10;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <h2 id="detailsTitle" style="margin: 0; font-size: 20px;">Detalhes do Asset</h2>
                 <button onclick="closeDetailsPanel()" style="
@@ -370,7 +428,7 @@
         <!-- Conteúdo -->
         <div style="padding: 20px;">
             <div id="detailsContent">
-                <p style="color: #999; text-align: center;">Carregando...</p>
+                <p>Carregando...</p>
             </div>
         </div>
     </div>
@@ -664,7 +722,9 @@
             let temperatureStatus = '';
             if (device.temperature_c !== null && device.temperature_c !== undefined) {
                 const temp = parseFloat(device.temperature_c);
-                const tempColor = temp < 0 ? '#5dade2' : temp <= 7 ? '#56ab2f' : '#e74c3c';
+                const tempMin = parseFloat(device.temp_min);
+                const tempMax = parseFloat(device.temp_max);
+                const tempColor = temp < tempMin ? '#5dade2' : temp <= tempMax ? '#56ab2f' : '#e74c3c';
                 temperatureStatus = `<div class="device-info" style="color: ${tempColor};">🌡️ Temperatura: ${temp.toFixed(1)}°C</div>`;
             }
 
@@ -711,7 +771,7 @@
                         ${device.bottler_equipment_number || 'N/A'}
                     </div>
                     
-                    <div class="device-info" style="font-weight: 600; color: #667eea; margin-bottom: 6px;">
+                    <div class="device-info" style="font-weight: 600; color: #4C3AFF; margin-bottom: 6px;">
                         📋 Serial: ${device.oem_serial_number || 'N/A'}
                     </div>
                     
@@ -780,9 +840,9 @@
 
             if (device.is_missing) {
                 markerColor = '#e74c3c'; // Vermelho para perdidos
-            } else if (device.temperature_c !== null && device.temperature_c !== undefined && device.temperature_c > 20) {
+            } else if (device.temperature_c !== null && device.temperature_c !== undefined && device.temperature_c > device.tempMax) {
                 markerColor = '#e74c3c'; // Vermelho para temperatura alta
-            } else if (device.temperature_c !== null && device.temperature_c !== undefined && device.temperature_c > 7) {
+            } else if (device.temperature_c !== null && device.temperature_c !== undefined && device.temperature_c > device.tempMax) {
                 markerColor = '#f5576c'; // Rosa para temperatura moderada
             }
 
@@ -820,11 +880,11 @@
             const popupContent = `
                 <div>
                     <div class="popup-title">${device.bottler_equipment_number || 'Asset'}</div>
-                    <div class="popup-info"><strong>Serial:</strong> ${device.oem_serial_number || 'N/A'}</div>
-                    <div class="popup-info"><strong>Outlet:</strong> ${device.outlet || 'N/A'}</div>
-                    <div class="popup-info"><strong>Localidade:</strong> ${device.city || 'N/A'}${device.state ? ', ' + device.state : ''}</div>
+                    <div class="popup-info"><strong style="color: white;">Serial:</strong> ${device.oem_serial_number || 'N/A'}</div>
+                    <div class="popup-info"><strong style="color: white;">Outlet:</strong> ${device.outlet || 'N/A'}</div>
+                    <div class="popup-info"><strong style="color: white;">Localidade:</strong> ${device.city || 'N/A'}${device.state ? ', ' + device.state : ''}</div>
                     <hr style="margin: 8px 0; border: none; border-top: 1px solid #e0e0e0;">
-                    <div class="popup-info"><strong>Coordenadas:</strong> ${parseFloat(device.latitude).toFixed(6)}, ${parseFloat(device.longitude).toFixed(6)}</div>
+                    <div class="popup-info"><strong style="color: white;">Coordenadas:</strong> ${parseFloat(device.latitude).toFixed(6)}, ${parseFloat(device.longitude).toFixed(6)}</div>
                     ${temperatureDisplay}
                     ${missingDisplay}
                     ${doorStatsDisplay}
@@ -904,10 +964,10 @@
             <div style="border-bottom: 2px solid #f0f0f0; padding-bottom: 15px; margin-bottom: 15px;">
                 <h3 style="margin: 0 0 10px 0; color: #333; font-size: 16px;">${asset.asset_type}</h3>
                 <div style="color: #666; font-size: 13px;">
-                    <p style="margin: 5px 0;"><strong>Outlet:</strong> ${asset.outlet}</p>
-                    <p style="margin: 5px 0;"><strong>Tipo:</strong> ${asset.outlet_type}</p>
-                    <p style="margin: 5px 0;"><strong>Local:</strong> ${asset.city}${asset.state ? ', ' + asset.state : ''}, ${asset.country}</p>
-                    <p style="margin: 5px 0;"><strong>Endereço:</strong> ${asset.street}</p>
+                    <p style="margin: 5px 0;"><strong style="color: white;">Outlet:</strong> ${asset.outlet}</p>
+                    <p style="margin: 5px 0;"><strong style="color: white;">Tipo:</strong> ${asset.outlet_type}</p>
+                    <p style="margin: 5px 0;"><strong style="color: white;">Local:</strong> ${asset.city}${asset.state ? ', ' + asset.state : ''}, ${asset.country}</p>
+                    <p style="margin: 5px 0;"><strong style="color: white;">Endereço:</strong> ${asset.street}</p>
                 </div>
             </div>
         `;
@@ -918,10 +978,10 @@
                 <div style="border-bottom: 2px solid #f0f0f0; padding-bottom: 15px; margin-bottom: 15px;">
                     <h4 style="margin: 0 0 10px 0; color: #333; font-size: 14px;">📍 Localização</h4>
                     <div style="color: #666; font-size: 13px;">
-                        <p style="margin: 5px 0;"><strong>Coordenadas:</strong> ${movement.latitude?.toFixed(6)}, ${movement.longitude?.toFixed(6)}</p>
-                        <p style="margin: 5px 0;"><strong>Deslocamento:</strong> ${movement.displacement_meter?.toFixed(2) || 'N/A'}m</p>
-                        <p style="margin: 5px 0;"><strong>Acurácia:</strong> ${movement.accuracy_meter?.toFixed(2) || 'N/A'}m</p>
-                        <p style="margin: 5px 0;"><strong>Tipo:</strong> ${movement.movement_type || 'N/A'}</p>
+                        <p style="margin: 5px 0;"><strong style="color: white;">Coordenadas:</strong> ${movement.latitude?.toFixed(6)}, ${movement.longitude?.toFixed(6)}</p>
+                        <p style="margin: 5px 0;"><strong style="color: white;">Deslocamento:</strong> ${movement.displacement_meter?.toFixed(2) || 'N/A'}m</p>
+                        <p style="margin: 5px 0;"><strong style="color: white;">Acurácia:</strong> ${movement.accuracy_meter?.toFixed(2) || 'N/A'}m</p>
+                        <p style="margin: 5px 0;"><strong style="color: white;">Tipo:</strong> ${movement.movement_type || 'N/A'}</p>
                         <p style="margin: 5px 0; font-size: 12px; color: #999;">Registrado em: ${new Date(movement.start_time).toLocaleString('pt-BR')}</p>
                     </div>
                 </div>
@@ -987,7 +1047,7 @@
             alerts.forEach(alert => {
                 const priorityColor = alert.priority === 'High' ? '#e74c3c' : alert.priority === 'Medium' ? '#f5576c' : '#f39c12';
                 html += `
-                    <div style="background: #f8f9fa; padding: 10px; border-radius: 6px; margin-bottom: 10px; border-left: 3px solid ${priorityColor};">
+                    <div style="background: #1F1F23; padding: 10px; border-radius: 6px; margin-bottom: 10px; border-left: 3px solid ${priorityColor};">
                         <p style="margin: 0 0 5px 0; font-weight: bold; color: ${priorityColor};">${alert.alert_type}</p>
                         <p style="margin: 0 0 5px 0; font-size: 12px;">${alert.alert_text}</p>
                         <p style="margin: 0 0 3px 0; font-size: 11px;"><strong>Prioridade:</strong> ${alert.priority}</p>
@@ -1018,7 +1078,7 @@
     // Fechar painel de detalhes
     function closeDetailsPanel() {
         const panel = document.getElementById('detailsPanel');
-        panel.style.right = '-500px';
+        panel.style.right = '-600px';
     }
 
     // Selecionar asset e mostrar detalhes
@@ -1112,8 +1172,8 @@
 
         let html = `
             <!-- Gráfico de Temperatura e Porta (24h) -->
-            <div style="background: #f8f9fa; padding: 18px; border-radius: 12px; margin-bottom: 20px;">
-                <div style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 15px; display: flex; align-items: center;">
+            <div style="background: #1F1F23; padding: 18px; border-radius: 12px; margin-bottom: 20px;">
+                <div style="font-size: 14px; font-weight: 600; color: #008CFF; margin-bottom: 15px; display: flex; align-items: center;">
                     📈 <span style="margin-left: 8px;">ANÁLISE 24 HORAS</span>
                 </div>
                 
@@ -1183,8 +1243,8 @@
             </div>
 
             <!-- Atividade de Porta por Período -->
-            <div style="background: #f8f9fa; padding: 18px; border-radius: 12px; margin-bottom: 20px;">
-                <div style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 15px;">
+            <div style="background: #1F1F23; padding: 18px; border-radius: 12px; margin-bottom: 20px;">
+                <div style="font-size: 14px; font-weight: 600; color: #008CFF; margin-bottom: 15px;">
                     📊 Distribuição de Aberturas (30 dias)
                 </div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
@@ -1213,8 +1273,8 @@
             </div>
 
             <!-- Status de Temperatura -->
-            <div style="background: #f8f9fa; padding: 18px; border-radius: 12px;">
-                <div style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 15px;">
+            <div style="background: #1F1F23; padding: 18px; border-radius: 12px;">
+                <div style="font-size: 14px; font-weight: 600; color: #008CFF; margin-bottom: 15px;">
                     🌡️ Status de Temperatura (${temp_min}°C - ${temp_max}°C)
                 </div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
@@ -1440,7 +1500,7 @@
                 <!-- Métricas Principais em Grid -->
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
                     <!-- Bateria -->
-                    <div style="background: #f8f9fa; padding: 15px; border-radius: 10px; border: 2px solid ${batteryColor}; position: relative;">
+                    <div style="background: #1F1F23; padding: 15px; border-radius: 10px; border: 2px solid ${batteryColor}; position: relative;">
                         <div style="font-size: 11px; color: #666; font-weight: 600; margin-bottom: 8px;">🔋 BATERIA</div>
                         <div style="font-size: 24px; font-weight: bold; color: ${batteryColor};">${batteryLevel}%</div>
                         <div style="background: #e0e0e0; height: 6px; border-radius: 3px; margin-top: 8px; overflow: hidden;">
@@ -1449,7 +1509,7 @@
                     </div>
 
                     <!-- Temperatura Gabinete -->
-                    <div style="background: #f8f9fa; padding: 15px; border-radius: 10px; border: 2px solid ${tempColor};">
+                    <div style="background: #1F1F23; padding: 15px; border-radius: 10px; border: 2px solid ${tempColor};">
                         <div style="font-size: 11px; color: #666; font-weight: 600; margin-bottom: 8px;">🌡️ TEMP. GABINETE</div>
                         <div style="font-size: 24px; font-weight: bold; color: ${tempColor};">
                             ${device.temperature_c ? device.temperature_c.toFixed(1) : 'N/A'}°C
@@ -1458,8 +1518,8 @@
                 </div>
 
                 <!-- Informações de Localização -->
-                <div style="background: #f8f9fa; padding: 18px; border-radius: 12px; margin-bottom: 18px; border-left: 4px solid #667eea;">
-                    <div style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 12px; display: flex; align-items: center;">
+                <div style="background: #1F1F23; padding: 18px; border-radius: 12px; margin-bottom: 18px; border-left: 4px solid #667eea;">
+                    <div style="font-size: 14px; font-weight: 600; color: #008CFF; margin-bottom: 12px; display: flex; align-items: center;">
                         📍 <span style="margin-left: 8px;">LOCALIZAÇÃO</span>
                     </div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
@@ -1476,15 +1536,15 @@
                         <div style="font-size: 11px; color: #999; font-weight: 600; margin-bottom: 4px;">Canal</div>
                         <div style="font-size: 13px; color: #333; margin-bottom: 8px;">${device.sub_trade_channel || 'N/A'}</div>
                         <div style="font-size: 11px; color: #999; font-weight: 600; margin-bottom: 4px;">Endereço</div>
-                        <div style="font-size: 13px; color: #666;">
+                        <div style="font-size: 13px; color: #008CFF;">
                             ${[device.city, device.state, device.country].filter(Boolean).join(', ') || 'N/A'}
                         </div>
                     </div>
                 </div>
 
                 <!-- Informações Técnicas -->
-                <div style="background: #f8f9fa; padding: 18px; border-radius: 12px; margin-bottom: 18px; border-left: 4px solid #56ab2f;">
-                    <div style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 12px; display: flex; align-items: center;">
+                <div style="background: #1F1F23; padding: 18px; border-radius: 12px; margin-bottom: 18px; border-left: 4px solid #56ab2f;">
+                    <div style="font-size: 14px; font-weight: 600; color: #008CFF; margin-bottom: 12px; display: flex; align-items: center;">
                         🔧 <span style="margin-left: 8px;">INFORMAÇÕES TÉCNICAS</span>
                     </div>
                     <div style="display: grid; grid-template-columns: 1fr; gap: 10px;">
@@ -1501,8 +1561,8 @@
 
                 <!-- Estatísticas de Atividade -->
                 ${(device.door_event_average_morning || device.door_event_average_afternoon || device.door_event_average_night) ? 
-                    `<div style="background: #f8f9fa; padding: 18px; border-radius: 12px; margin-bottom: 18px; border-left: 4px solid #f39c12;">
-                        <div style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 12px; display: flex; align-items: center;">
+                    `<div style="background: #1F1F23; padding: 18px; border-radius: 12px; margin-bottom: 18px; border-left: 4px solid #f39c12;">
+                        <div style="font-size: 14px; font-weight: 600; color: #008CFF; margin-bottom: 12px; display: flex; align-items: center;">
                             📊 <span style="margin-left: 8px;">ATIVIDADE DE PORTA</span>
                         </div>
                         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
@@ -1601,20 +1661,20 @@
         
         let html = `
             <!-- Informações Principais -->
-            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+            <div style="background: #1F1F23; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
                     <div>
-                        <div style="font-size: 11px; color: #999; font-weight: 600; margin-bottom: 3px;">Serial OEM</div>
-                        <div style="font-size: 14px; font-weight: 600; color: #333;">${device.oem_serial_number || 'N/A'}</div>
+                        <div style="font-size: 11px; color: white; font-weight: 600; margin-bottom: 3px;">Serial OEM</div>
+                        <div style="font-size: 14px; font-weight: 600; color: #008CFF;">${device.oem_serial_number || 'N/A'}</div>
                     </div>
                     <div>
-                        <div style="font-size: 11px; color: #999; font-weight: 600; margin-bottom: 3px;">Status</div>
+                        <div style="font-size: 11px; color: white; font-weight: 600; margin-bottom: 3px;">Status</div>
                         <div style="font-size: 14px; font-weight: 600;">${statusOnline}</div>
                     </div>
                 </div>
                 <div style="display: grid; grid-template-columns: 1fr; gap: 10px;">
                     <div>
-                        <div style="font-size: 11px; color: #999; font-weight: 600; margin-bottom: 3px;">Temperatura</div>
+                        <div style="font-size: 11px; color: white; font-weight: 600; margin-bottom: 3px;">Temperatura</div>
                         <div style="font-size: 14px; font-weight: 600; color: ${tempColor};">${device.temperature_c ? device.temperature_c.toFixed(1) : 'N/A'}°C</div>
                     </div>
                 </div>
@@ -1622,51 +1682,51 @@
 
             <!-- Status -->
             <div style="display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 15px;">
-                <div style="background: #f0f3ff; padding: 12px; border-radius: 8px; border-left: 3px solid #667eea;">
-                    <div style="font-size: 11px; color: #667eea; font-weight: 600; margin-bottom: 5px;">🔌 Status Operacional</div>
-                    <div style="font-size: 12px; color: #333;">${statusMissing}</div>
+                <div style="background: #1F1F23; padding: 12px; border-radius: 8px; border-left: 3px solid #667eea;">
+                    <div style="font-size: 11px; color: white; font-weight: 600; margin-bottom: 5px;">🔌 Status Operacional</div>
+                    <div style="font-size: 12px; color: #008CFF;">${statusMissing}</div>
                 </div>
             </div>
 
             <!-- Localização -->
-            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                <div style="font-size: 12px; font-weight: 600; color: #333; margin-bottom: 10px;">📍 Localização</div>
-                <div style="font-size: 13px; color: #666; margin-bottom: 5px;">
-                    <strong>Outlet:</strong> ${device.outlet || 'N/A'}
+            <div style="background: #1F1F23; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <div style="font-size: 12px; font-weight: 600; color: white; margin-bottom: 10px;">📍 Localização</div>
+                <div style="font-size: 13px; color: #008CFF; margin-bottom: 5px;">
+                    <strong style="color: white;">Outlet:</strong> ${device.outlet || 'N/A'}
                 </div>
-                <div style="font-size: 13px; color: #666; margin-bottom: 5px;">
-                    <strong>Canal:</strong> ${device.sub_trade_channel || 'N/A'}
+                <div style="font-size: 13px; color: #008CFF; margin-bottom: 5px;">
+                    <strong style="color: white;">Canal:</strong> ${device.sub_trade_channel || 'N/A'}
                 </div>
-                <div style="font-size: 13px; color: #666;">
-                    <strong>Local:</strong> ${device.city || 'N/A'}${device.state ? ', ' + device.state : ''}${device.country ? ', ' + device.country : ''}
+                <div style="font-size: 13px; color: #008CFF;">
+                    <strong style="color: white;">Local:</strong> ${device.city || 'N/A'}${device.state ? ', ' + device.state : ''}${device.country ? ', ' + device.country : ''}
                 </div>
             </div>
 
             <!-- Informações Técnicas -->
-            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                <div style="font-size: 12px; font-weight: 600; color: #333; margin-bottom: 10px;">🔧 Informações Técnicas</div>
-                <div style="font-size: 13px; color: #666; margin-bottom: 5px;">
-                    <strong>Equipamento:</strong> ${device.bottler_equipment_number || 'N/A'}
+            <div style="background: #1F1F23; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <div style="font-size: 12px; font-weight: 600; color: white; margin-bottom: 10px;">🔧 Informações Técnicas</div>
+                <div style="font-size: 13px; color: #008CFF; margin-bottom: 5px;">
+                    <strong style="color: white;">Equipamento:</strong> ${device.bottler_equipment_number || 'N/A'}
                 </div>
-                <div style="font-size: 13px; color: #666; margin-bottom: 5px;">
-                    <strong>MAC Device:</strong> ${device.smart_device_mac || 'N/A'}
+                <div style="font-size: 13px; color: #008CFF; margin-bottom: 5px;">
+                    <strong style="color: white;">MAC Device:</strong> ${device.smart_device_mac || 'N/A'}
                 </div>
-                <div style="font-size: 13px; color: #666;">
-                    <strong>Sub Client:</strong> ${device.sub_client || 'N/A'}
+                <div style="font-size: 13px; color: #008CFF;">
+                    <strong style="color: white;">Sub Client:</strong> ${device.sub_client || 'N/A'}
                 </div>
             </div>
 
             <!-- Estatísticas de Porta -->
-            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                <div style="font-size: 12px; font-weight: 600; color: #333; margin-bottom: 10px;">🚪 Aberturas de Porta (Médias)</div>
-                <div style="font-size: 13px; color: #666; margin-bottom: 5px;">
-                    <strong>Manhã:</strong> ${device.door_event_average_morning ? parseFloat(device.door_event_average_morning).toFixed(1) : '0'} por dia
+            <div style="background: #1F1F23; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <div style="font-size: 12px; font-weight: 600; color: white; margin-bottom: 10px;">🚪 Aberturas de Porta (Médias)</div>
+                <div style="font-size: 13px; color: #008CFF; margin-bottom: 5px;">
+                    <strong style="color: white;">Manhã:</strong> ${device.door_event_average_morning ? parseFloat(device.door_event_average_morning).toFixed(1) : '0'} por dia
                 </div>
-                <div style="font-size: 13px; color: #666; margin-bottom: 5px;">
-                    <strong>Tarde:</strong> ${device.door_event_average_afternoon ? parseFloat(device.door_event_average_afternoon).toFixed(1) : '0'} por dia
+                <div style="font-size: 13px; color: #008CFF; margin-bottom: 5px;">
+                    <strong style="color: white;">Tarde:</strong> ${device.door_event_average_afternoon ? parseFloat(device.door_event_average_afternoon).toFixed(1) : '0'} por dia
                 </div>
-                <div style="font-size: 13px; color: #666;">
-                    <strong>Noite:</strong> ${device.door_event_average_night ? parseFloat(device.door_event_average_night).toFixed(1) : '0'} por dia
+                <div style="font-size: 13px; color: #008CFF;">
+                    <strong style="color: white;">Noite:</strong> ${device.door_event_average_night ? parseFloat(device.door_event_average_night).toFixed(1) : '0'} por dia
                 </div>
             </div>
 
@@ -1675,7 +1735,7 @@
                 <a href="https://www.google.com/maps?q=${device.latitude},${device.longitude}" target="_blank" style="
                     display: block;
                     padding: 10px;
-                    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+                    background: #4C3AFF;
                     color: white;
                     border: none;
                     border-radius: 6px;

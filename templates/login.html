@@ -4,16 +4,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Asset Manager</title>
+    <title>Login - Viva AI</title>
+    <!-- Inter Font -->
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
     <style>
         :root {
-            --primary: {{ theme.primary | default('#667eea') }};
-            --primary-dark: {{ theme.primary_dark | default('#764ba2') }};
-            --accent: {{ theme.accent | default('#00D4FF') }};
-            --border-color: {{ theme.border_color | default('#e1e5e9') }};
-            --bg-light: {{ theme.bg_light | default('#f5f5f5') }};
-            --text-dark: {{ theme.text_dark | default('#333') }};
-            --text-gray: {{ theme.text_gray | default('#666') }};
+            --primary: #00C3FF;
+            --primary-glow: #008CFF;
+            --deep-blue: #0A1F44;
+            --background-dark: #0B0B0D;
+            --card-dark: #1F1F23;
+            --text: #FFFFFF;
+            --text-secondary: rgba(255, 255, 255, 0.7);
+            --border: rgba(0, 195, 255, 0.25);
+            --success: #34C759;
+            --danger: #FF5A5F;
+            --warning: #FFB800;
+            
+            /* Inter Font Weights */
+            --font-black: 900;
+            --font-bold: 700;
+            --font-semibold: 600;
+            --font-medium: 500;
+            --font-regular: 400;
+            --font-light: 300;
         }
         
         * {
@@ -23,21 +37,24 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-            height: 100vh;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-weight: var(--font-regular);
+            background: linear-gradient(135deg, var(--background-dark) 0%, var(--deep-blue) 100%);
+            min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
+            padding: 1rem;
         }
 
         .login-container {
-            background: white;
-            padding: 2rem;
-            border-radius: 16px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            max-width: 400px;
-            width: 90%;
+            background: var(--card-dark);
+            padding: 2.5rem;
+            border-radius: 20px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4), 0 0 40px rgba(0, 195, 255, 0.1);
+            max-width: 420px;
+            width: 100%;
+            border: 1px solid var(--border);
         }
 
         .login-header {
@@ -45,16 +62,31 @@
             margin-bottom: 2rem;
         }
 
+        .login-logo {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-glow));
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.25rem;
+            font-size: 1.75rem;
+            box-shadow: 0 8px 25px rgba(0, 195, 255, 0.3);
+        }
+
         .login-title {
-            font-size: 1.8rem;
-            font-weight: 700;
-            color: var(--text-dark);
+            font-size: 1.75rem;
+            font-weight: var(--font-bold);
+            color: var(--text);
             margin-bottom: 0.5rem;
+            letter-spacing: -0.5px;
         }
 
         .login-subtitle {
-            color: var(--text-gray);
-            font-size: 0.9rem;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            font-weight: var(--font-regular);
         }
 
         .form-group {
@@ -64,93 +96,99 @@
         label {
             display: block;
             margin-bottom: 0.5rem;
-            font-weight: 600;
-            color: var(--text-dark);
+            font-weight: var(--font-semibold);
+            color: var(--text);
+            font-size: 0.9rem;
         }
 
         input[type="text"] {
             width: 100%;
-            padding: 0.75rem;
-            border: 2px solid var(--border-color);
-            border-radius: 8px;
+            padding: 0.875rem 1rem;
+            background: var(--background-dark);
+            border: 2px solid var(--border);
+            border-radius: 12px;
             font-size: 1rem;
-            transition: border-color 0.3s ease;
+            color: var(--text);
+            transition: all 0.3s ease;
+        }
+
+        input[type="text"]::placeholder {
+            color: rgba(255, 255, 255, 0.4);
         }
 
         input[type="text"]:focus {
             outline: none;
             border-color: var(--primary);
+            box-shadow: 0 0 20px rgba(0, 195, 255, 0.2);
         }
 
         .login-btn {
             width: 100%;
-            padding: 0.875rem;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            padding: 1rem;
+            background: linear-gradient(135deg, var(--primary), var(--primary-glow));
             color: white;
             border: none;
-            border-radius: 8px;
+            border-radius: 12px;
             font-size: 1rem;
-            font-weight: 600;
+            font-weight: var(--font-semibold);
+            font-family: inherit;
             cursor: pointer;
-            transition: transform 0.2s ease;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 195, 255, 0.3);
         }
 
         .login-btn:hover {
             transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 195, 255, 0.4);
         }
 
         .login-btn:disabled {
-            opacity: 0.7;
+            opacity: 0.6;
             cursor: not-allowed;
             transform: none;
+            box-shadow: none;
         }
 
         .error-message {
-            background: #fee !important;
-            color: #c00 !important;
-            padding: 0.75rem !important;
-            border-radius: 8px !important;
-            margin-bottom: 1rem !important;
-            font-size: 0.9rem !important;
-            display: block !important;
-            border: 1px solid #fcc;
+            background: rgba(255, 90, 95, 0.15);
+            color: var(--danger);
+            padding: 0.875rem 1rem;
+            border-radius: 10px;
+            margin-bottom: 1.25rem;
+            font-size: 0.9rem;
+            display: block;
+            border: 1px solid rgba(255, 90, 95, 0.3);
         }
 
         .loading {
             display: none;
             text-align: center;
             margin-top: 1rem;
-            color: #666;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
         }
 
-        .example {
+        .device-info {
             margin-top: 1rem;
-            padding: 0.75rem;
-            background: #f8f9fa;
-            border-radius: 8px;
+            padding: 0.625rem 0.875rem;
+            background: rgba(0, 195, 255, 0.1);
+            border: 1px solid var(--border);
+            border-radius: 10px;
             font-size: 0.85rem;
-            color: #666;
+            color: var(--primary);
+            text-align: center;
         }
 
-        .example strong {
-            color: #333;
+        .device-info.mobile {
+            background: rgba(0, 195, 255, 0.1);
+            border-color: var(--border);
+            color: var(--primary);
         }
 
-        .destination-btn {
-            flex: 1;
-            padding: 0.875rem;
-            border: 2px solid #e1e5e9;
-            background: white;
-            color: #333;
-            border-radius: 8px;
-            font-size: 0.95rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
+        .device-info.desktop {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.1);
+            color: var(--text-secondary);
         }
 
         .location-status {
@@ -158,56 +196,33 @@
             align-items: center;
             justify-content: center;
             gap: 0.5rem;
-            margin-top: 1rem;
-            padding: 0.5rem;
-            border-radius: 8px;
-            font-size: 0.8rem;
+            margin-top: 1.25rem;
+            padding: 0.625rem;
+            border-radius: 10px;
+            font-size: 0.85rem;
             transition: all 0.3s ease;
         }
 
         .location-status.requesting {
-            background: #fff3cd;
-            color: #856404;
-            border: 1px solid #ffeaa7;
+            background: rgba(255, 184, 0, 0.15);
+            color: var(--warning);
+            border: 1px solid rgba(255, 184, 0, 0.3);
         }
 
         .location-status.success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
+            background: rgba(52, 199, 89, 0.15);
+            color: var(--success);
+            border: 1px solid rgba(52, 199, 89, 0.3);
         }
 
         .location-status.error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
+            background: rgba(255, 90, 95, 0.15);
+            color: var(--danger);
+            border: 1px solid rgba(255, 90, 95, 0.3);
         }
 
         .location-icon {
             animation: pulse 2s infinite;
-        }
-
-        .device-info {
-            margin-top: 0.75rem;
-            padding: 0.5rem 0.75rem;
-            background: rgba(0, 0, 0, 0.02);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            font-size: 0.85rem;
-            color: var(--primary);
-            text-align: center;
-        }
-
-        .device-info.mobile {
-            background: rgba(0, 0, 0, 0.02);
-            border-color: var(--border-color);
-            color: var(--primary-dark);
-        }
-
-        .device-info.desktop {
-            background: rgba(0, 0, 0, 0.02);
-            border-color: var(--border-color);
-            color: var(--text-dark);
         }
 
         @keyframes pulse {
@@ -223,14 +238,45 @@
                 opacity: 1;
             }
         }
+
+        /* Decorative elements */
+        .login-container::before {
+            content: '';
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(0, 195, 255, 0.03) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* Footer branding */
+        .login-footer {
+            margin-top: 2rem;
+            text-align: center;
+            padding-top: 1.5rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .login-footer-text {
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 0.8rem;
+        }
+
+        .login-footer-brand {
+            color: var(--primary);
+            font-weight: var(--font-semibold);
+        }
     </style>
 </head>
 
 <body>
     <div class="login-container">
         <div class="login-header">
-            <h1 class="login-title">Asset Manager</h1>
-            <p class="login-subtitle">Faça login para acessar o sistema</p>
+            <div class="login-logo">🧊</div>
+            <h1 class="login-title">Viva AI</h1>
+            <p class="login-subtitle">Asset Intelligence Platform</p>
             <div id="deviceInfo" class="device-info" style="display: none;">
                 <span id="deviceTypeText"></span>
             </div>
@@ -245,7 +291,14 @@
         <form method="POST" id="loginForm">
             <div class="form-group">
                 <label for="upn">UPN</label>
-                <input type="text" id="upn" name="upn" value="{{ upn or '' }}" required>
+                <input 
+                    type="text" 
+                    id="upn" 
+                    name="upn" 
+                    value="{{ upn or '' }}"
+                    placeholder="Digite seu UPN"
+                    required
+                >
             </div>
 
             <button type="submit" class="login-btn" id="loginBtn">
@@ -253,7 +306,7 @@
             </button>
 
             <div class="loading" id="loading">
-                🔄 Verificando usuário...
+                ⏳ Verificando usuário...
             </div>
 
             <input type="hidden" name="destination" id="destination" value="">
@@ -262,6 +315,10 @@
         <div class="location-status" id="locationStatus" style="display: none;">
             <span class="location-icon" id="locationIcon">📍</span>
             <span id="locationText">Obtendo localização...</span>
+        </div>
+
+        <div class="login-footer">
+            <p class="login-footer-text">Powered by <span class="login-footer-brand">Viva Services AI</span></p>
         </div>
     </div>
 

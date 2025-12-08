@@ -6,8 +6,10 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Assets">
-    <meta name="theme-color" content="#0066FF">
+    <meta name="theme-color" content="#0A1F44">
     <title>Dashboard de Assets</title>
+    <!-- Inter Font -->
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
     <style>
         * {
             margin: 0;
@@ -17,17 +19,18 @@
         }
 
         :root {
-            --primary: #0066FF;
-            --secondary: #5AC8FA;
-            --success: #34C759;
-            --danger: #FF3B30;
-            --warning: #FF9500;
-            --light: #F5F5F7;
-            --darker: #EFEFF4;
-            --border: #D0D0D0;
-            --text: #1C1C1E;
-            --text-secondary: #8E8E93;
-            --text-tertiary: #C7C7CC;
+            --primary: #00C3FF;
+            --primary-glow: #008CFF;
+            --deep-blue: #0A1F44;
+            --background-dark: #0B0B0D;
+            --card-dark: #1F1F23;
+            --text: #FFFFFF;
+            --text-secondary: #6D6D73;
+            --text-tertiary: rgba(255, 255, 255, 0.5);
+            --accent-success: #34C759;
+            --accent-warning: #FFB800;
+            --accent-danger: #FF5A5F;
+            --border: rgba(0, 195, 255, 0.25);
             --spacing-xs: 0.5rem;
             --spacing-sm: 0.75rem;
             --spacing-md: 1rem;
@@ -36,13 +39,22 @@
             --radius-sm: 8px;
             --radius-md: 12px;
             --radius-lg: 16px;
+            
+            /* Inter Font Weights */
+            --font-black: 900;
+            --font-bold: 700;
+            --font-semibold: 600;
+            --font-medium: 500;
+            --font-regular: 400;
+            --font-light: 300;
         }
 
         html, body {
             width: 100%;
             height: 100%;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
-            background: var(--light);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
+            font-weight: var(--font-regular);
+            background: radial-gradient(circle at top right, rgba(0,195,255,0.15), transparent 45%), var(--background-dark);
             color: var(--text);
             overflow: hidden;
         }
@@ -63,10 +75,11 @@
 
         /* ========== HEADER ========== */
         .header {
-            background: white;
-            border-bottom: 1px solid var(--border);
+            background: linear-gradient(120deg, var(--deep-blue), #08152d);
+            border-bottom: 1px solid rgba(0, 195, 255, 0.2);
             padding: var(--spacing-sm);
             flex-shrink: 0;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
         }
 
         .header-row {
@@ -101,7 +114,7 @@
         
         .header-title {
             font-size: 1.1rem;
-            font-weight: 700;
+            font-weight: var(--font-bold);
             color: var(--text);
             text-align: center;
             line-height: 1.2;
@@ -110,7 +123,8 @@
 
         .header-subtitle {
             font-size: 0.8rem;
-            color: var(--text-secondary);
+            font-weight: var(--font-regular);
+            color: rgba(255, 255, 255, 0.7);
             text-align: center;
             margin: 0;
             white-space: nowrap;
@@ -140,8 +154,9 @@
         }
 
         .compact-btn:hover {
-            background: #0056b3;
+            background: var(--primary-glow);
             transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(0, 195, 255, 0.4);
         }
 
         .compact-btn:active {
@@ -154,15 +169,16 @@
             flex-direction: column;
             align-items: center;
             padding: var(--spacing-xs);
-            background: #e3f2fd;
+            background: rgba(0, 195, 255, 0.15);
+            border: 1px solid var(--border);
             border-radius: 8px;
             min-width: 0;
         }
 
         .user-name {
             font-size: 0.7rem;
-            font-weight: 600;
-            color: #1976d2;
+            font-weight: var(--font-semibold);
+            color: var(--primary);
             margin: 0;
             white-space: nowrap;
             overflow: hidden;
@@ -172,7 +188,8 @@
 
         .user-client {
             font-size: 0.6rem;
-            color: #666;
+            font-weight: var(--font-light);
+            color: rgba(255, 255, 255, 0.7);
             margin: 0;
             white-space: nowrap;
             overflow: hidden;
@@ -193,7 +210,8 @@
             cursor: pointer;
             transition: all 0.2s ease;
             flex-shrink: 0;
-            font-weight: 600;
+            font-weight: var(--font-semibold);
+            font-family: inherit;
             text-decoration: none;
         }
 
@@ -203,7 +221,7 @@
         }
 
         .logout-btn {
-            background: #ff5722;
+            background: var(--accent-danger);
             color: white;
             border: none;
             padding: 0.3rem;
@@ -219,38 +237,42 @@
         }
 
         .logout-btn:hover {
-            background: #e64a19;
+            background: #FF3B47;
+            box-shadow: 0 4px 15px rgba(255, 90, 95, 0.4);
         }
 
         .subclient-selector {
             margin-bottom: var(--spacing-md);
             padding: var(--spacing-md);
-            background: white;
+            background: var(--card-dark);
             border-radius: var(--radius-md);
-            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
         }
 
         .subclient-selector label {
             display: block;
             margin-bottom: var(--spacing-sm);
-            font-weight: 600;
+            font-weight: var(--font-semibold);
             color: var(--text);
         }
 
         .subclient-selector select {
             width: 100%;
             padding: 0.75rem;
-            border: 2px solid #e0e0e0;
+            border: 1px solid var(--border);
             border-radius: var(--radius-sm);
             font-size: 1rem;
-            background: white;
+            background: var(--background-dark);
+            color: var(--text);
             cursor: pointer;
-            transition: border-color 0.2s ease;
+            transition: all 0.2s ease;
         }
 
         .subclient-selector select:focus {
             outline: none;
             border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(0, 195, 255, 0.2);
         }
 
         /* KPI Cards */
@@ -262,17 +284,23 @@
         }
 
         .kpi-card {
-            background: var(--darker);
+            background: var(--card-dark);
             border-radius: var(--radius-sm);
             padding: var(--spacing-xs);
             border: 1px solid var(--border);
             text-align: center;
+            transition: all 0.2s ease;
+        }
+
+        .kpi-card:hover {
+            border-color: var(--primary);
+            box-shadow: 0 0 15px rgba(0, 195, 255, 0.2);
         }
 
         .kpi-label {
             font-size: 0.6rem;
-            color: var(--text-secondary);
-            font-weight: 600;
+            color: rgba(255, 255, 255, 0.8);
+            font-weight: var(--font-semibold);
             text-transform: uppercase;
             letter-spacing: 0.2px;
             margin-bottom: 0.1rem;
@@ -281,7 +309,7 @@
 
         .kpi-value {
             font-size: 0.9rem;
-            font-weight: 700;
+            font-weight: var(--font-bold);
             color: var(--text);
             line-height: 1;
         }
@@ -321,13 +349,19 @@
 
         /* ========== SEARCH ========== */
         .search-bar {
-            background: white;
+            background: var(--card-dark);
             border-radius: var(--radius-md);
             padding: 0 var(--spacing-md);
             display: flex;
             align-items: center;
             gap: var(--spacing-sm);
             border: 1px solid var(--border);
+            transition: all 0.2s ease;
+        }
+
+        .search-bar:focus-within {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(0, 195, 255, 0.15);
         }
 
         .search-bar input {
@@ -341,7 +375,7 @@
         }
 
         .search-bar input::placeholder {
-            color: var(--text-secondary);
+            color: rgba(255, 255, 255, 0.5);
         }
 
         .search-bar input:focus {
@@ -349,7 +383,7 @@
         }
 
         .search-bar-icon {
-            color: var(--text-secondary);
+            color: var(--primary);
             font-size: 1.1rem;
             flex-shrink: 0;
         }
@@ -368,23 +402,23 @@
         }
 
         .asset-card {
-            background: white;
+            background: var(--card-dark);
             border-radius: var(--radius-lg);
             padding: var(--spacing-lg);
             border: 1px solid var(--border);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
             transition: all 0.2s ease;
         }
 
         .asset-card-link:hover .asset-card {
-            box-shadow: 0 4px 16px rgba(0, 102, 255, 0.2);
+            box-shadow: 0 8px 30px rgba(0, 195, 255, 0.25);
             border-color: var(--primary);
             transform: translateY(-2px);
         }
 
         .asset-card:active {
             transform: scale(0.98);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.4);
         }
 
         /* Card Header */
@@ -404,24 +438,25 @@
         }
 
         .asset-serial {
-            font-weight: 700;
+            font-weight: var(--font-bold);
             font-size: 1.1rem;
             color: var(--primary);
         }
 
         .asset-location {
             font-size: 0.85rem;
-            color: var(--text-secondary);
+            font-weight: var(--font-regular);
+            color: rgba(255, 255, 255, 0.75);
         }
 
         .distance-badge {
             display: inline-block;
             font-size: 0.75rem;
-            background: #28a745;
+            background: var(--accent-success);
             color: white;
             padding: 0.2rem 0.5rem;
             border-radius: 10px;
-            font-weight: 600;
+            font-weight: var(--font-semibold);
             margin-left: 0.5rem;
             white-space: nowrap;
         }
@@ -429,11 +464,11 @@
         .asset-distance {
             display: inline-block;
             font-size: 0.75rem;
-            background: var(--secondary);
+            background: var(--primary-glow);
             color: white;
             padding: 0.3rem 0.6rem;
             border-radius: 12px;
-            font-weight: 600;
+            font-weight: var(--font-semibold);
             white-space: nowrap;
             margin-top: 0.3rem;
         }
@@ -449,30 +484,34 @@
             padding: 0.35rem 0.65rem;
             border-radius: 20px;
             font-size: 0.7rem;
-            font-weight: 600;
+            font-weight: var(--font-semibold);
             white-space: nowrap;
             text-transform: uppercase;
             letter-spacing: 0.3px;
         }
 
         .status-badge.on {
-            background: #E5F5E5;
-            color: var(--success);
+            background: rgba(52, 199, 89, 0.2);
+            color: var(--accent-success);
+            border: 1px solid rgba(52, 199, 89, 0.3);
         }
 
         .status-badge.off {
-            background: #F5F5F5;
-            color: var(--text-secondary);
+            background: rgba(109, 109, 115, 0.2);
+            color: rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(109, 109, 115, 0.3);
         }
 
         .status-badge.open {
-            background: #FFE5E5;
-            color: var(--danger);
+            background: rgba(255, 90, 95, 0.2);
+            color: var(--accent-danger);
+            border: 1px solid rgba(255, 90, 95, 0.3);
         }
 
         .status-badge.closed {
-            background: #E5F5E5;
-            color: var(--success);
+            background: rgba(52, 199, 89, 0.2);
+            color: var(--accent-success);
+            border: 1px solid rgba(52, 199, 89, 0.3);
         }
 
         /* Card Body */
@@ -491,15 +530,15 @@
 
         .metric-label {
             font-size: 0.75rem;
-            color: var(--text-secondary);
-            font-weight: 600;
+            color: rgba(255, 255, 255, 0.8);
+            font-weight: var(--font-semibold);
             text-transform: uppercase;
             letter-spacing: 0.3px;
         }
 
         .metric-value {
             font-size: 1.25rem;
-            font-weight: 700;
+            font-weight: var(--font-bold);
             color: var(--text);
         }
 
@@ -514,8 +553,8 @@
 
         .battery-label {
             font-size: 0.75rem;
-            color: var(--text-secondary);
-            font-weight: 600;
+            color: rgba(255, 255, 255, 0.8);
+            font-weight: var(--font-semibold);
             text-transform: uppercase;
             letter-spacing: 0.3px;
             margin-bottom: 0.5rem;
@@ -524,30 +563,31 @@
 
         .battery-bar {
             height: 8px;
-            background: var(--darker);
+            background: var(--background-dark);
             border-radius: 4px;
             overflow: hidden;
             position: relative;
+            border: 1px solid var(--border);
         }
 
         .battery-fill {
             height: 100%;
-            background: var(--success);
+            background: var(--accent-success);
             border-radius: 4px;
             transition: width 0.3s ease;
         }
 
         .battery-fill.warning {
-            background: var(--warning);
+            background: var(--accent-warning);
         }
 
         .battery-fill.critical {
-            background: var(--danger);
+            background: var(--accent-danger);
         }
 
         .battery-percent {
             font-size: 0.8rem;
-            color: var(--text-secondary);
+            color: rgba(255, 255, 255, 0.8);
             margin-top: 0.35rem;
             display: block;
         }
@@ -560,8 +600,8 @@
 
         .alerts-title {
             font-size: 0.75rem;
-            color: var(--text-secondary);
-            font-weight: 600;
+            color: rgba(255, 255, 255, 0.8);
+            font-weight: var(--font-semibold);
             text-transform: uppercase;
             letter-spacing: 0.3px;
             margin-bottom: 0.6rem;
@@ -577,25 +617,28 @@
             padding: 0.5rem 0.75rem;
             border-radius: var(--radius-sm);
             font-size: 0.8rem;
-            font-weight: 500;
+            font-weight: var(--font-medium);
             display: flex;
             align-items: center;
             gap: 0.5rem;
         }
 
         .alert-item.warning {
-            background: #FFF3CD;
-            color: #7A5C00;
+            background: rgba(255, 184, 0, 0.15);
+            color: var(--accent-warning);
+            border: 1px solid rgba(255, 184, 0, 0.3);
         }
 
         .alert-item.danger {
-            background: #FFE5E5;
-            color: var(--danger);
+            background: rgba(255, 90, 95, 0.15);
+            color: var(--accent-danger);
+            border: 1px solid rgba(255, 90, 95, 0.3);
         }
 
         .alert-item.success {
-            background: #E5F5E5;
-            color: var(--success);
+            background: rgba(52, 199, 89, 0.15);
+            color: var(--accent-success);
+            border: 1px solid rgba(52, 199, 89, 0.3);
         }
 
         /* ========== EMPTY STATE ========== */
@@ -605,7 +648,7 @@
             align-items: center;
             justify-content: center;
             padding: 3rem 2rem;
-            color: var(--text-secondary);
+            color: rgba(255, 255, 255, 0.7);
             text-align: center;
         }
 
@@ -616,14 +659,14 @@
 
         .empty-title {
             font-size: 1.2rem;
-            font-weight: 600;
+            font-weight: var(--fw-semibold);
             color: var(--text);
             margin-bottom: var(--spacing-sm);
         }
 
         .empty-text {
             font-size: 0.9rem;
-            color: var(--text-secondary);
+            color: rgba(255, 255, 255, 0.7);
         }
     </style>
 </head>
@@ -721,8 +764,8 @@
                             data-country="{{ asset.get('country', '') }}"
                             data-latitude="{{ asset.get('latitude', '') }}"
                             data-longitude="{{ asset.get('longitude', '') }}"
-                            data-temperature="{%- if asset.get('latest_temperature_c') is not none -%}{{ 'high' if asset.get('latest_temperature_c')|float >= 40 else 'good' }}{%- else -%}unknown{%- endif -%}"
-                            data-battery="{%- if asset.get('battery_level') and asset.get('battery_level') < 30 -%}low{%- elif asset.get('battery_level') and asset.get('battery_level') >= 30 -%}good{%- else -%}unknown{%- endif -%}">
+                            data-temperature="{%- if asset.get('temperature_c') is not none -%}{{ 'high' if asset.get('temperature_c')|float >= 40 else 'good' }}{%- else -%}unknown{%- endif -%}"
+                            data-battery="{%- if asset.get('battery') and asset.get('battery') < 30 -%}low{%- elif asset.get('battery') and asset.get('battery') >= 30 -%}good{%- else -%}unknown{%- endif -%}">
                         <!-- Card Header with Badges -->
                         <div class="card-header">
                             <div class="card-asset-name">
@@ -768,18 +811,18 @@
                             {% endif %}
 
                             <!-- Temperature -->
-                            {% if asset.get('latest_temperature_c') is not none and asset.get('latest_temperature_c') != 0 %}
+                            {% if asset.get('temperature_c') is not none and asset.get('temperature_c') != 0 %}
                             <div class="metric">
                                 <span class="metric-label"><span class="metric-icon">🌡️</span>Temperatura</span>
-                                <span class="metric-value" style="color: {% if asset.get('latest_temperature_c')|float >= 40 %}#e74c3c{% else %}#56ab2f{% endif %};">{{ asset.get('latest_temperature_c')|float }}°C</span>
+                                <span class="metric-value" style="color: {% if asset.get('temperature_c')|float >= 40 %}#e74c3c{% else %}#56ab2f{% endif %};">{{ asset.get('temperature_c')|float }}°C</span>
                             </div>
                             {% endif %}
 
                             <!-- Battery -->
-                            {% if asset.get('battery_level') is not none and asset.get('battery_level') != '-' %}
+                            {% if asset.get('battery') is not none and asset.get('battery') != '-' %}
                             <div class="metric">
                                 <span class="metric-label"><span class="metric-icon">⚡</span>Bateria</span>
-                                <span class="metric-value" style="color: {% if asset.get('battery_level')|int < 20 %}#e74c3c{% elif asset.get('battery_level')|int < 50 %}#f5a623{% else %}#56ab2f{% endif %};">{{ asset.get('battery_level') }}%</span>
+                                <span class="metric-value" style="color: {% if asset.get('battery')|int < 20 %}#e74c3c{% elif asset.get('battery')|int < 50 %}#f5a623{% else %}#56ab2f{% endif %};">{{ asset.get('battery') }}%</span>
                             </div>
                             {% endif %}
 
@@ -800,37 +843,37 @@
                             {% endif %}
 
                             <!-- Battery Bar -->
-                            {% if asset.get('battery_level') is not none and asset.get('battery_level') != '-' %}
+                            {% if asset.get('battery') is not none and asset.get('battery') != '-' %}
                             <div class="battery-container">
                                 <span class="battery-label"><span class="metric-icon">⚡</span>Nível Bateria</span>
                                 <div class="battery-bar">
-                                    <div class="battery-fill" data-battery="{{ asset.get('battery_level', 0) }}"></div>
+                                    <div class="battery-fill" data-battery="{{ asset.get('battery', 0) }}"></div>
                                 </div>
-                                <span class="battery-percent">{{ asset.get('battery_level', '-') }}%</span>
+                                <span class="battery-percent">{{ asset.get('battery', '-') }}%</span>
                             </div>
                             {% endif %}
 
                             <!-- Door Events Statistics -->
                             {% if asset.get('door_event_average_morning') or asset.get('door_event_average_afternoon') or asset.get('door_event_average_night') %}
-                            <div style="grid-column: 1 / -1; background: #f8f9fa; padding: 12px; border-radius: 8px; border-left: 3px solid #667eea;">
-                                <div style="font-size: 0.75rem; color: #667eea; font-weight: 600; margin-bottom: 8px;">🚪 Aberturas de Porta (Médias)</div>
+                            <div style="grid-column: 1 / -1; background: rgba(0, 195, 255, 0.1); padding: 12px; border-radius: 8px; border-left: 3px solid var(--primary);">
+                                <div style="font-size: 0.75rem; color: var(--primary); font-weight: var(--fw-semibold); margin-bottom: 8px;">🚪 Aberturas de Porta (Médias)</div>
                                 <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; font-size: 0.85rem;">
                                     {% if asset.get('door_event_average_morning') %}
                                     <div style="text-align: center;">
-                                        <div style="color: #999; font-size: 0.7rem; margin-bottom: 2px;">Manhã</div>
-                                        <div style="font-weight: 600; color: #333;">{{ (asset.get('door_event_average_morning')|float)|round(1) }}</div>
+                                        <div style="color: rgba(255,255,255,0.7); font-size: 0.7rem; margin-bottom: 2px;">Manhã</div>
+                                        <div style="font-weight: var(--fw-semibold); color: var(--text);">{{ (asset.get('door_event_average_morning')|float)|round(1) }}</div>
                                     </div>
                                     {% endif %}
                                     {% if asset.get('door_event_average_afternoon') %}
                                     <div style="text-align: center;">
-                                        <div style="color: #999; font-size: 0.7rem; margin-bottom: 2px;">Tarde</div>
-                                        <div style="font-weight: 600; color: #333;">{{ (asset.get('door_event_average_afternoon')|float)|round(1) }}</div>
+                                        <div style="color: rgba(255,255,255,0.7); font-size: 0.7rem; margin-bottom: 2px;">Tarde</div>
+                                        <div style="font-weight: var(--fw-semibold); color: var(--text);">{{ (asset.get('door_event_average_afternoon')|float)|round(1) }}</div>
                                     </div>
                                     {% endif %}
                                     {% if asset.get('door_event_average_night') %}
                                     <div style="text-align: center;">
-                                        <div style="color: #999; font-size: 0.7rem; margin-bottom: 2px;">Noite</div>
-                                        <div style="font-weight: 600; color: #333;">{{ (asset.get('door_event_average_night')|float)|round(1) }}</div>
+                                        <div style="color: rgba(255,255,255,0.7); font-size: 0.7rem; margin-bottom: 2px;">Noite</div>
+                                        <div style="font-weight: var(--fw-semibold); color: var(--text);">{{ (asset.get('door_event_average_night')|float)|round(1) }}</div>
                                     </div>
                                     {% endif %}
                                 </div>
@@ -842,11 +885,11 @@
                         <div class="alerts-section">
                             <div class="alerts-title">Status</div>
                             <div class="alerts-list" id="alerts-{{ asset['oem_serial_number'] }}">
-                                {% if asset.get('battery_level') and asset.get('battery_level') < 30 and asset.get('battery_level') > 0 %}
-                                    <div class="alert-item warning">⚠️ Bateria em {{ asset.get('battery_level') }}%</div>
+                                {% if asset.get('battery') and asset.get('battery') < 30 and asset.get('battery') > 0 %}
+                                    <div class="alert-item warning">⚠️ Bateria em {{ asset.get('battery') }}%</div>
                                 {% endif %}
-                                {% if asset.get('latest_temperature_c') is not none and asset.get('latest_temperature_c') >= 40 %}
-                                    <div class="alert-item danger">🔥 Temperatura crítica ({{ asset.get('latest_temperature_c')|float }}°C)</div>
+                                {% if asset.get('temperature_c') is not none and asset.get('temperature_c') >= 40 %}
+                                    <div class="alert-item danger">🔥 Temperatura crítica ({{ asset.get('temperature_c')|float }}°C)</div>
                                 {% endif %}
                                 {% if asset.get('is_missing') %}
                                     <div class="alert-item danger">❌ Asset ausente</div>
@@ -854,7 +897,7 @@
                                 {% if asset.get('is_online') == false %}
                                     <div class="alert-item danger">📡 Offline - sem conexão</div>
                                 {% endif %}
-                                {% if not (asset.get('battery_level') and asset.get('battery_level') < 30) and not (asset.get('latest_temperature_c') is not none and asset.get('latest_temperature_c') >= 40) and not asset.get('is_missing') and asset.get('is_online') %}
+                                {% if not (asset.get('battery') and asset.get('battery') < 30) and not (asset.get('temperature_c') is not none and asset.get('temperature_c') >= 40) and not asset.get('is_missing') and asset.get('is_online') %}
                                     <div class="alert-item success">✅ Tudo normal</div>
                                 {% endif %}
                             </div>
@@ -862,7 +905,7 @@
 
                         <!-- Additional Info & Links -->
                         {% if asset.get('asset_type') and asset.get('asset_type') != '-' or (asset.get('city') and asset.get('city') != '-') or (asset.get('state') and asset.get('state') != '-') %}
-                        <div style="margin-top: var(--spacing-md); padding-top: var(--spacing-md); border-top: 1px solid var(--border); display: flex; gap: 0.75rem; flex-wrap: wrap; font-size: 0.8rem; color: var(--text-secondary);">
+                        <div style="margin-top: var(--spacing-md); padding-top: var(--spacing-md); border-top: 1px solid var(--border); display: flex; gap: 0.75rem; flex-wrap: wrap; font-size: 0.8rem; color: rgba(255,255,255,0.75);">
                             {% if asset.get('asset_type') and asset.get('asset_type') != '-' %}
                             <span>🔧 {{ asset.get('asset_type', '-') }}</span>
                             {% endif %}
@@ -875,12 +918,12 @@
                         <!-- Map Link & Temperature History -->
                         <div style="margin-top: var(--spacing-md); padding-top: var(--spacing-md); border-top: 1px solid var(--border); display: flex; gap: 0.75rem; flex-wrap: wrap;">
                             {% if asset.get('latitude') and asset.get('longitude') %}
-                            <button onclick="event.preventDefault(); event.stopPropagation(); window.open('https://www.google.com/maps?q={{ asset['latitude'] }},{{ asset['longitude'] }}', '_blank')" style="display: inline-flex; align-items: center; gap: 0.5rem; color: var(--primary); background: none; border: none; text-decoration: none; font-weight: 600; font-size: 0.9rem; cursor: pointer;">
+                            <button onclick="event.preventDefault(); event.stopPropagation(); window.open('https://www.google.com/maps?q={{ asset['latitude'] }},{{ asset['longitude'] }}', '_blank')" style="display: inline-flex; align-items: center; gap: 0.5rem; color: var(--primary); background: none; border: none; text-decoration: none; font-weight: var(--fw-semibold); font-size: 0.9rem; cursor: pointer;">
                                 <span>🗺️</span>Ver no Mapa
                             </button>
                             {% endif %}
-                            {% if asset.get('latest_temperature_c') is not none %}
-                            <button onclick="event.preventDefault(); event.stopPropagation(); viewTemperatureHistory('{{ asset['oem_serial_number'] }}')" style="display: inline-flex; align-items: center; gap: 0.5rem; color: var(--primary); background: none; border: none; text-decoration: none; font-weight: 600; font-size: 0.9rem; cursor: pointer;">
+                            {% if asset.get('temperature_c') is not none %}
+                            <button onclick="event.preventDefault(); event.stopPropagation(); viewTemperatureHistory('{{ asset['oem_serial_number'] }}')" style="display: inline-flex; align-items: center; gap: 0.5rem; color: var(--primary); background: none; border: none; text-decoration: none; font-weight: var(--fw-semibold); font-size: 0.9rem; cursor: pointer;">
                                 <span>🌡️</span>Histórico Temp.
                             </button>
                             {% endif %}
@@ -904,26 +947,26 @@
                 <div style="display: flex; justify-content: center; align-items: center; gap: 0.75rem; padding: 1.5rem 1rem; margin-top: 1.5rem; margin-bottom: 1rem; flex-wrap: nowrap; overflow-x: auto;">
                     {% if page > 1 %}
                         <a href="?page=1{% if selected_sub_client %}&sub_client={{ selected_sub_client }}{% endif %}{% if user_lat %}&user_lat={{ user_lat }}{% endif %}{% if user_lon %}&user_lon={{ user_lon }}{% endif %}" 
-                           style="padding: 0.85rem 1.1rem; background: var(--primary); color: white; border-radius: 8px; text-decoration: none; font-size: 0.95rem; white-space: nowrap; flex-shrink: 0; font-weight: 600; box-shadow: 0 2px 4px rgba(0,102,255,0.3); min-height: 44px; display: flex; align-items: center; justify-content: center;">
+                           style="padding: 0.85rem 1.1rem; background: var(--primary); color: white; border-radius: 8px; text-decoration: none; font-size: 0.95rem; white-space: nowrap; flex-shrink: 0; font-weight: var(--fw-semibold); box-shadow: 0 4px 15px rgba(0,195,255,0.3); min-height: 44px; display: flex; align-items: center; justify-content: center;">
                             ⏮️ Primeira
                         </a>
                         <a href="?page={{ page - 1 }}{% if selected_sub_client %}&sub_client={{ selected_sub_client }}{% endif %}{% if user_lat %}&user_lat={{ user_lat }}{% endif %}{% if user_lon %}&user_lon={{ user_lon }}{% endif %}" 
-                           style="padding: 0.85rem 1.1rem; background: var(--primary); color: white; border-radius: 8px; text-decoration: none; font-size: 0.95rem; white-space: nowrap; flex-shrink: 0; font-weight: 600; box-shadow: 0 2px 4px rgba(0,102,255,0.3); min-height: 44px; display: flex; align-items: center; justify-content: center;">
+                           style="padding: 0.85rem 1.1rem; background: var(--primary); color: white; border-radius: 8px; text-decoration: none; font-size: 0.95rem; white-space: nowrap; flex-shrink: 0; font-weight: var(--fw-semibold); box-shadow: 0 4px 15px rgba(0,195,255,0.3); min-height: 44px; display: flex; align-items: center; justify-content: center;">
                             ◀️ Anterior
                         </a>
                     {% endif %}
                     
-                    <span style="font-size: 1rem; font-weight: 700; color: var(--text); white-space: nowrap; flex-shrink: 0; padding: 0.85rem 1.1rem; background: var(--light); border-radius: 8px; min-height: 44px; display: flex; align-items: center; justify-content: center;">
+                    <span style="font-size: 1rem; font-weight: var(--fw-bold); color: var(--text); white-space: nowrap; flex-shrink: 0; padding: 0.85rem 1.1rem; background: var(--card-dark); border: 1px solid var(--border); border-radius: 8px; min-height: 44px; display: flex; align-items: center; justify-content: center;">
                         {{ page }} de {{ total_pages }}
                     </span>
                     
                     {% if page < total_pages %}
                         <a href="?page={{ page + 1 }}{% if selected_sub_client %}&sub_client={{ selected_sub_client }}{% endif %}{% if user_lat %}&user_lat={{ user_lat }}{% endif %}{% if user_lon %}&user_lon={{ user_lon }}{% endif %}" 
-                           style="padding: 0.85rem 1.1rem; background: var(--primary); color: white; border-radius: 8px; text-decoration: none; font-size: 0.95rem; white-space: nowrap; flex-shrink: 0; font-weight: 600; box-shadow: 0 2px 4px rgba(0,102,255,0.3); min-height: 44px; display: flex; align-items: center; justify-content: center;">
+                           style="padding: 0.85rem 1.1rem; background: var(--primary); color: white; border-radius: 8px; text-decoration: none; font-size: 0.95rem; white-space: nowrap; flex-shrink: 0; font-weight: var(--fw-semibold); box-shadow: 0 4px 15px rgba(0,195,255,0.3); min-height: 44px; display: flex; align-items: center; justify-content: center;">
                             Próximo ▶️
                         </a>
                         <a href="?page={{ total_pages }}{% if selected_sub_client %}&sub_client={{ selected_sub_client }}{% endif %}{% if user_lat %}&user_lat={{ user_lat }}{% endif %}{% if user_lon %}&user_lon={{ user_lon }}{% endif %}" 
-                           style="padding: 0.85rem 1.1rem; background: var(--primary); color: white; border-radius: 8px; text-decoration: none; font-size: 0.95rem; white-space: nowrap; flex-shrink: 0; font-weight: 600; box-shadow: 0 2px 4px rgba(0,102,255,0.3); min-height: 44px; display: flex; align-items: center; justify-content: center;">
+                           style="padding: 0.85rem 1.1rem; background: var(--primary); color: white; border-radius: 8px; text-decoration: none; font-size: 0.95rem; white-space: nowrap; flex-shrink: 0; font-weight: var(--fw-semibold); box-shadow: 0 4px 15px rgba(0,195,255,0.3); min-height: 44px; display: flex; align-items: center; justify-content: center;">
                             Última ⏭️
                         </a>
                     {% endif %}
@@ -975,20 +1018,22 @@
                 left: 0;
                 right: 0;
                 bottom: 0;
-                background: rgba(0,0,0,0.5);
+                background: rgba(11,11,13,0.9);
                 display: flex;
                 align-items: flex-end;
                 z-index: 1000;
+                backdrop-filter: blur(8px);
             `;
 
             const content = document.createElement('div');
             content.style.cssText = `
-                background: white;
+                background: linear-gradient(180deg, #1F1F23, #0B0B0D);
                 width: 100%;
                 max-height: 80vh;
                 overflow-y: auto;
                 border-radius: 16px 16px 0 0;
                 padding: 1.5rem;
+                border-top: 1px solid rgba(0, 195, 255, 0.3);
             `;
 
             let historyHTML = '';
@@ -997,12 +1042,12 @@
             if (asset.health_history) {
                 const h = asset.health_history;
                 historyHTML = `
-                    <div style="background: #F5F5F7; padding: 1rem; border-radius: 12px; margin-bottom: 1.5rem;">
-                        <div style="font-size: 0.8rem; color: #8E8E93; margin-bottom: 0.5rem; text-transform: uppercase; font-weight: 600;">📊 Última Leitura</div>
-                        <div style="font-size: 2rem; font-weight: 700; color: ${h.temperature_c >= 40 ? '#FF3B30' : '#34C759'};">
+                    <div style="background: rgba(0, 195, 255, 0.1); padding: 1rem; border-radius: 12px; margin-bottom: 1.5rem; border: 1px solid rgba(0, 195, 255, 0.2);">
+                        <div style="font-size: 0.8rem; color: rgba(255,255,255,0.8); margin-bottom: 0.5rem; text-transform: uppercase; font-weight: var(--fw-semibold);">📊 Última Leitura</div>
+                        <div style="font-size: 2rem; font-weight: var(--fw-bold); color: ${h.temperature_c >= 40 ? '#FF5A5F' : '#34C759'};">
                             ${h.temperature_c}°C
                         </div>
-                        <div style="font-size: 0.9rem; color: #8E8E93; margin-top: 0.5rem;">
+                        <div style="font-size: 0.9rem; color: rgba(255,255,255,0.7); margin-top: 0.5rem;">
                             ${h.event_time ? new Date(h.event_time).toLocaleString('pt-BR') : 'Data não disponível'}
                         </div>
                     </div>
@@ -1012,23 +1057,23 @@
                     const corr = h.location_temperature_correlation;
                     const locTemp = corr.location_data;
                     const diff = corr.temperature_difference_c;
-                    const diffColor = diff > 0 ? '#FF9500' : '#34C759';
+                    const diffColor = diff > 0 ? '#FFB800' : '#34C759';
 
                     correlationHTML = `
                         <div style="margin-bottom: 1.5rem;">
-                            <h3 style="font-size: 0.9rem; font-weight: 600; text-transform: uppercase; color: #8E8E93; margin-bottom: 1rem;">🌡️ Correlação com Local</h3>
+                            <h3 style="font-size: 0.9rem; font-weight: var(--fw-semibold); text-transform: uppercase; color: rgba(255,255,255,0.8); margin-bottom: 1rem;">🌡️ Correlação com Local</h3>
 
-                            <div style="background: #E5F5E5; padding: 1rem; border-radius: 12px; margin-bottom: 1rem;">
-                                <div style="font-size: 0.8rem; color: #8E8E93; margin-bottom: 0.25rem;">Temperatura no Local (${locTemp.date} às ${locTemp.hour}h)</div>
-                                <div style="font-size: 1.5rem; font-weight: 700;">${locTemp.temperature_c}°C</div>
+                            <div style="background: rgba(52, 199, 89, 0.15); padding: 1rem; border-radius: 12px; margin-bottom: 1rem; border: 1px solid rgba(52, 199, 89, 0.3);">
+                                <div style="font-size: 0.8rem; color: rgba(255,255,255,0.7); margin-bottom: 0.25rem;">Temperatura no Local (${locTemp.date} às ${locTemp.hour}h)</div>
+                                <div style="font-size: 1.5rem; font-weight: var(--fw-bold); color: #FFFFFF;">${locTemp.temperature_c}°C</div>
                             </div>
 
-                            <div style="background: #FFF3CD; padding: 1rem; border-radius: 12px;">
-                                <div style="font-size: 0.8rem; color: #7A5C00; margin-bottom: 0.25rem;">Diferença de Temperatura</div>
-                                <div style="font-size: 1.25rem; font-weight: 700; color: ${diffColor};">
+                            <div style="background: rgba(255, 184, 0, 0.15); padding: 1rem; border-radius: 12px; border: 1px solid rgba(255, 184, 0, 0.3);">
+                                <div style="font-size: 0.8rem; color: #FFB800; margin-bottom: 0.25rem;">Diferença de Temperatura</div>
+                                <div style="font-size: 1.25rem; font-weight: var(--fw-bold); color: ${diffColor};">
                                     ${diff > 0 ? '+' : ''}${diff.toFixed(1)}°C ${diff > 0 ? '(Mais quente)' : '(Mais frio)'}
                                 </div>
-                                <div style="font-size: 0.85rem; margin-top: 0.5rem; color: #7A5C00;">
+                                <div style="font-size: 0.85rem; margin-top: 0.5rem; color: rgba(255,255,255,0.7);">
                                     O freezer está ${Math.abs(diff).toFixed(1)}°C ${diff > 0 ? 'acima' : 'abaixo'} da temperatura ambiente
                                 </div>
                             </div>
@@ -1041,13 +1086,13 @@
             if (asset.recent_temperatures && asset.recent_temperatures.length > 0) {
                 recentHTML = `
                     <div>
-                        <h3 style="font-size: 0.9rem; font-weight: 600; text-transform: uppercase; color: #8E8E93; margin-bottom: 1rem;">📈 Últimas Leituras</h3>
+                        <h3 style="font-size: 0.9rem; font-weight: var(--fw-semibold); text-transform: uppercase; color: rgba(255,255,255,0.8); margin-bottom: 1rem;">📈 Últimas Leituras</h3>
                         <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                             ${asset.recent_temperatures.map((temp, idx) => `
-                                <div style="display: flex; justify-content: space-between; padding: 0.75rem; background: #F5F5F7; border-radius: 8px;">
+                                <div style="display: flex; justify-content: space-between; padding: 0.75rem; background: rgba(31, 31, 35, 0.8); border-radius: 8px; border: 1px solid rgba(0, 195, 255, 0.15);">
                                     <div>
-                                        <div style="font-weight: 600; color: #1C1C1E;">${temp.temperature_c}°C</div>
-                                        <div style="font-size: 0.8rem; color: #8E8E93;">
+                                        <div style="font-weight: var(--fw-semibold); color: #FFFFFF;">${temp.temperature_c}°C</div>
+                                        <div style="font-size: 0.8rem; color: rgba(255,255,255,0.7);">
                                             ${temp.event_time ? new Date(temp.event_time).toLocaleString('pt-BR') : 'N/A'}
                                         </div>
                                     </div>
@@ -1060,8 +1105,8 @@
 
             content.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                    <h2 style="margin: 0; font-size: 1.25rem;">${asset.oem_serial_number}</h2>
-                    <button onclick="this.closest('[style*=fixed]').remove()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">✕</button>
+                    <h2 style="margin: 0; font-size: 1.25rem; color: #00C3FF;">${asset.oem_serial_number}</h2>
+                    <button onclick="this.closest('[style*=fixed]').remove()" style="background: rgba(255, 90, 95, 0.2); border: 1px solid rgba(255, 90, 95, 0.3); color: #FF5A5F; font-size: 1.2rem; cursor: pointer; padding: 0.5rem 0.75rem; border-radius: 8px;">✕</button>
                 </div>
 
                 ${historyHTML}

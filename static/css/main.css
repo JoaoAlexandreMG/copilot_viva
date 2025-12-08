@@ -101,6 +101,8 @@ body {
 }
 
 .sidebar-nav {
+    scrollbar-width: thin;
+    scrollbar-color: #00C3FF #0A1F44;
     flex: 1;
     padding: var(--spacing-lg) 0;
     overflow-y: auto;
@@ -126,7 +128,7 @@ body {
     align-items: center;
     gap: var(--spacing-md);
     padding: var(--spacing-md) var(--spacing-lg);
-    color: var(--atlas-gray-medium);
+    color: #FFFFFF;
     text-decoration: none;
     font-size: var(--text-sm);
     font-weight: var(--font-weight-medium);
@@ -566,13 +568,14 @@ body {
 }
 
 .btn-outline {
-    background-color: transparent;
+    background-color: #00C3FF;
     border: 1px solid rgba(0, 195, 255, 0.3);
-    color: var(--atlas-blue-electric);
+    color: #0B0B0D;
 }
 
 .btn-outline:hover:not(:disabled) {
-    background-color: rgba(0, 195, 255, 0.05);
+    background-color: transparent;
+    color: white;
     border-color: var(--atlas-blue-electric);
     box-shadow: var(--shadow-glow-subtle);
 }
