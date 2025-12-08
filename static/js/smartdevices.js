@@ -121,6 +121,26 @@ function buildSmartDeviceRow(device) {
 
 let smartDeviceSearchTimeout;
 
+function reloadSmartDevices() {
+    // Reload all smart devices without page refresh
+    fetch(`${manager.baseUrl}`)
+        .then(response => response.text())
+        .then(html => {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const newTbody = doc.querySelector('table tbody');
+            const currentTbody = document.querySelector('table tbody');
+            
+            if (newTbody && currentTbody) {
+                currentTbody.innerHTML = newTbody.innerHTML;
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao recarregar dispositivos:', error);
+            location.reload(); // Fallback to full reload if fetch fails
+        });
+}
+
 function filterSmartDevices(event) {
     clearTimeout(smartDeviceSearchTimeout);
     
@@ -130,7 +150,8 @@ function filterSmartDevices(event) {
     const searchValue = searchInput.value.trim().toLowerCase();
 
     if (!searchValue) {
-        location.reload();
+        // Reload data without reloading page to maintain focus
+        reloadSmartDevices();
         return;
     }
 
@@ -182,10 +203,82 @@ document.addEventListener('DOMContentLoaded', () => {
         clearTimeout(smartDeviceSearchTimeout);
 
         if (!event.target.value.trim()) {
-            location.reload();
+            reloadSmartDevices();
             return;
         }
 
         smartDeviceSearchTimeout = setTimeout(() => filterSmartDevices(event), 500);
     });
 });
+
+// MAC uniqueness/format inline validation on blur to avoid form submission and modal closure
+document.addEventListener('DOMContentLoaded', () => {
+    const macField = document.getElementById('mac_address');
+    if (!macField) return;
+
+    const macPattern = /^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/;
+
+    macField.addEventListener('blur', async (e) => {
+        const value = e.target.value.trim().toUpperCase();
+        // Clear previous errors if any
+        manager.clearFormError();
+        if (!value) return;
+
+        if (!macPattern.test(value)) {
+            manager.showFormError("O 'MAC Address' deve estar no formato XX:XX:XX:XX:XX:XX ou XX-XX-XX-XX-XX-XX.");
+            macField.classList.add('is-invalid');
+            return;
+        }
+
+        // Check uniqueness
+        try {
+            const form = document.getElementById('entityForm');
+            const action = form ? (form.action || '') : '';
+            const cleanAction = action.endsWith('/') ? action.slice(0, -1) : action;
+            const entityId = cleanAction.split('/').pop();
+
+            // If editing and mac equals entityId (existing), treat as fine
+            if (action.includes(`/${manager.entityNamePlural}/`) && entityId && decodeURIComponent(entityId).toUpperCase() === value) {
+                macField.classList.remove('is-invalid');
+                manager.clearFormError();
+                return;
+            }
+
+            const resp = await fetch(`${manager.baseUrl}/${encodeURIComponent(value)}`);
+            if (resp.ok) {
+                manager.showFormError("Já existe um dispositivo com este 'MAC Address'.");
+                macField.classList.add('is-invalid');
+            } else {
+                macField.classList.remove('is-invalid');
+                manager.clearFormError();
+            }
+        } catch (err) {
+            console.error('Erro ao verificar unicidade do MAC', err);
+        }
+    });
+
+    macField.addEventListener('input', () => {
+        manager.clearFormError();
+    });
+});
+
+// Helper to format MAC Address input
+function formatMAC(input) {
+    let value = input.value.replace(/[^0-9A-Fa-f]/g, ''); // Remove non-hex chars
+    
+    // Limit to 12 hex characters
+    if (value.length > 12) {
+        value = value.substring(0, 12);
+    }
+    
+    // Add colons
+    let formatted = '';
+    for (let i = 0; i < value.length; i++) {
+        if (i > 0 && i % 2 === 0) {
+            formatted += ':';
+        }
+        formatted += value[i];
+    }
+    
+    input.value = formatted.toUpperCase();
+}

@@ -35,32 +35,63 @@ def get_technicians_activity(client):
     # Query combinada que obtém ambas as métricas em uma única consulta
     technicians_sql = text(
         """
-       SELECT 
-    *,
-    (user_coolers_read = 0 AND ghost_read = 0) AS no_activity
-FROM (
-    SELECT 
-        u.upn, 
-        COALESCE(u.first_name || ' ' || u.last_name, u.user_name, u.upn) as name,
-        u.email,
-        -- Subquery 1: Conta leituras de coolers
-        (SELECT COUNT(*) 
-         FROM health_events he 
-         WHERE he.data_uploaded_by = u.upn 
-           AND he.event_time >= NOW() - INTERVAL '30 days') AS user_coolers_read,
-        -- Subquery 2: Conta leituras fantasmas
-        (SELECT COUNT(*) 
-         FROM ghost_assets ga 
-         WHERE ga.reported_by = u.upn 
-           AND ga.reported_on >= NOW() - INTERVAL '30 days') AS ghost_read
-    FROM users u
-    WHERE u.client = :client
-      AND u.role = 'Technician'
-      AND u.is_active = true
-) AS summary
-ORDER BY 
-    no_activity DESC,
-    (user_coolers_read + ghost_read) DESC;
+        WITH technician_users AS (
+            SELECT 
+                upn, 
+                COALESCE(first_name || ' ' || last_name, user_name, upn) as name,
+                email
+            FROM users
+            WHERE client = :client
+            AND role = 'Technician'
+            AND is_active = true
+        ),
+        health_counts AS (
+            SELECT
+                u.upn,
+                COUNT(he.data_uploaded_by) AS user_coolers_read
+            FROM
+                technician_users u
+            LEFT JOIN
+                health_events he
+                ON u.upn = he.data_uploaded_by
+                AND he.event_time >= NOW() - INTERVAL '30 days'
+            GROUP BY
+                u.upn
+        ),
+        ghost_counts AS (
+            SELECT
+                u.upn,
+                COUNT(ga.reported_by) AS ghost_read
+            FROM
+                technician_users u
+            LEFT JOIN
+                ghost_assets ga
+                ON u.upn = ga.reported_by
+                AND ga.reported_on >= NOW() - INTERVAL '30 days'
+            GROUP BY
+                u.upn
+        )
+        SELECT
+            tu.upn,
+            tu.name,
+            tu.email,
+            COALESCE(hc.user_coolers_read, 0) AS user_coolers_read,
+            COALESCE(gc.ghost_read, 0) AS ghost_read,
+            CASE 
+                WHEN COALESCE(hc.user_coolers_read, 0) = 0 
+                AND COALESCE(gc.ghost_read, 0) = 0 
+                THEN true 
+                ELSE false 
+            END AS no_activity
+        FROM
+            technician_users tu
+        LEFT JOIN
+            health_counts hc ON tu.upn = hc.upn
+        LEFT JOIN
+            ghost_counts gc ON tu.upn = gc.upn
+        ORDER BY
+            no_activity DESC,
+            (COALESCE(hc.user_coolers_read, 0) + COALESCE(gc.ghost_read, 0)) DESC
     """
     )
 
@@ -87,22 +118,24 @@ ORDER BY
 def process_hourly_data(raw_data, key, now):
     """
     Processa o array JSONB (com agregação horária) em um array de 24 pontos.
-    Preenche as horas que faltam com 0.
+    Preenche as horas que faltam com None (para indicar ausência de dados).
     """
     if not raw_data:
-        return [0.0] * 24, []
+        return [None] * 24, []
 
     # Mapeia a hora para o valor (e garante que seja float)
     data_by_hour = {
-        item["hour"]: float(item[key]) for item in raw_data if item and key in item
+        item["hour"]: float(item[key])
+        for item in raw_data
+        if item and key in item and item[key] is not None
     }
 
-    hourly_array = [0.0] * 24
+    hourly_array = [None] * 24
     current_date = now.strftime("%Y-%m-%d")
     hourly_data_with_timestamps = []
 
     for h in range(24):
-        value = data_by_hour.get(h, 0.0)
+        value = data_by_hour.get(h, None)
 
         hourly_array[h] = value
 
@@ -112,14 +145,14 @@ def process_hourly_data(raw_data, key, now):
         # Ajusta o nome da chave para manter a compatibilidade com o retorno final
         key_name = "temp" if key == "avg_temp" else "door"
 
-        # O objeto de timestamps precisa incluir ambas as chaves (temp e door)
-        # Como estamos processando apenas um dado por vez, só incluímos o valor relevante.
-        # No frontend, você precisará combinar estas duas listas se precisar de uma única lista com 'temp' e 'door'.
-        # Para fins de compatibilidade com a estrutura anterior, retornaremos a lista de timestamps, mas o front-end
-        # provavelmente só precisa dos arrays [0..23].
-
         hourly_data_with_timestamps.append(
-            {"hour": h, "timestamp_utc": timestamp_utc, key_name: value}
+            {
+                "hour": h,
+                "timestamp_utc": timestamp_utc,
+                key_name: (
+                    value if value is not None else 0
+                ),  # Frontend expects number here for raw_data? Or maybe null is fine.
+            }
         )
 
     return hourly_array, hourly_data_with_timestamps

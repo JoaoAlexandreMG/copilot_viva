@@ -1,4 +1,13 @@
-from flask import Blueprint, render_template, request, session, redirect, url_for, flash, jsonify
+from flask import (
+    Blueprint,
+    render_template,
+    request,
+    session,
+    redirect,
+    url_for,
+    flash,
+    jsonify,
+)
 from models.models import Outlet
 from db.database import get_session
 from datetime import datetime
@@ -13,7 +22,9 @@ class Pagination:
         self.page = page
         self.per_page = per_page
         self.total = total_items
-        self.pages = (self.total + self.per_page - 1) // self.per_page if self.total else 0
+        self.pages = (
+            (self.total + self.per_page - 1) // self.per_page if self.total else 0
+        )
 
     @property
     def has_prev(self):
@@ -47,7 +58,10 @@ class Pagination:
                 yield num
                 last = num
 
-outlets_bp = Blueprint("portal_outlets", __name__, url_prefix="/portal_associacao/outlets")
+
+outlets_bp = Blueprint(
+    "portal_outlets", __name__, url_prefix="/portal_associacao/outlets"
+)
 
 
 @outlets_bp.route("/", methods=["GET"])
@@ -69,7 +83,11 @@ def list_and_create_outlets():
         page = request.args.get("page", 1, type=int) or 1
         per_page = 10
 
-        base_query = db_session.query(Outlet).filter(Outlet.client == user_client).order_by(Outlet.name.asc())
+        base_query = (
+            db_session.query(Outlet)
+            .filter(Outlet.client == user_client)
+            .order_by(Outlet.name.asc())
+        )
         total_outlets = base_query.count()
 
         total_pages = (total_outlets + per_page - 1) // per_page if total_outlets else 0
@@ -80,13 +98,15 @@ def list_and_create_outlets():
         elif total_pages and page > total_pages:
             page = total_pages
 
-        results = base_query.offset((page - 1) * per_page).limit(per_page).all() if total_outlets else []
+        results = (
+            base_query.offset((page - 1) * per_page).limit(per_page).all()
+            if total_outlets
+            else []
+        )
         outlets_pagination = Pagination(results, page, per_page, total_outlets)
 
         return render_template(
-            "portal/outlets/outlets.html",
-            outlets=outlets_pagination,
-            page_type="list"
+            "portal/outlets/outlets.html", outlets=outlets_pagination, page_type="list"
         )
 
     except Exception as e:
@@ -103,6 +123,10 @@ def create_outlet():
     """
     try:
         user = session.get("user")
+        if not user or not user.get("client"):
+            flash("Sessão inválida. Por favor, faça login novamente.", "error")
+            return redirect(url_for("auth.login"))
+        
         db_session = get_session()
 
         def form_bool(field_name, default=False):
@@ -118,7 +142,9 @@ def create_outlet():
             return redirect(url_for("portal_outlets.list_and_create_outlets"))
 
         # Check if code is unique
-        existing_outlet = db_session.query(Outlet).filter(Outlet.code == outlet_code).first()
+        existing_outlet = (
+            db_session.query(Outlet).filter(Outlet.code == outlet_code).first()
+        )
         if existing_outlet:
             flash(f"Já existe um outlet com o código '{outlet_code}'.", "error")
             return redirect(url_for("portal_outlets.list_and_create_outlets"))
@@ -135,12 +161,12 @@ def create_outlet():
             address_2=request.form.get("address_2"),
             latitude=request.form.get("latitude"),
             longitude=request.form.get("longitude"),
-            client=request.form.get("client"),
+            client=user.get("client"),
             is_key_outlet=form_bool("is_key_outlet"),
             is_smart=form_bool("is_smart"),
             is_active=form_bool("is_active", default=True),
             created_on=datetime.now(),
-            created_by=user.get("upn", "system")
+            created_by=user.get("upn", "system"),
         )
 
         db_session.add(new_outlet)
@@ -172,10 +198,19 @@ def search_outlets():
 
         # Search by name or code
         search_pattern = f"%{query}%"
-        outlets = db_session.query(Outlet).filter(
-            (Outlet.name.ilike(search_pattern)) |
-            (Outlet.code.ilike(search_pattern))
-        ).limit(20).all()
+        outlets = (
+            db_session.query(Outlet)
+            .filter(
+                (Outlet.name.ilike(search_pattern))
+                | (Outlet.code.ilike(search_pattern))
+                | (Outlet.trade_channel.ilike(search_pattern))
+                | (Outlet.sub_trade_channel.ilike(search_pattern))
+                | (Outlet.sales_office.ilike(search_pattern))
+                | (Outlet.sales_territory.ilike(search_pattern))
+            )
+            .limit(20)
+            .all()
+        )
 
         return jsonify([outlet.to_dict() for outlet in outlets])
 
@@ -204,14 +239,21 @@ def get_outlet_details(outlet_code):
         return jsonify({"error": "Internal server error"}), 500
 
 
-@outlets_bp.route("/<string:outlet_code>", methods=["PUT", "POST"])
+@outlets_bp.route("/<string:outlet_code>", methods=["PUT", "POST", "DELETE"])
 @require_authentication
-def update_outlet(outlet_code):
+def manage_outlet(outlet_code):
     """
-    Update outlet by code
+    Manage outlet by code (Update or Delete)
+    Handles PUT, DELETE and POST with _method override
     """
     try:
-        user = session.get("user")
+        # Check for DELETE method override
+        is_delete = False
+        if request.method == "DELETE":
+            is_delete = True
+        elif request.method == "POST" and request.form.get("_method") == "DELETE":
+            is_delete = True
+
         db_session = get_session()
         outlet = db_session.query(Outlet).filter(Outlet.code == outlet_code).first()
 
@@ -219,73 +261,61 @@ def update_outlet(outlet_code):
             flash("Outlet não encontrado", "error")
             return redirect(url_for("portal_outlets.list_and_create_outlets"))
 
-        # Update all fields
-        outlet.name = request.form.get("name", outlet.name)
-        outlet.code = request.form.get("code", outlet.code)
-        outlet.outlet_type = request.form.get("outlet_type", outlet.outlet_type)
-        outlet.country = request.form.get("country", outlet.country)
-        outlet.state = request.form.get("state", outlet.state)
-        outlet.city = request.form.get("city", outlet.city)
-        outlet.street = request.form.get("street", outlet.street)
-        outlet.address_2 = request.form.get("address_2", outlet.address_2)
-        outlet.latitude = request.form.get("latitude", outlet.latitude)
-        outlet.longitude = request.form.get("longitude", outlet.longitude)
-        outlet.client = request.form.get("client", outlet.client)
-        def form_bool(field_name, default=None):
-            value = request.form.get(field_name)
-            if value is None:
-                return default
-            return str(value).lower() in {"1", "true", "on", "yes"}
+        if is_delete:
+            # DELETE LOGIC
+            outlet_name = outlet.name
+            db_session.delete(outlet)
+            db_session.commit()
 
-        bool_value = form_bool("is_active")
-        if bool_value is not None:
-            outlet.is_active = bool_value
-
-        key_outlet_value = form_bool("is_key_outlet")
-        if key_outlet_value is not None:
-            outlet.is_key_outlet = key_outlet_value
-
-        smart_value = form_bool("is_smart")
-        if smart_value is not None:
-            outlet.is_smart = smart_value
-        outlet.modified_on = datetime.now()
-        outlet.modified_by = user.get("upn", "system")
-
-        db_session.commit()
-        flash(f"Outlet {outlet.name} atualizado com sucesso!", "success")
-        return redirect(url_for("portal_outlets.list_and_create_outlets"))
-
-    except Exception as e:
-        db_session.rollback()
-        print(f"[ERROR] Error updating outlet: {str(e)}")
-        flash(f"Erro ao atualizar outlet: {str(e)}", "error")
-        return redirect(url_for("portal_outlets.list_and_create_outlets"))
-
-
-@outlets_bp.route("/<string:outlet_code>", methods=["DELETE"])
-@require_authentication
-def delete_outlet(outlet_code):
-    """
-    Delete outlet by code
-    """
-    try:
-        db_session = get_session()
-        outlet = db_session.query(Outlet).filter(Outlet.code == outlet_code).first()
-
-        if not outlet:
-            flash("Outlet não encontrado", "error")
+            flash(f"Outlet {outlet_name} deletado com sucesso!", "success")
             return redirect(url_for("portal_outlets.list_and_create_outlets"))
 
-        outlet_name = outlet.name
-        db_session.delete(outlet)
-        db_session.commit()
+        else:
+            # UPDATE LOGIC
+            user = session.get("user")
+            if not user or not user.get("client"):
+                flash("Sessão inválida. Por favor, faça login novamente.", "error")
+                return redirect(url_for("auth.login"))
 
-        flash(f"Outlet {outlet_name} deletado com sucesso!", "success")
-        return redirect(url_for("portal_outlets.list_and_create_outlets"))
+            # Update all fields
+            outlet.name = request.form.get("name", outlet.name)
+            outlet.code = request.form.get("code", outlet.code)
+            outlet.outlet_type = request.form.get("outlet_type", outlet.outlet_type)
+            outlet.country = request.form.get("country", outlet.country)
+            outlet.state = request.form.get("state", outlet.state)
+            outlet.city = request.form.get("city", outlet.city)
+            outlet.street = request.form.get("street", outlet.street)
+            outlet.address_2 = request.form.get("address_2", outlet.address_2)
+            outlet.latitude = request.form.get("latitude", outlet.latitude)
+            outlet.longitude = request.form.get("longitude", outlet.longitude)
+            outlet.client = user.get("client")
+
+            def form_bool(field_name, default=None):
+                value = request.form.get(field_name)
+                if value is None:
+                    return default
+                return str(value).lower() in {"1", "true", "on", "yes"}
+
+            bool_value = form_bool("is_active")
+            if bool_value is not None:
+                outlet.is_active = bool_value
+
+            key_outlet_value = form_bool("is_key_outlet")
+            if key_outlet_value is not None:
+                outlet.is_key_outlet = key_outlet_value
+
+            smart_value = form_bool("is_smart")
+            if smart_value is not None:
+                outlet.is_smart = smart_value
+            outlet.modified_on = datetime.now()
+            outlet.modified_by = user.get("upn", "system")
+
+            db_session.commit()
+            flash(f"Outlet {outlet.name} atualizado com sucesso!", "success")
+            return redirect(url_for("portal_outlets.list_and_create_outlets"))
 
     except Exception as e:
         db_session.rollback()
-        print(f"[ERROR] Error deleting outlet: {str(e)}")
-        flash(f"Erro ao deletar outlet: {str(e)}", "error")
+        print(f"[ERROR] Error managing outlet: {str(e)}")
+        flash(f"Erro ao processar outlet: {str(e)}", "error")
         return redirect(url_for("portal_outlets.list_and_create_outlets"))
-

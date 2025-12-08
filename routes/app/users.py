@@ -159,10 +159,6 @@ def delete_user(user_id):
         print(f"[ERROR] Error deleting user: {str(e)}")
         flash(f"Erro ao deletar usuário: {str(e)}", "error")
         return redirect(url_for("users.list_and_create_users"))
-
-# Search users
-@users_bp.route("/search", methods=["GET"])
-def search_users():
     """
     Search users by name or email (JSON endpoint)
     """

@@ -41,7 +41,10 @@ class CRUDManager {
         document.getElementById('formTitle').textContent = `Criar Novo ${this.entityName}`;
         const form = document.getElementById('entityForm');
         form.reset();
-        form.action = this.baseUrl;
+        // clear any previous validation errors
+        this.clearFormError();
+        // Ensure trailing slash for collection POST to avoid redirect
+        form.action = this.baseUrl.endsWith('/') ? this.baseUrl : this.baseUrl + '/';
         form.method = 'POST';
 
         // Reset advanced fields if they exist
@@ -86,13 +89,19 @@ class CRUDManager {
                                 element.value = '';
                             }
                         } else {
-                            element.value = data[key] || '';
+                            // Ensure MAC is uppercase
+                            if (key === 'mac_address' && data[key]) {
+                                element.value = (data[key] || '').toUpperCase();
+                            } else {
+                                element.value = data[key] || '';
+                            }
                         }
                     }
                 });
 
                 form.action = `${this.baseUrl}/${entityId}`;
                 form.method = 'POST';
+                this.clearFormError();
                 this.showFormModal();
             })
             .catch(error => {
@@ -139,10 +148,73 @@ class CRUDManager {
     }
 
     // Submit Form
-    submitForm() {
+    async submitForm() {
         const form = document.getElementById('entityForm');
+
+        // Clear any previous form validation messages
+        this.clearFormError();
+
+        // Validate form before submitting
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+
+        // Additional client-side validation for MAC address to keep modal open on failure
+        const macInput = document.getElementById('mac_address');
+        if (macInput) {
+            const macVal = macInput.value ? macInput.value.trim().toUpperCase() : '';
+            // Accept XX:XX:.. or XX-XX:.. formatted values
+            const macPattern = /^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/;
+            if (macVal !== '' && !macPattern.test(macVal)) {
+                // Show inline error message and focus field; do not submit form
+                this.showFormError("O 'MAC Address' deve estar no formato XX:XX:XX:XX:XX:XX ou XX-XX-XX-XX-XX-XX.");
+                macInput.focus();
+                macInput.classList.add('is-invalid');
+                return;
+            }
+            macInput.classList.remove('is-invalid');
+            // Check uniqueness via API before submission to avoid server-side redirect
+            const action = form.action;
+            const cleanAction = action.endsWith('/') ? action.slice(0, -1) : action;
+            const entityId = cleanAction.split('/').pop();
+            // If creating (no entityId) => prevent duplicate
+            if (!action.includes(`/${this.entityNamePlural}/`) || entityId === this.entityNamePlural) {
+                try {
+                    const checkResp = await fetch(`${this.baseUrl}/${encodeURIComponent(macVal)}`);
+                    if (checkResp.ok) {
+                        this.showFormError("Já existe um dispositivo com este 'MAC Address'.");
+                        macInput.focus();
+                        macInput.classList.add('is-invalid');
+                        return;
+                    }
+                } catch (err) {
+                    // ignore fetch errors — we'll let server validate
+                    console.error('Error checking MAC uniqueness', err);
+                }
+            } else {
+                // updating: ensure the new mac isn't already used by another device
+                // If the new mac differs from the current entityId, check for a conflicting device
+                if (macVal !== '' && macVal !== entityId.toUpperCase()) {
+                    try {
+                        const checkResp = await fetch(`${this.baseUrl}/${encodeURIComponent(macVal)}`);
+                        if (checkResp.ok) {
+                            this.showFormError("Já existe um dispositivo com este 'MAC Address'.");
+                            macInput.focus();
+                            macInput.classList.add('is-invalid');
+                            return;
+                        }
+                    } catch (err) {
+                        console.error('Error checking MAC uniqueness', err);
+                    }
+                }
+            }
+        }
+
         const action = form.action;
-        const entityId = action.split('/').pop();
+        // Remove trailing slash if present to correctly identify entity ID
+        const cleanAction = action.endsWith('/') ? action.slice(0, -1) : action;
+        const entityId = cleanAction.split('/').pop();
 
         if (action.includes(`/${this.entityNamePlural}/`) && entityId !== this.entityNamePlural) {
             this.updateEntity(entityId);
@@ -173,6 +245,32 @@ class CRUDManager {
         form.action = `${this.baseUrl}/${entityId}`;
         form.method = 'POST';
         form.submit();
+    }
+
+    // Show inline form validation error inside modal
+    showFormError(message) {
+        const modalBody = document.querySelector('#formModal .modal-body');
+        if (!modalBody) return;
+
+        this.clearFormError();
+
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-danger';
+        alertDiv.id = 'formValidationError';
+        alertDiv.style.marginBottom = '1rem';
+        alertDiv.innerHTML = `<strong>Erro:</strong> ${message}`;
+
+        // insert at top of modal body before the form
+        const formEl = modalBody.querySelector('form');
+        if (formEl) modalBody.insertBefore(alertDiv, formEl);
+        else modalBody.prepend(alertDiv);
+    }
+
+    clearFormError() {
+        const existing = document.getElementById('formValidationError');
+        if (existing) existing.remove();
+        const macInput = document.getElementById('mac_address');
+        if (macInput) macInput.classList.remove('is-invalid');
     }
 
     // Delete Entity

@@ -9,7 +9,7 @@
 
 {% block styles %}
     {{ super() }} 
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v={{ range(1, 9999) | random }}">
     <!-- <link rel="stylesheet" href="/static/css/dashboard.css"> -->
 {% endblock %}
 
@@ -329,6 +329,58 @@
      * ============================================================================
      */
 
+    // --- Gerenciador de Preferências do Usuário ---
+    class PreferencesManager {
+        constructor() {
+            this.storageKey = 'dashboard_preferences';
+            this.defaults = {
+                timezone: 'America/Sao_Paulo',
+                period: 30
+            };
+            this.loadPreferences();
+        }
+
+        loadPreferences() {
+            try {
+                const stored = localStorage.getItem(this.storageKey);
+                if (stored) {
+                    this.preferences = { ...this.defaults, ...JSON.parse(stored) };
+                } else {
+                    this.preferences = { ...this.defaults };
+                }
+            } catch (e) {
+                console.warn('Erro ao carregar preferências:', e);
+                this.preferences = { ...this.defaults };
+            }
+        }
+
+        savePreferences() {
+            try {
+                localStorage.setItem(this.storageKey, JSON.stringify(this.preferences));
+            } catch (e) {
+                console.warn('Erro ao salvar preferências:', e);
+            }
+        }
+
+        setTimezone(timezone) {
+            this.preferences.timezone = timezone;
+            this.savePreferences();
+        }
+
+        setPeriod(period) {
+            this.preferences.period = period;
+            this.savePreferences();
+        }
+
+        getTimezone() {
+            return this.preferences.timezone;
+        }
+
+        getPeriod() {
+            return this.preferences.period;
+        }
+    }
+
     // --- Renderizador do Top 10 Ativos (Premium Design) ---
     class Top10AssetRenderer {
         static render(top10Data) {
@@ -446,8 +498,9 @@
     // --- Gerenciador de Timezone ---
     // --- Gerenciador de Timezone (Versão Corrigida) ---
     class TimezoneConverter {
-        constructor() {
-            this.currentTimezone = 'America/Sao_Paulo'; // Padrão inicial
+        constructor(preferencesManager) {
+            this.preferencesManager = preferencesManager;
+            this.currentTimezone = preferencesManager.getTimezone(); // Carrega da preferência salva
             // Armazena uma cópia profunda dos dados originais (UTC) vindos do servidor
             this.originalData = {
                 temp: [...APP_CONFIG.charts.temp.data],
@@ -459,12 +512,12 @@
         init() {
             const selector = document.getElementById('timezoneSelect');
             if (selector) {
-                // Define o valor inicial do select se necessário
+                // Define o valor inicial do select com a preferência salva
                 selector.value = this.currentTimezone;
                 selector.addEventListener('change', (e) => this.changeTimezone(e.target.value));
             }
             
-            // Aplica a conversão inicial (caso o servidor mande UTC e a gente queira BRT logo de cara)
+            // Aplica a conversão inicial com o fuso horário salvo
             this.changeTimezone(this.currentTimezone);
         }
 
@@ -478,6 +531,9 @@
         
         changeTimezone(timezone) {
             this.currentTimezone = timezone;
+            
+            // Salva a preferência
+            this.preferencesManager.setTimezone(timezone);
             
             // 1. Calcula o Offset
             const offset = this.calculateOffset(timezone);
@@ -593,10 +649,10 @@
     }
 
     // --- Seletor de Período (7/30 Dias) ---
-    // --- Seletor de Período (7/30 Dias) ---
     class PeriodSelector {
-        constructor() {
-            this.currentPeriod = 30;
+        constructor(preferencesManager) {
+            this.preferencesManager = preferencesManager;
+            this.currentPeriod = preferencesManager.getPeriod(); // Carrega da preferência salva
             this.init();
         }
         
@@ -617,6 +673,9 @@
             if (this.currentPeriod === days) return; // Evita recarregar se já estiver ativo
 
             this.currentPeriod = days;
+            // Salva a preferência
+            this.preferencesManager.setPeriod(days);
+            
             this.updateUI();
             this.updateBadges();
             this.toggleLoading(true); // Liga loading
@@ -747,13 +806,7 @@
             // 3. ATUALIZAÇÃO DE GRÁFICOS DE LINHA (COM TIMEZONE)
             // ============================================================
 
-            // A. Atualiza os Labels (Eixo X) dos gráficos globais
-            if (window.hourlyTempChart) window.hourlyTempChart.data.labels = stats.hourly_temp_chart.labels;
-            if (window.hourlyDoorChart) window.hourlyDoorChart.data.labels = stats.hourly_door_chart.labels;
-
-            // B. Envia os DADOS NOVOS (UTC) para o TimezoneConverter
-            // O Converter vai guardar esses dados, aplicar o offset do fuso horário atual
-            // e atualizar visualmente os gráficos de linha.
+            // A. Envia os DADOS NOVOS (UTC) para o TimezoneConverter
             if (window.timezoneConverter) {
                 window.timezoneConverter.updateOriginalData(
                     stats.hourly_temp_chart.data, // Array de Temperatura
@@ -761,19 +814,118 @@
                 );
             }
 
+            // B. Re-renderiza ou esconde gráficos usando DashboardManager
+            DashboardManager.updateChartState(
+                'hourlyTempChart', 
+                'tempLineChart', 
+                stats.hourly_temp_chart.data, 
+                stats.hourly_temp_chart.labels,
+                (ctx, data, labels) => {
+                    const chart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Temp Média (°C)',
+                                data: data,
+                                borderColor: '#00C3FF',
+                                backgroundColor: 'rgba(0, 195, 255, 0.1)',
+                                borderWidth: 3, fill: true, tension: 0.4,
+                                pointBackgroundColor: '#00C3FF', pointRadius: 4
+                            }]
+                        },
+                        options: DashboardManager._getChartOptions()
+                    });
+                    // Apply timezone shift immediately
+                    if (window.timezoneConverter) {
+                        window.timezoneConverter.changeTimezone(window.timezoneConverter.currentTimezone);
+                    }
+                    return chart;
+                },
+                'Sem dados de temperatura'
+            );
+
+            DashboardManager.updateChartState(
+                'hourlyDoorChart', 
+                'doorLineChart', 
+                stats.hourly_door_chart.data, 
+                stats.hourly_door_chart.labels,
+                (ctx, data, labels) => {
+                    const chart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Aberturas',
+                                data: data,
+                                borderColor: '#00F5B5',
+                                backgroundColor: 'rgba(0, 245, 181, 0.1)',
+                                borderWidth: 3, fill: true, tension: 0.4,
+                                pointBackgroundColor: '#00F5B5', pointRadius: 4
+                            }]
+                        },
+                        options: DashboardManager._getChartOptions()
+                    });
+                    if (window.timezoneConverter) {
+                        window.timezoneConverter.changeTimezone(window.timezoneConverter.currentTimezone);
+                    }
+                    return chart;
+                },
+                'Sem dados de abertura de porta'
+            );
+
             // ============================================================
             // 4. ATUALIZAÇÃO DE GRÁFICOS DE PIZZA
             // ============================================================
 
             // Gráfico de Bateria
-            this.updatePieChart(window.batteryChart, [
+            const batData = [
                 stats.good_battery_assets_count,
                 stats.low_battery_assets_count,
                 stats.critical_battery_assets_count
-            ]);
+            ];
+            DashboardManager.updateChartState(
+                'batteryChart', 
+                'batteryChart', 
+                batData, 
+                ['Boa (>50%)', 'Baixa (25-50%)', 'Crítica (<25%)'],
+                (ctx, data, labels) => new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: data,
+                            backgroundColor: ['#00F5B5', '#FFC93C', '#FF5A5F'],
+                            borderWidth: 0,
+                            borderColor: 'transparent'
+                        }]
+                    },
+                    options: DashboardManager._getPieOptions()
+                }),
+                'Sem dados de bateria'
+            );
 
             // Gráfico de Status de Temperatura
-            this.updatePieChart(window.temperatureChart, stats.temperature_status_chart.data);
+            DashboardManager.updateChartState(
+                'temperatureChart', 
+                'temperatureChart', 
+                stats.temperature_status_chart.data, 
+                stats.temperature_status_chart.labels,
+                (ctx, data, labels) => new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: data,
+                            backgroundColor: ['#00F5B5', '#FF5A5F', '#00C3FF'],
+                            borderWidth: 0,
+                            borderColor: 'transparent'
+                        }]
+                    },
+                    options: DashboardManager._getPieOptions()
+                }),
+                'Sem dados de status'
+            );
 
             // ============================================================
             // 5. ATUALIZAÇÃO DO TOP 10 ATIVOS
@@ -842,9 +994,12 @@
             this.initPercentages();
             this.initTop10();
 
-            // Inicializa classes auxiliares
-            window.timezoneConverter = new TimezoneConverter();
-            window.periodSelector = new PeriodSelector();
+            // Inicializa o gerenciador de preferências
+            window.preferencesManager = new PreferencesManager();
+
+            // Inicializa classes auxiliares com as preferências
+            window.timezoneConverter = new TimezoneConverter(window.preferencesManager);
+            window.periodSelector = new PeriodSelector(window.preferencesManager);
         },
 
         // --- Inicialização do Top 10 Ativos ---
@@ -857,81 +1012,157 @@
 
         // --- Inicialização dos Gráficos ---
         initCharts: function() {
-            // 1. Temp Line Chart
-            const tempCtx = document.getElementById('tempLineChart')?.getContext('2d');
-            if (tempCtx) {
-                window.hourlyTempChart = new Chart(tempCtx, {
-                    type: 'line',
-                    data: {
-                        labels: APP_CONFIG.charts.temp.labels,
-                        datasets: [{
-                            label: 'Temp Média (°C)',
-                            data: APP_CONFIG.charts.temp.data,
-                            borderColor: '#00C3FF',
-                            backgroundColor: 'rgba(0, 195, 255, 0.1)',
-                            borderWidth: 3, fill: true, tension: 0.4,
-                            pointBackgroundColor: '#00C3FF', pointRadius: 4
-                        }]
-                    },
-                    options: this._getChartOptions()
-                });
-            }
+            try {
+                if (typeof Chart === 'undefined') {
+                    console.error('Chart.js not loaded');
+                    return;
+                }
 
-            // 2. Door Line Chart
-            const doorCtx = document.getElementById('doorLineChart')?.getContext('2d');
-            if (doorCtx) {
-                window.hourlyDoorChart = new Chart(doorCtx, {
-                    type: 'line',
-                    data: {
-                        labels: APP_CONFIG.charts.door.labels,
-                        datasets: [{
-                            label: 'Aberturas',
-                            data: APP_CONFIG.charts.door.data,
-                            borderColor: '#00F5B5',
-                            backgroundColor: 'rgba(0, 245, 181, 0.1)',
-                            borderWidth: 3, fill: true, tension: 0.4,
-                            pointBackgroundColor: '#00F5B5', pointRadius: 4
-                        }]
-                    },
-                    options: this._getChartOptions()
-                });
-            }
+                // 1. Temp Line Chart
+                this.updateChartState(
+                    'hourlyTempChart', 
+                    'tempLineChart', 
+                    APP_CONFIG.charts.temp.data, 
+                    APP_CONFIG.charts.temp.labels,
+                    (ctx, data, labels) => new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Temp Média (°C)',
+                                data: data,
+                                borderColor: '#00C3FF',
+                                backgroundColor: 'rgba(0, 195, 255, 0.1)',
+                                borderWidth: 3, fill: true, tension: 0.4,
+                                pointBackgroundColor: '#00C3FF', pointRadius: 4
+                            }]
+                        },
+                        options: this._getChartOptions()
+                    }),
+                    'Sem dados de temperatura'
+                );
 
-            // 3. Battery Pie Chart
-            const batCtx = document.getElementById('batteryChart')?.getContext('2d');
-            if (batCtx) {
+                // 2. Door Line Chart
+                this.updateChartState(
+                    'hourlyDoorChart', 
+                    'doorLineChart', 
+                    APP_CONFIG.charts.door.data, 
+                    APP_CONFIG.charts.door.labels,
+                    (ctx, data, labels) => new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Aberturas',
+                                data: data,
+                                borderColor: '#00F5B5',
+                                backgroundColor: 'rgba(0, 245, 181, 0.1)',
+                                borderWidth: 3, fill: true, tension: 0.4,
+                                pointBackgroundColor: '#00F5B5', pointRadius: 4
+                            }]
+                        },
+                        options: this._getChartOptions()
+                    }),
+                    'Sem dados de abertura de porta'
+                );
+
+                // 3. Battery Pie Chart
                 const s = APP_CONFIG.stats.assets;
-                window.batteryChart = new Chart(batCtx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: ['Boa (>50%)', 'Baixa (25-50%)', 'Crítica (<25%)'],
-                        datasets: [{
-                            data: [s.bat_good, s.bat_low, s.bat_crit],
-                            backgroundColor: ['#00F5B5', '#FFC93C', '#FF5A5F'],
-                            borderWidth: 0,
-                            borderColor: 'transparent'
-                        }]
-                    },
-                    options: this._getPieOptions()
-                });
+                const batData = [s.bat_good, s.bat_low, s.bat_crit];
+                this.updateChartState(
+                    'batteryChart', 
+                    'batteryChart', 
+                    batData, 
+                    ['Boa (>50%)', 'Baixa (25-50%)', 'Crítica (<25%)'],
+                    (ctx, data, labels) => new Chart(ctx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                data: data,
+                                backgroundColor: ['#00F5B5', '#FFC93C', '#FF5A5F'],
+                                borderWidth: 0,
+                                borderColor: 'transparent'
+                            }]
+                        },
+                        options: this._getPieOptions()
+                    }),
+                    'Sem dados de bateria'
+                );
+
+                // 4. Temperature Status Pie Chart
+                this.updateChartState(
+                    'temperatureChart', 
+                    'temperatureChart', 
+                    APP_CONFIG.charts.status_temp.data, 
+                    APP_CONFIG.charts.status_temp.labels,
+                    (ctx, data, labels) => new Chart(ctx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                data: data,
+                                backgroundColor: ['#00F5B5', '#FF5A5F', '#00C3FF'],
+                                borderWidth: 0,
+                                borderColor: 'transparent'
+                            }]
+                        },
+                        options: this._getPieOptions()
+                    }),
+                    'Sem dados de status'
+                );
+            } catch (e) {
+                console.error('Error initializing charts:', e);
+            }
+        },
+
+        updateChartState: function(chartId, canvasId, data, labels, createChartFn, noDataMsg) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            const parent = canvas.parentElement;
+            const hasData = data && data.some(v => v !== 0 && v !== null);
+
+            // Check if window[chartId] is actually a Chart instance (has .data property)
+            // This prevents conflict with DOM elements having the same ID
+            let chartInstance = window[chartId];
+            if (chartInstance && !chartInstance.data) {
+                chartInstance = null;
             }
 
-            // 4. Temperature Status Pie Chart
-            const statusCtx = document.getElementById('temperatureChart')?.getContext('2d');
-            if (statusCtx) {
-                window.temperatureChart = new Chart(statusCtx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: APP_CONFIG.charts.status_temp.labels,
-                        datasets: [{
-                            data: APP_CONFIG.charts.status_temp.data,
-                            backgroundColor: ['#00F5B5', '#FF5A5F', '#00C3FF'],
-                            borderWidth: 0,
-                            borderColor: 'transparent'
-                        }]
-                    },
-                    options: this._getPieOptions()
-                });
+            if (hasData) {
+                // Remove no-data message
+                const msg = parent.querySelector('.chart-no-data');
+                if (msg) msg.remove();
+                canvas.style.display = 'block';
+
+                if (chartInstance) {
+                    // Update existing chart
+                    chartInstance.data.labels = labels;
+                    chartInstance.data.datasets[0].data = data;
+                    chartInstance.update();
+                } else {
+                    // Create new chart
+                    const ctx = canvas.getContext('2d');
+                    window[chartId] = createChartFn(ctx, data, labels);
+                }
+            } else {
+                // Destroy existing chart if any
+                if (chartInstance) {
+                    chartInstance.destroy();
+                    window[chartId] = null;
+                }
+                canvas.style.display = 'none';
+                
+                // Show no-data message
+                if (!parent.querySelector('.chart-no-data')) {
+                    const div = document.createElement('div');
+                    div.className = 'chart-no-data';
+                    div.innerHTML = `
+                        <i class="fas fa-chart-pie" style="font-size: 2rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                        <p>${noDataMsg}</p>
+                    `;
+                    parent.appendChild(div);
+                }
             }
         },
 

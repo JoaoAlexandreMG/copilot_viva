@@ -231,6 +231,17 @@
                 </div>
                 <div class="main-header-right">
                     {% block header_actions %}{% endblock %}
+
+                    <!-- User Profile in Header -->
+                    <div class="header-user-profile" style="display: flex; align-items: center; gap: 0.75rem; margin-left: 1.5rem; padding-left: 1.5rem; border-left: 1px solid rgba(255, 255, 255, 0.1);">
+                        <div class="header-user-info" style="text-align: right;">
+                            <div style="font-weight: 600; font-size: 0.875rem; color: var(--atlas-white);">{{ user_name or 'Usuário' }}</div>
+                            <div style="font-size: 0.75rem; color: rgba(255, 255, 255, 0.7);">{{ user_email or '' }}</div>
+                        </div>
+                        <div style="width: 36px; height: 36px; background: rgba(0, 195, 255, 0.1); color: var(--atlas-blue-electric); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.875rem; border: 1px solid rgba(0, 195, 255, 0.2);">
+                            {{ user_name[0:2].upper() if user_name else 'US' }}
+                        </div>
+                    </div>
                 </div>
             </header>
 

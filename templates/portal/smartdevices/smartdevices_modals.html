@@ -41,8 +41,13 @@
                         <input type="text" class="form-control" id="serial_number" name="serial_number">
                     </div>
                     <div class="form-group">
-                        <label for="mac_address" class="form-label">MAC Address</label>
-                        <input type="text" class="form-control" id="mac_address" name="mac_address">
+                        <label for="mac_address" class="form-label">MAC Address <span style="color: red;">*</span></label>
+                        <input type="text" class="form-control" id="mac_address" name="mac_address" required
+                               pattern="^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$"
+                               title="Formato: XX:XX:XX:XX:XX:XX ou XX-XX-XX-XX-XX-XX"
+                               placeholder="XX:XX:XX:XX:XX:XX"
+                               maxlength="17"
+                               oninput="formatMAC(this)">
                     </div>
                     <div class="form-group">
                         <label for="imei" class="form-label">IMEI</label>
