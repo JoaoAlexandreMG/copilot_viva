@@ -14,7 +14,6 @@
         border-radius: 14px;
         overflow: hidden;
         background: #0c1424;
-        margin-bottom: 1.25rem;
         border: 1px solid rgba(255, 255, 255, 0.1);
     }
     #visits-map .map-status, #table-status {
@@ -112,10 +111,15 @@
 
 {% block content %}
 <div class="container">
-    <h2>Histórico de Visitas</h2>
-    <p>Visualize todas as visitas registradas para os assets do inventário.</p>
-
-    <div id="visits-map"></div>
+    <div class="card" style="margin-bottom: 1.25rem;">
+        <div class="card-header">
+            <strong>Histórico de Visitas</strong>
+        </div>
+        <div class="card-body">
+            <p>Visualize todas as visitas registradas para os assets do inventário.</p>
+            <div id="visits-map"></div>
+        </div>
+    </div>
 
     <div class="inventory-table-card" style="margin-top: 1rem;">
         <div class="card-header d-flex justify-content-between align-items-center">
