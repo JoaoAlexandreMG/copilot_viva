@@ -130,6 +130,14 @@ def render_inventory_visits():
             return redirect(url_for('index'))
 
         db_session = get_session()
+
+        # Busca todos os assets para popular o modal de filtro
+        all_assets_query = db_session.query(
+            AssetsInventory.id, 
+            AssetsInventory.serial_number
+        ).filter(AssetsInventory.is_deleted.is_(False)).order_by(AssetsInventory.serial_number).all()
+        all_assets = [(asset.id, asset.serial_number) for asset in all_assets_query]
+
         visits_query = (
             db_session.query(AssetInventoryVisit, AssetsInventory)
             .join(AssetsInventory, AssetInventoryVisit.asset_id == AssetsInventory.id)
@@ -179,7 +187,7 @@ def render_inventory_visits():
         for asset_id in visits_by_asset:
             visits_by_asset[asset_id]["path"].reverse()
 
-        return render_template('inventory/visits.html', user=user, visits=visits, visits_map_data=visits_by_asset)
+        return render_template('inventory/visits.html', user=user, visits=visits, visits_map_data=visits_by_asset, all_assets=all_assets)
     except Exception as e:
         print(f"[ERROR] Error rendering inventory visits: {e}")
         return redirect(url_for('inventory.render_inventory_index'))
