@@ -375,7 +375,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         markers.on('clusterclick', function (a) {
-            // always spiderfy on click
             a.layer.spiderfy();
         });
 
@@ -427,29 +426,32 @@ document.addEventListener('DOMContentLoaded', function () {
         function updatePolylines() {
             for (const assetId in assetLayers) {
                 const layer = assetLayers[assetId];
-                if (layer.markers.length === 0) continue;
+                if (layer.markers.length < 2) continue;
 
-                // Hide polyline if any of its markers are part of a cluster
-                const isAnyMarkerClustered = layer.markers.some(marker => {
-                    const parent = markers.getVisibleParent(marker);
-                    return parent instanceof L.MarkerCluster;
-                });
+                // Check if any marker of the path is individually visible on the map.
+                // The cluster plugin removes markers from the map to cluster them.
+                const isAnyMarkerVisible = layer.markers.some(marker => map.hasLayer(marker));
 
-                if (isAnyMarkerClustered) {
-                    if (map.hasLayer(layer.polyline)) {
-                        map.removeLayer(layer.polyline);
-                    }
-                } else {
+                if (isAnyMarkerVisible) {
+                    // If at least one marker is visible, the path is at least partially un-clustered.
+                    // Show the entire polyline for context.
                     if (!map.hasLayer(layer.polyline)) {
                         map.addLayer(layer.polyline);
+                    }
+                } else {
+                    // If no markers are individually visible, they are all inside clusters. Hide the polyline.
+                    if (map.hasLayer(layer.polyline)) {
+                        map.removeLayer(layer.polyline);
                     }
                 }
             }
         }
 
+        // We listen to events that change the clustering state
         markers.on('animationend', updatePolylines);
         map.on('zoomend', updatePolylines);
         
+        // Initial check
         updatePolylines();
 
         if (bounds.isValid()) {
