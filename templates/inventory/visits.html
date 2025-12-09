@@ -5,7 +5,27 @@
 {% block page_title %}Visitas (Inventário){% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
 <style>
+    #visits-map {
+        height: 450px;
+        border-radius: 14px;
+        overflow: hidden;
+        background: #0c1424;
+        margin-bottom: 1.25rem;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    #visits-map .map-status {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        color: #9cb3d9;
+        font-size: 14px;
+        background: #0c1424;
+    }
     .inventory-table-card {
         border-radius: 14px;
         overflow: hidden;
@@ -167,6 +187,19 @@
         font-weight: 600;
     }
 
+    .visit-number-icon {
+        border-radius: 50%;
+        border: 2px solid white;
+        color: white;
+        font-weight: bold;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+        text-align: center;
+    }
+
     @media (max-width: 1024px) {
         .inventory-table {
             min-width: unset;
@@ -214,6 +247,8 @@
 <div class="container">
     <h2>Histórico de Visitas</h2>
     <p>Visualize todas as visitas registradas para os assets do inventário.</p>
+
+    <div id="visits-map"></div>
 
     <div class="inventory-table-card" style="margin-top: 1rem;">
         <div class="card-header">
@@ -316,6 +351,117 @@
     </div>
 </div>
 {% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const visitsMapData = {{ visits_map_data | default({}) | tojson }};
+    const mapContainer = document.getElementById('visits-map');
+    
+    if (mapContainer && Object.keys(visitsMapData).length > 0 && Object.values(visitsMapData).some(d => d.path && d.path.length > 0)) {
+        const map = L.map('visits-map').setView([-15.7801, -47.9292], 4);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        const markers = L.markerClusterGroup({
+            spiderfyOnMaxZoom: true,
+            showCoverageOnHover: false,
+            zoomToBoundsOnClick: false,
+        });
+
+        markers.on('clusterclick', function (a) {
+            // always spiderfy on click
+            a.layer.spiderfy();
+        });
+
+        const assetLayers = {};
+        const bounds = L.latLngBounds();
+        const colors = ['#00C3FF', '#4C3AFF', '#FFC93C', '#00F5B5', '#FF6B6B', '#1F8EF1', '#7C4DFF', '#FF8A65'];
+        let colorIndex = 0;
+
+        for (const assetId in visitsMapData) {
+            const assetData = visitsMapData[assetId];
+            const path = assetData.path;
+
+            if (path.length > 0) {
+                assetLayers[assetId] = { markers: [], polyline: null };
+                const latLngs = path.map(p => [p.lat, p.lng]);
+                const color = colors[colorIndex % colors.length];
+                colorIndex++;
+
+                const polyline = L.polyline(latLngs, { color: color, weight: 4, opacity: 0.8 });
+                assetLayers[assetId].polyline = polyline;
+                bounds.extend(polyline.getBounds());
+
+                path.forEach((point, index) => {
+                    const isFirst = index === 0;
+                    const isLast = index === path.length - 1;
+                    const iconSize = isLast ? 28 : 22;
+                    
+                    const markerIcon = L.divIcon({
+                        html: `<div class="visit-number-icon" style="background-color:${color}; width:${iconSize}px; height:${iconSize}px;">${index + 1}</div>`,
+                        className: '',
+                        iconSize: [iconSize, iconSize],
+                        iconAnchor: [iconSize/2, iconSize/2]
+                    });
+
+                    const marker = L.marker([point.lat, point.lng], { icon: markerIcon });
+                    assetLayers[assetId].markers.push(marker);
+
+                    let popupContent = `<b>${assetData.serial_number}</b><br>Visita ${index + 1}<br>${new Date(point.at).toLocaleString()}`;
+                    if(isFirst) popupContent += '<br><em>(Início)</em>';
+                    if(isLast) popupContent += '<br><em>(Mais recente)</em>';
+                    marker.bindPopup(popupContent);
+                    markers.addLayer(marker);
+                });
+            }
+        }
+
+        map.addLayer(markers);
+
+        function updatePolylines() {
+            for (const assetId in assetLayers) {
+                const layer = assetLayers[assetId];
+                if (layer.markers.length === 0) continue;
+
+                // Hide polyline if any of its markers are part of a cluster
+                const isAnyMarkerClustered = layer.markers.some(marker => {
+                    const parent = markers.getVisibleParent(marker);
+                    return parent instanceof L.MarkerCluster;
+                });
+
+                if (isAnyMarkerClustered) {
+                    if (map.hasLayer(layer.polyline)) {
+                        map.removeLayer(layer.polyline);
+                    }
+                } else {
+                    if (!map.hasLayer(layer.polyline)) {
+                        map.addLayer(layer.polyline);
+                    }
+                }
+            }
+        }
+
+        markers.on('animationend', updatePolylines);
+        map.on('zoomend', updatePolylines);
+        
+        updatePolylines();
+
+        if (bounds.isValid()) {
+            map.fitBounds(bounds, { padding: [40, 40] });
+        }
+    } else if (mapContainer) {
+        mapContainer.innerHTML = '<div class="map-status">Nenhum dado de visita com coordenadas para exibir no mapa.</div>';
+    }
+});
+</script>
+{% endblock %}
+
 
 {% block sidebar %}
 <!-- Inventory sidebar with Visitas link -->
