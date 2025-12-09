@@ -77,6 +77,121 @@
         overflow-x: auto;
     }
 
+    .header-actions {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+
+    .action-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        background: rgba(255, 255, 255, 0.08);
+        color: #e8f0ff;
+        transition: background 160ms ease, transform 120ms ease;
+    }
+
+    .action-btn:hover {
+        background: rgba(0, 195, 255, 0.18);
+        transform: translateY(-1px);
+    }
+
+    .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(7, 12, 22, 0.82);
+        backdrop-filter: blur(4px);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        padding: 16px;
+    }
+
+    .modal-backdrop.active {
+        display: flex;
+    }
+
+    .modal-card {
+        background: radial-gradient(circle at 10% 10%, rgba(0, 195, 255, 0.12), transparent 35%), radial-gradient(circle at 90% 10%, rgba(76, 58, 255, 0.18), transparent 38%), #0c1424;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 16px;
+        width: min(480px, 100%);
+        box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+        color: #f4f7ff;
+        overflow: hidden;
+    }
+
+    .modal-header {
+        padding: 16px 18px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(0, 195, 255, 0.1));
+    }
+
+    .modal-body {
+        padding: 18px;
+        display: grid;
+        gap: 14px;
+    }
+
+    .modal-actions {
+        padding: 14px 18px 18px;
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        background: rgba(255, 255, 255, 0.03);
+    }
+
+    .modal-close {
+        border: none;
+        background: rgba(255, 255, 255, 0.08);
+        color: #e8f0ff;
+        cursor: pointer;
+        font-size: 18px;
+        padding: 8px;
+        border-radius: 10px;
+        transition: background 160ms ease;
+    }
+
+    .modal-close:hover {
+        background: rgba(0, 195, 255, 0.2);
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 12px 12px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.08);
+        color: #f4f7ff;
+        font-size: 14px;
+        transition: border-color 140ms ease, box-shadow 140ms ease;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: rgba(0, 195, 255, 0.6);
+        box-shadow: 0 0 0 3px rgba(0, 195, 255, 0.18);
+    }
+
+    .form-control[readonly] {
+        opacity: 0.85;
+    }
+
+    .status-text {
+        font-size: 13px;
+        color: #9be7ff;
+    }
+
     @media (max-width: 768px) {
         .inventory-table {
             min-width: unset;
@@ -114,6 +229,10 @@
             min-width: 110px;
         }
 
+        .inventory-table td:last-child {
+            justify-content: flex-end;
+        }
+
         .inventory-table-card .card-body {
             padding: 8px 10px 14px;
         }
@@ -127,8 +246,13 @@
     <p>Bem-vindo ao inventário. Abaixo a listagem dos assets cadastrados.</p>
 
     <div class="inventory-table-card" style="margin-top: 1rem;">
-        <div class="card-header">
+        <div class="card-header" style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
             <strong>Assets Inventory</strong>
+            <div class="header-actions">
+                <button type="button" class="btn btn-light" id="export-btn">
+                    <i class="fas fa-file-excel"></i> Exportar Excel
+                </button>
+            </div>
         </div>
         <div class="card-body" style="padding: 0;">
             {% if assets_inventory %}
@@ -142,11 +266,11 @@
                         <th>Outlet</th>
                         <th>Latitude</th>
                         <th>Longitude</th>
-                        <th>Distância (m)</th>
                         <th>Cidade</th>
                         <th>Rua</th>
                         <th>Criado em</th>
                         <th>Criado por</th>
+                        <th style="text-align: right;"></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -164,11 +288,20 @@
                         </td>
                         <td data-label="Latitude">{{ asset.last_latitude or '-' }}</td>
                         <td data-label="Longitude">{{ asset.last_longitude or '-' }}</td>
-                        <td data-label="Distância (m)">{{ asset.last_visit_distance_m is not none and ('%.2f' % asset.last_visit_distance_m) or '-' }}</td>
                         <td data-label="Cidade">{{ asset.city or '-' }}</td>
                         <td data-label="Rua">{{ asset.street or '-' }}</td>
                         <td data-label="Criado em">{{ asset.created_at or '-' }}</td>
                         <td data-label="Criado por">{{ asset.created_by_user or '-' }}</td>
+                        <td data-label="Ações" style="text-align: right;">
+                            <button type="button" class="action-btn" title="Editar asset"
+                                data-edit-asset
+                                data-serial="{{ asset.serial_number }}"
+                                data-outlet="{{ asset.outlet_name or '' }}"
+                                data-city="{{ asset.city or '' }}"
+                                data-street="{{ asset.street or '' }}">
+                                <i class="fas fa-pen"></i>
+                            </button>
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -178,6 +311,46 @@
             <div style="padding: 16px;">Nenhum asset cadastrado.</div>
             {% endif %}
         </div>
+    </div>
+</div>
+
+<!-- Modal de edição -->
+<div class="modal-backdrop" id="edit-modal">
+    <div class="modal-card">
+        <div class="modal-header">
+            <div>
+                <h5 style="margin: 0;">Editar asset</h5>
+                <p style="margin: 4px 0 0; color: #cfd6e6; font-size: 13px;">Atualize outlet, cidade e rua.</p>
+            </div>
+            <button type="button" class="modal-close" aria-label="Fechar" data-close-modal="edit-modal">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form id="edit-form">
+            <div class="modal-body">
+                <div>
+                    <label for="edit-serial" style="font-weight: 600; font-size: 13px;">Serial</label>
+                    <input id="edit-serial" class="form-control" readonly />
+                </div>
+                <div>
+                    <label for="edit-outlet" style="font-weight: 600; font-size: 13px;">Outlet</label>
+                    <input id="edit-outlet" class="form-control" />
+                </div>
+                <div>
+                    <label for="edit-city" style="font-weight: 600; font-size: 13px;">Cidade</label>
+                    <input id="edit-city" class="form-control" />
+                </div>
+                <div>
+                    <label for="edit-street" style="font-weight: 600; font-size: 13px;">Rua</label>
+                    <input id="edit-street" class="form-control" />
+                </div>
+                <div class="status-text" id="edit-status"></div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-light" data-close-modal="edit-modal">Cancelar</button>
+                <button type="submit" class="btn btn-primary" id="edit-save">Salvar</button>
+            </div>
+        </form>
     </div>
 </div>
 {% endblock %}
@@ -212,7 +385,6 @@
                 <span>Visitas</span>
             </a>
         </div>
-        <!-- Adicione outras seções se necessário -->
     </nav>
     <div class="sidebar-footer">
         <div class="sidebar-user">
@@ -232,4 +404,168 @@
         </form>
     </div>
 </aside>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const assetsData = {{ assets_json | default([]) | tojson | safe }};
+
+        const editModal = document.getElementById('edit-modal');
+        const editForm = document.getElementById('edit-form');
+        const fieldSerial = document.getElementById('edit-serial');
+        const fieldOutlet = document.getElementById('edit-outlet');
+        const fieldCity = document.getElementById('edit-city');
+        const fieldStreet = document.getElementById('edit-street');
+        const statusText = document.getElementById('edit-status');
+        const saveBtn = document.getElementById('edit-save');
+        const closeBtns = document.querySelectorAll('[data-close-modal="edit-modal"]');
+        const updateUrl = "{{ url_for('inventory.create_inventory_asset') }}";
+
+        function setModal(isOpen) {
+            if (!editModal) return;
+            if (isOpen) editModal.classList.add('active');
+            else editModal.classList.remove('active');
+        }
+
+        if (editModal) {
+            editModal.addEventListener('click', (evt) => {
+                if (evt.target === editModal) setModal(false);
+            });
+        }
+
+        document.querySelectorAll('[data-edit-asset]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const serial = btn.getAttribute('data-serial') || '';
+                const outlet = btn.getAttribute('data-outlet') || '';
+                const city = btn.getAttribute('data-city') || '';
+                const street = btn.getAttribute('data-street') || '';
+
+                fieldSerial.value = serial;
+                fieldOutlet.value = outlet;
+                fieldCity.value = city;
+                fieldStreet.value = street;
+                if (statusText) statusText.textContent = '';
+                setModal(true);
+            });
+        });
+
+        closeBtns.forEach(btn => btn.addEventListener('click', () => setModal(false)));
+
+        if (editForm) {
+            editForm.addEventListener('submit', async (evt) => {
+                evt.preventDefault();
+                if (statusText) statusText.textContent = 'Salvando...';
+                if (saveBtn) saveBtn.disabled = true;
+
+                try {
+                    const payload = {
+                        serial_number: fieldSerial.value.trim(),
+                        outlet_name: fieldOutlet.value.trim(),
+                        city: fieldCity.value.trim(),
+                        street: fieldStreet.value.trim(),
+                    };
+
+                    const resp = await fetch(updateUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload),
+                    });
+
+                    const result = await resp.json();
+                    if (!resp.ok) {
+                        statusText.textContent = result.error || 'Erro ao salvar.';
+                        return;
+                    }
+
+                    const rowBtn = document.querySelector(`[data-edit-asset][data-serial="${payload.serial_number}"]`);
+                    if (rowBtn) {
+                        rowBtn.setAttribute('data-outlet', payload.outlet_name);
+                        rowBtn.setAttribute('data-city', payload.city);
+                        rowBtn.setAttribute('data-street', payload.street);
+                        const row = rowBtn.closest('tr');
+                        if (row) {
+                            const outletCell = row.querySelector('[data-label="Outlet"]');
+                            const cityCell = row.querySelector('[data-label="Cidade"]');
+                            const streetCell = row.querySelector('[data-label="Rua"]');
+                            if (outletCell) {
+                                outletCell.innerHTML = payload.outlet_name
+                                    ? `<span class="badge-outlet">${payload.outlet_name}</span>`
+                                    : '<span class="pill-muted">Sem outlet</span>';
+                            }
+                            if (cityCell) cityCell.textContent = payload.city || '-';
+                            if (streetCell) streetCell.textContent = payload.street || '-';
+                        }
+                    }
+
+                    // Atualiza a lista para o exportar
+                    const idx = Array.isArray(assetsData) ? assetsData.findIndex(a => a.serial_number === payload.serial_number) : -1;
+                    if (idx >= 0) {
+                        assetsData[idx].outlet_name = payload.outlet_name;
+                        assetsData[idx].city = payload.city;
+                        assetsData[idx].street = payload.street;
+                    }
+
+                    statusText.textContent = 'Salvo com sucesso.';
+                    setTimeout(() => setModal(false), 800);
+                } catch (err) {
+                    statusText.textContent = 'Erro inesperado ao salvar.';
+                } finally {
+                    if (saveBtn) saveBtn.disabled = false;
+                }
+            });
+        }
+
+        const exportBtn = document.getElementById('export-btn');
+        if (exportBtn && Array.isArray(assetsData)) {
+            exportBtn.addEventListener('click', () => {
+                const headers = [
+                    'Serial',
+                    'Tipo',
+                    'Material',
+                    'Outlet',
+                    'Latitude',
+                    'Longitude',
+                    'Cidade',
+                    'Rua',
+                    'Criado em',
+                    'Criado por'
+                ];
+
+                const rows = assetsData.map(item => [
+                    item.serial_number || '',
+                    item.asset_type || '',
+                    item.material || '',
+                    item.outlet_name || '',
+                    item.last_latitude ?? '',
+                    item.last_longitude ?? '',
+                    item.city || '',
+                    item.street || '',
+                    item.created_at || '',
+                    item.created_by_user || ''
+                ]);
+
+                const csvContent = [headers, ...rows]
+                    .map(row => row.map(value => {
+                        const str = `${value ?? ''}`;
+                        if (str.includes('"') || str.includes(';') || str.includes('\n')) {
+                            return `"${str.replace(/"/g, '""')}"`;
+                        }
+                        return str;
+                    }).join(';'))
+                    .join('\n');
+
+                const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'inventario_assets.csv';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            });
+        }
+    });
+</script>
 {% endblock %}

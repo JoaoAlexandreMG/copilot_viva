@@ -101,7 +101,13 @@ def render_inventory_list():
             return redirect(url_for('index'))
         db_session = get_session()
         assets = db_session.query(AssetsInventory).filter(AssetsInventory.is_deleted.is_(False)).all()
-        return render_template('inventory/list.html', user=user, assets_inventory=assets)
+        assets_serialized = [_serialize_inventory_asset(asset) for asset in assets]
+        return render_template(
+            'inventory/list.html',
+            user=user,
+            assets_inventory=assets,
+            assets_json=assets_serialized
+        )
     except Exception as e:
         print(f"[ERROR] Error rendering inventory dashboard: {e}")
         return redirect(url_for('inventory.render_inventory_index'))
