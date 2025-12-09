@@ -138,8 +138,10 @@ def render_inventory_visits():
         )
 
         visits = []
+        visits_by_asset = {}  # Agrupar visitas por asset para o mapa
+
         for visit, asset in visits_query:
-            visits.append({
+            visit_data = {
                 "id": visit.id,
                 "asset_id": asset.id,
                 "serial_number": asset.serial_number,
@@ -156,9 +158,28 @@ def render_inventory_visits():
                 "distance_from_prev_m": visit.distance_from_prev_m,
                 "scanned_by": visit.scanned_by,
                 "notes": visit.notes,
-            })
+            }
+            visits.append(visit_data)
 
-        return render_template('inventory/visits.html', user=user, visits=visits)
+            # Prepara dados para o mapa
+            if asset.id not in visits_by_asset:
+                visits_by_asset[asset.id] = {
+                    "serial_number": asset.serial_number,
+                    "path": []
+                }
+            
+            if visit.latitude is not None and visit.longitude is not None:
+                visits_by_asset[asset.id]["path"].append({
+                    "lat": visit.latitude,
+                    "lng": visit.longitude,
+                    "at": _visit_iso_in_brazil(visit.visit_at)
+                })
+
+        # Inverte o caminho para desenhar do mais antigo para o mais novo
+        for asset_id in visits_by_asset:
+            visits_by_asset[asset_id]["path"].reverse()
+
+        return render_template('inventory/visits.html', user=user, visits=visits, visits_map_data=visits_by_asset)
     except Exception as e:
         print(f"[ERROR] Error rendering inventory visits: {e}")
         return redirect(url_for('inventory.render_inventory_index'))
@@ -248,11 +269,17 @@ def create_inventory_asset():
         if not serial_number:
             return jsonify({"error": "O campo serial_number é obrigatório."}), 400
 
+        street = (payload.get('street') or '').strip()
+        if not street:
+            return jsonify({"error": "O campo Rua é obrigatório."}), 400
+
+        city = (payload.get('city') or '').strip()
+        if not city:
+            return jsonify({"error": "O campo Cidade é obrigatório."}), 400
+
         asset_type = (payload.get('asset_type') or '').strip() or None
         material = (payload.get('material') or '').strip() or None
         outlet_name = (payload.get('outlet_name') or '').strip() or None
-        street = (payload.get('street') or '').strip() or None
-        city = (payload.get('city') or '').strip() or None
         notes = (payload.get('notes') or '').strip() or None
 
         def to_float(value):
