@@ -580,7 +580,14 @@
             </div>
             <div class="modal-body">
                 <div id="qr-reader"></div>
-                <p class="status-text">Aponte a câmera para o QR Code. Após ler, os dados serão preenchidos
+                <div class="qr-zoom-controls" style="margin-top: 12px; display: none;">
+                    <label for="qr-zoom-slider" style="display: block; font-size: 0.85rem; margin-bottom: 4px;">
+                        Zoom da câmera (se suportado)
+                    </label>
+                    <input id="qr-zoom-slider" type="range" min="1" max="3" step="0.1" value="1"
+                           style="width: 100%;">
+                </div>
+                <p class="status-text">Aponte a câmera para o QR Code. Mantenha o código centralizado, aproxime se necessário e garanta boa iluminação. Após ler, os dados serão preenchidos
                     automaticamente.</p>
             </div>
         </div>
@@ -725,7 +732,8 @@
 
     function computeQrBoxSize(el) {
         const width = el?.clientWidth || window.innerWidth || 320;
-        return Math.max(180, Math.min(320, Math.floor(width * 0.8)));
+        // Aumenta um pouco a área real de leitura para facilitar QR menores/mais distantes
+        return Math.max(200, Math.min(380, Math.floor(width * 0.85)));
     }
 
     function loadScriptIfNeeded(checkFn, primaryUrl, fallbackUrl) {
@@ -1132,9 +1140,72 @@
         setModal(formModal, true);
     }
 
+    // Contadores para sugerir melhorias de foco/iluminação ao usuário
+    let qrErrorCount = 0;
+    let qrDecodeCount = 0;
+
     function setQrStatus(message) {
         if (qrInfoText) qrInfoText.textContent = message || defaultQrMessage;
         else statusText.textContent = message || '';
+    }
+
+    const qrZoomControls = document.querySelector('#qr-modal .qr-zoom-controls');
+    const qrZoomSlider = document.getElementById('qr-zoom-slider');
+    let qrZoomInitialized = false;
+
+    async function initQrZoomControls() {
+        if (!qrScanner || !qrZoomSlider || qrZoomInitialized) return;
+        if (typeof qrScanner.applyVideoConstraints !== 'function') {
+            if (qrZoomControls) qrZoomControls.style.display = 'none';
+            return;
+        }
+
+        try {
+            let caps = null;
+            if (typeof qrScanner.getRunningTrackCapabilities === 'function') {
+                caps = qrScanner.getRunningTrackCapabilities();
+            }
+
+            const zoomCaps = caps && typeof caps.zoom === 'object' ? caps.zoom : null;
+            if (!zoomCaps || typeof zoomCaps.min !== 'number' || typeof zoomCaps.max !== 'number') {
+                if (qrZoomControls) qrZoomControls.style.display = 'none';
+                return;
+            }
+
+            qrZoomInitialized = true;
+            const min = zoomCaps.min;
+            const max = zoomCaps.max;
+            const step = zoomCaps.step || 0.1;
+            const initial = zoomCaps.default ?? Math.min(Math.max(1, min), max);
+
+            qrZoomSlider.min = String(min);
+            qrZoomSlider.max = String(max);
+            qrZoomSlider.step = String(step);
+            qrZoomSlider.value = String(initial);
+
+            if (qrZoomControls) qrZoomControls.style.display = 'block';
+
+            qrZoomSlider.addEventListener('input', async (event) => {
+                const value = Number(event.target.value);
+                if (!Number.isFinite(value)) return;
+                try {
+                    await qrScanner.applyVideoConstraints({
+                        advanced: [{ zoom: value }]
+                    });
+                } catch (e) {
+                    // Se der erro, mantém slider mas não quebra leitura
+                }
+            });
+
+            // aplica valor inicial
+            try {
+                await qrScanner.applyVideoConstraints({
+                    advanced: [{ zoom: initial }]
+                });
+            } catch (_e) { }
+        } catch (_err) {
+            if (qrZoomControls) qrZoomControls.style.display = 'none';
+        }
     }
 
     async function startQrScanner() {
@@ -1142,6 +1213,10 @@
             setQrStatus('No celular, habilite HTTPS ou acesse via localhost para usar a câmera.');
             return;
         }
+        qrErrorCount = 0;
+        qrDecodeCount = 0;
+        qrZoomInitialized = false;
+        if (qrZoomControls) qrZoomControls.style.display = 'none';
         setQrStatus('Abrindo câmera...');
         if (qrScanner) {
             safeStopQrScanner();
@@ -1167,12 +1242,18 @@
         const qrBoxSize = computeQrBoxSize(qrElement);
         qrElement.style.minHeight = `${qrBoxSize + 40}px`;
 
-        let cameraConfig = { facingMode: 'environment' };
+        // Tenta forçar uso da câmera traseira
+        let cameraConfig = { facingMode: { exact: 'environment' } };
         try {
             const cameras = await Html5Qrcode.getCameras();
             if (cameras && cameras.length) {
                 const backCam = cameras.find(c => /back|traseira|rear/i.test(c.label));
-                const chosen = backCam || cameras[0];
+                let chosen = backCam;
+                if (!chosen) {
+                    // Se não conseguir identificar pelo nome, em muitos aparelhos
+                    // a última câmera tende a ser a traseira
+                    chosen = cameras.length > 1 ? cameras[cameras.length - 1] : cameras[0];
+                }
                 cameraConfig = { deviceId: { exact: chosen.id } };
             }
         } catch (err) {
@@ -1184,22 +1265,41 @@
             qrbox: { width: qrBoxSize, height: qrBoxSize },
             aspectRatio: 1,
             disableFlip: false,
-            rememberLastUsedCamera: true
+            rememberLastUsedCamera: true,
+            // aumenta resolução do vídeo para melhorar leitura
+            videoConstraints: {
+                width: { ideal: 1280 },
+                height: { ideal: 720 },
+                facingMode: { ideal: 'environment' }
+            }
         };
         qrScanner = new Html5Qrcode(qrRegionId, {
             experimentalFeatures: { useBarCodeDetectorIfSupported: true }
         });
 
         try {
-            await qrScanner.start(cameraConfig, config, (decodedText) => {
-                setQrStatus('QR lido, preenchendo formulário...');
-                safeStopQrScanner();
-                setModal(qrModal, false);
-                const parsed = parseQrText(decodedText);
-                openForm(parsed);
-            }, () => {
-                // Ignora erros de leitura contínuos
-            });
+            await qrScanner.start(
+                cameraConfig,
+                config,
+                (decodedText) => {
+                    qrDecodeCount += 1;
+                    qrErrorCount = 0;
+                    setQrStatus('QR lido, preenchendo formulário...');
+                    safeStopQrScanner();
+                    setModal(qrModal, false);
+                    const parsed = parseQrText(decodedText);
+                    openForm(parsed);
+                },
+                () => {
+                    // Erros de leitura contínuos: após algumas tentativas, orienta usuário
+                    qrErrorCount += 1;
+                    if (qrErrorCount === 10 && qrDecodeCount === 0) {
+                        setQrStatus('Dica: aproxime mais o QR Code, mantenha-o centralizado na caixa e melhore a iluminação do ambiente.');
+                    }
+                }
+            );
+            // inicializa zoom se o dispositivo suportar
+            initQrZoomControls();
             setQrStatus(defaultQrMessage);
         } catch (err) {
             safeStopQrScanner();
