@@ -186,7 +186,6 @@ def stats_for_dashboard(days=30):
             alerts_7d,
             assets_missing_30d,
             assets_missing_7d,
-            active_assets_24h_count AS assets_health_last_24h_count,
             count_battery_ok AS good_battery_assets_count,
             count_battery_low AS low_battery_assets_count,
             count_battery_critical AS critical_battery_assets_count,
@@ -211,6 +210,19 @@ def stats_for_dashboard(days=30):
     status_results = db_session.execute(
         status_and_counts_sql, {"client": client}
     ).fetchone()
+
+    # Query 2: Obter contagem de ativos ativos nas últimas 24h em tempo real (alinhado com tracking)
+    active_assets_24h_sql = text(
+        """
+        SELECT COUNT(*) 
+        FROM mv_asset_current_status
+        WHERE client = :client 
+        AND last_movement_time >= NOW() - INTERVAL '24 hours'
+    """
+    )
+    assets_health_last_24h_count = (
+        db_session.execute(active_assets_24h_sql, {"client": client}).scalar() or 0
+    )
 
     if not status_results:
         # Se o cliente não tem dados na MV, retorna zero
@@ -399,9 +411,7 @@ def stats_for_dashboard(days=30):
         "period_days": days,
         # Métricas de Cartão (Totais e Contagens)
         "total_assets": int(status_results.total_assets_count or 0),
-        "assets_health_last_24h_count": int(
-            status_results.assets_health_last_24h_count or 0
-        ),
+        "assets_health_last_24h_count": int(assets_health_last_24h_count),
         "alerts_period_count": int(alerts_period_count or 0),  # Dinâmico (7/30d)
         "assets_missing_count": int(assets_missing_count or 0),  # Dinâmico (7/30d)
         # Métricas de Temperatura (Contagens e Percentuais)

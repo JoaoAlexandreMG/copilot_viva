@@ -260,6 +260,18 @@
         margin-top: 6px;
     }
 
+    .qr-warning-banner {
+        display: none;
+        margin-bottom: 8px;
+        padding: 6px 10px;
+        border-radius: 8px;
+        background: #ff4d4f;
+        color: #ffffff;
+        font-weight: 700;
+        font-size: 13px;
+        text-align: center;
+    }
+
     .location-status {
         margin-top: 8px;
     }
@@ -269,7 +281,7 @@
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 240px));
         gap: 12px;
-        justify-content: flex-start;
+        justify-content: center;
     }
 
     .stale-card {
@@ -373,9 +385,9 @@
     }
 
     .operation-actions {
-        flex-wrap: wrap;
-        gap: 12px;
-        align-items: flex-end;
+        margin-top: 12px;
+        flex-direction: column;
+        gap: 16px;
     }
 
     .filter-control {
@@ -383,6 +395,63 @@
         flex-direction: column;
         gap: 4px;
         min-width: 180px;
+    }
+
+    .filter-card {
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(0, 0, 0, 0.15));
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 16px;
+        padding: 14px 14px 16px;
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.25);
+    }
+
+    .filter-card-header {
+        display: flex;
+        justify-content: flex-start;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+
+    .filter-card-header h4 {
+        margin: 0;
+        font-size: 16px;
+        color: #e8f0ff;
+    }
+
+    .filter-card-header p {
+        margin: 2px 0 0;
+        color: #b9c6df;
+        font-size: 13px;
+    }
+
+    .filter-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .filter-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+        margin-top: 6px;
+    }
+
+    .filter-actions .btn {
+        width: 100%;
+    }
+
+    @media (min-width: 640px) {
+        .filter-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @media (min-width: 960px) {
+        .filter-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
     }
 
     .filter-control label {
@@ -422,26 +491,34 @@
 
     <div class="status-text" id="location-status"></div>
 
-    <div class="operation-actions">
-        <div class="filter-control">
-            <label for="filter-outlet">Outlet</label>
-            <select id="filter-outlet">
-                <option value="all">Todos</option>
-            </select>
+    <div class="filter-card">
+        <div class="filter-card-header">
+            <div>
+                <h4>Filtros rápidos</h4>
+                <p>Refine o mapa antes de escanear</p>
+            </div>
         </div>
-        <div class="filter-control">
-            <label for="filter-radius">Raio (km)</label>
-            <input type="number" min="0" step="0.1" id="filter-radius" placeholder="ex: 5">
+        <div class="filter-grid">
+            <div class="filter-control">
+                <label for="filter-outlet">Outlet</label>
+                <select id="filter-outlet">
+                    <option value="all">Todos</option>
+                </select>
+            </div>
+            <div class="filter-control">
+                <label for="filter-radius">Raio (km)</label>
+                <input type="number" min="0" step="0.1" id="filter-radius" placeholder="ex: 5">
+                <small>Use 0 para desativar raio.</small>
+            </div>
+            <div class="filter-control">
+                <label for="filter-order">Ordenar</label>
+                <select id="filter-order">
+                    <option value="oldest">Mais desatualizados</option>
+                    <option value="newest">Mais atualizados</option>
+                </select>
+            </div>
         </div>
-        <div class="filter-control">
-            <label for="filter-order">Ordenar</label>
-            <select id="filter-order">
-                <option value="oldest">Mais desatualizados</option>
-                <option value="newest">Mais atualizados</option>
-            </select>
-        </div>
-        <div style="display: flex; gap: 10px;">
-            <button type="button" class="btn btn-light" id="apply-filters-btn">Aplicar filtros</button>
+        <div class="filter-actions">
             <button type="button" class="btn btn-primary" id="open-scan-btn">Scan</button>
         </div>
     </div>
@@ -514,9 +591,19 @@
                     Fechar</button>
             </div>
             <div class="modal-body">
+                <div class="qr-warning-banner">LIGUE A LANTERNA</div>
                 <div id="qr-reader"></div>
-                <p class="status-text">Aponte a câmera para o QR Code. Após ler, os dados serão preenchidos
-                    automaticamente.</p>
+                <div class="qr-zoom-controls" style="margin-top: 12px; display: none;">
+                    <label for="qr-zoom-slider" style="display: block; font-size: 0.85rem; margin-bottom: 4px;">
+                        Zoom da câmera (se suportado)
+                    </label>
+                    <input id="qr-zoom-slider" type="range" min="1" max="3" step="0.1" value="1"
+                           style="width: 100%; margin-bottom: 8px;">
+                </div>
+                <p class="status-text qr-hint">
+                    Aponte a câmera para o QR Code. Mantenha o código centralizado e, se estiver escuro, ligue a lanterna do celular.
+                    Após ler, os dados serão preenchidos automaticamente.
+                </p>
             </div>
         </div>
     </div>
@@ -549,12 +636,12 @@
                             <input id="outlet_name" name="outlet_name" />
                         </div>
                         <div>
-                            <label for="street">Rua</label>
-                            <input id="street" name="street" />
+                            <label for="street">Rua *</label>
+                            <input id="street" name="street" required />
                         </div>
                         <div>
-                            <label for="city">Cidade</label>
-                            <input id="city" name="city" />
+                            <label for="city">Cidade *</label>
+                            <input id="city" name="city" required />
                         </div>
                         <div>
                             <label for="last_latitude">Latitude</label>
@@ -627,12 +714,12 @@
     const currentIcon = L.divIcon({ className: 'current-location-icon' });
     const toastEl = document.getElementById('scan-toast');
     const staleGridEl = document.getElementById('stale-grid');
-    const qrInfoText = document.querySelector('#qr-modal .status-text');
-    const defaultQrMessage = 'Aponte a câmera para o QR Code. Após ler, os dados serão preenchidos automaticamente.';
+    const qrWarningBanner = document.querySelector('#qr-modal .qr-warning-banner');
+    const qrInfoText = document.querySelector('#qr-modal .qr-hint') || document.querySelector('#qr-modal .status-text');
+    const defaultQrMessage = 'Aponte a câmera para o QR Code. Mantenha o código centralizado e, se estiver escuro, ligue a lanterna do celular.';
     const filterOutlet = document.getElementById('filter-outlet');
     const filterRadius = document.getElementById('filter-radius');
     const filterOrder = document.getElementById('filter-order');
-    const applyFiltersBtn = document.getElementById('apply-filters-btn');
 
     function setModal(modal, isOpen) {
         if (!modal) return;
@@ -661,7 +748,8 @@
 
     function computeQrBoxSize(el) {
         const width = el?.clientWidth || window.innerWidth || 320;
-        return Math.max(180, Math.min(320, Math.floor(width * 0.8)));
+        // Aumenta um pouco a área real de leitura para facilitar QR menores/mais distantes
+        return Math.max(200, Math.min(380, Math.floor(width * 0.85)));
     }
 
     function loadScriptIfNeeded(checkFn, primaryUrl, fallbackUrl) {
@@ -1068,9 +1156,77 @@
         setModal(formModal, true);
     }
 
+    // Contadores para sugerir melhorias de foco/iluminação ao usuário
+    let qrErrorCount = 0;
+    let qrDecodeCount = 0;
+    let qrHintTimeoutId = null;
+
     function setQrStatus(message) {
         if (qrInfoText) qrInfoText.textContent = message || defaultQrMessage;
         else statusText.textContent = message || '';
+    }
+
+    const qrZoomControls = document.querySelector('#qr-modal .qr-zoom-controls');
+    const qrZoomSlider = document.getElementById('qr-zoom-slider');
+    let qrZoomInitialized = false;
+
+    async function initQrZoomControls() {
+        if (!qrScanner || qrZoomInitialized) return;
+        if (typeof qrScanner.applyVideoConstraints !== 'function') {
+            if (qrZoomControls) qrZoomControls.style.display = 'none';
+            return;
+        }
+
+        try {
+            let caps = null;
+            if (typeof qrScanner.getRunningTrackCapabilities === 'function') {
+                caps = qrScanner.getRunningTrackCapabilities();
+            }
+
+            const zoomCaps = caps && typeof caps.zoom === 'object' ? caps.zoom : null;
+
+            // Se não houver suporte a zoom, esconde o bloco
+            if (!zoomCaps) {
+                if (qrZoomControls) qrZoomControls.style.display = 'none';
+                return;
+            }
+
+            qrZoomInitialized = true;
+            if (qrZoomControls) qrZoomControls.style.display = 'block';
+
+            if (zoomCaps && typeof zoomCaps.min === 'number' && typeof zoomCaps.max === 'number' && qrZoomSlider) {
+                const min = zoomCaps.min;
+                const max = zoomCaps.max;
+                const step = zoomCaps.step || 0.1;
+                const initial = zoomCaps.default ?? Math.min(Math.max(1, min), max);
+
+                qrZoomSlider.min = String(min);
+                qrZoomSlider.max = String(max);
+                qrZoomSlider.step = String(step);
+                qrZoomSlider.value = String(initial);
+
+                qrZoomSlider.addEventListener('input', async (event) => {
+                    const value = Number(event.target.value);
+                    if (!Number.isFinite(value)) return;
+                    try {
+                        await qrScanner.applyVideoConstraints({
+                            advanced: [{ zoom: value }]
+                        });
+                    } catch (e) {
+                        // Se der erro, mantém slider mas não quebra leitura
+                    }
+                });
+
+                // aplica valor inicial
+                try {
+                    await qrScanner.applyVideoConstraints({
+                        advanced: [{ zoom: initial }]
+                    });
+                } catch (_e) { }
+            }
+        } catch (_err) {
+            if (qrZoomControls) qrZoomControls.style.display = 'none';
+        }
     }
 
     async function startQrScanner() {
@@ -1078,6 +1234,15 @@
             setQrStatus('No celular, habilite HTTPS ou acesse via localhost para usar a câmera.');
             return;
         }
+        qrErrorCount = 0;
+        qrDecodeCount = 0;
+        if (qrHintTimeoutId !== null) {
+            clearTimeout(qrHintTimeoutId);
+            qrHintTimeoutId = null;
+        }
+        if (qrWarningBanner) qrWarningBanner.style.display = 'none';
+        qrZoomInitialized = false;
+        if (qrZoomControls) qrZoomControls.style.display = 'none';
         setQrStatus('Abrindo câmera...');
         if (qrScanner) {
             safeStopQrScanner();
@@ -1103,12 +1268,18 @@
         const qrBoxSize = computeQrBoxSize(qrElement);
         qrElement.style.minHeight = `${qrBoxSize + 40}px`;
 
-        let cameraConfig = { facingMode: 'environment' };
+        // Tenta forçar uso da câmera traseira
+        let cameraConfig = { facingMode: { exact: 'environment' } };
         try {
             const cameras = await Html5Qrcode.getCameras();
             if (cameras && cameras.length) {
                 const backCam = cameras.find(c => /back|traseira|rear/i.test(c.label));
-                const chosen = backCam || cameras[0];
+                let chosen = backCam;
+                if (!chosen) {
+                    // Se não conseguir identificar pelo nome, em muitos aparelhos
+                    // a última câmera tende a ser a traseira
+                    chosen = cameras.length > 1 ? cameras[cameras.length - 1] : cameras[0];
+                }
                 cameraConfig = { deviceId: { exact: chosen.id } };
             }
         } catch (err) {
@@ -1120,22 +1291,52 @@
             qrbox: { width: qrBoxSize, height: qrBoxSize },
             aspectRatio: 1,
             disableFlip: false,
-            rememberLastUsedCamera: true
+            rememberLastUsedCamera: true,
+            // aumenta resolução do vídeo para melhorar leitura
+            videoConstraints: {
+                width: { ideal: 1280 },
+                height: { ideal: 720 },
+                facingMode: { ideal: 'environment' }
+            }
         };
         qrScanner = new Html5Qrcode(qrRegionId, {
             experimentalFeatures: { useBarCodeDetectorIfSupported: true }
         });
 
         try {
-            await qrScanner.start(cameraConfig, config, (decodedText) => {
-                setQrStatus('QR lido, preenchendo formulário...');
-                safeStopQrScanner();
-                setModal(qrModal, false);
-                const parsed = parseQrText(decodedText);
-                openForm(parsed);
-            }, () => {
-                // Ignora erros de leitura contínuos
-            });
+            await qrScanner.start(
+                cameraConfig,
+                config,
+                (decodedText) => {
+                    qrDecodeCount += 1;
+                    qrErrorCount = 0;
+                    if (qrHintTimeoutId !== null) {
+                        clearTimeout(qrHintTimeoutId);
+                        qrHintTimeoutId = null;
+                    }
+                    setQrStatus('QR lido, preenchendo formulário...');
+                    safeStopQrScanner();
+                    setModal(qrModal, false);
+                    const parsed = parseQrText(decodedText);
+                    openForm(parsed);
+                },
+                () => {
+                    // Erros de leitura contínuos: após algumas tentativas, orienta usuário
+                    qrErrorCount += 1;
+                    if (qrErrorCount === 5 && qrDecodeCount === 0) {
+                        setQrStatus('Dica: aproxime mais o QR Code, mantenha-o centralizado na caixa e, se estiver escuro, ligue a lanterna do celular.');
+                        if (qrWarningBanner) qrWarningBanner.style.display = 'block';
+                    }
+                }
+            );
+            // inicializa zoom se o dispositivo suportar
+            initQrZoomControls();
+            // Após alguns segundos sem leitura, reforça a dica automaticamente
+            qrHintTimeoutId = window.setTimeout(() => {
+                if (qrDecodeCount === 0) {
+                    setQrStatus('Dica: aproxime mais o QR Code, mantenha-o centralizado na caixa e, se estiver escuro, ligue a lanterna do celular.');
+                }
+            }, 8000);
             setQrStatus(defaultQrMessage);
         } catch (err) {
             safeStopQrScanner();
@@ -1155,9 +1356,8 @@
         setQrStatus(defaultQrMessage);
     }
 
-    if (openScanBtn) {
-        openScanBtn.addEventListener('click', () => setModal(methodModal, true));
-    }
+    const openScan = () => setModal(methodModal, true);
+    if (openScanBtn) openScanBtn.addEventListener('click', openScan);
 
     const params = new URLSearchParams(window.location.search);
     if (params.get('open') === 'add' && methodModal) {
@@ -1214,7 +1414,6 @@
         });
     }
 
-    if (applyFiltersBtn) applyFiltersBtn.addEventListener('click', applyFilters);
     if (filterOutlet) filterOutlet.addEventListener('change', applyFilters);
     if (filterOrder) filterOrder.addEventListener('change', applyFilters);
     if (filterRadius) filterRadius.addEventListener('change', applyFilters);

@@ -801,11 +801,6 @@
     <script>
         const chartData = {{ chart_data | tojson }};
         
-        // Debug: Log chart data
-        console.log('Chart Data:', chartData);
-        console.log('Temperature events:', chartData.temperature ? chartData.temperature.length : 0);
-        console.log('Door events:', chartData.door_events ? chartData.door_events.length : 0);
-        console.log('Movements:', chartData.movements ? chartData.movements.length : 0);
         
         // Hide empty chart sections
         if ((!chartData.door_events || chartData.door_events.length === 0) && 
@@ -815,7 +810,7 @@
                 const section = doorChartCanvas.closest('.section');
                 if (section) {
                     section.style.display = 'none';
-                    console.log('Hiding door chart section - no data');
+    
                 }
             }
         }
@@ -826,7 +821,6 @@
                 const section = tempChartCanvas.closest('.section');
                 if (section) {
                     section.style.display = 'none';
-                    console.log('Hiding temperature chart section - no data');
                 }
             }
         }
