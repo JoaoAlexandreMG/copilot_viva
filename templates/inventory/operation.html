@@ -260,6 +260,18 @@
         margin-top: 6px;
     }
 
+    .qr-warning-banner {
+        display: none;
+        margin-bottom: 8px;
+        padding: 6px 10px;
+        border-radius: 8px;
+        background: #ff4d4f;
+        color: #ffffff;
+        font-weight: 700;
+        font-size: 13px;
+        text-align: center;
+    }
+
     .location-status {
         margin-top: 8px;
     }
@@ -579,16 +591,19 @@
                     Fechar</button>
             </div>
             <div class="modal-body">
+                <div class="qr-warning-banner">LIGUE A LANTERNA</div>
                 <div id="qr-reader"></div>
                 <div class="qr-zoom-controls" style="margin-top: 12px; display: none;">
                     <label for="qr-zoom-slider" style="display: block; font-size: 0.85rem; margin-bottom: 4px;">
                         Zoom da câmera (se suportado)
                     </label>
                     <input id="qr-zoom-slider" type="range" min="1" max="3" step="0.1" value="1"
-                           style="width: 100%;">
+                           style="width: 100%; margin-bottom: 8px;">
                 </div>
-                <p class="status-text">Aponte a câmera para o QR Code. Mantenha o código centralizado, aproxime se necessário e garanta boa iluminação. Após ler, os dados serão preenchidos
-                    automaticamente.</p>
+                <p class="status-text qr-hint">
+                    Aponte a câmera para o QR Code. Mantenha o código centralizado e, se estiver escuro, ligue a lanterna do celular.
+                    Após ler, os dados serão preenchidos automaticamente.
+                </p>
             </div>
         </div>
     </div>
@@ -699,8 +714,9 @@
     const currentIcon = L.divIcon({ className: 'current-location-icon' });
     const toastEl = document.getElementById('scan-toast');
     const staleGridEl = document.getElementById('stale-grid');
-    const qrInfoText = document.querySelector('#qr-modal .status-text');
-    const defaultQrMessage = 'Aponte a câmera para o QR Code. Após ler, os dados serão preenchidos automaticamente.';
+    const qrWarningBanner = document.querySelector('#qr-modal .qr-warning-banner');
+    const qrInfoText = document.querySelector('#qr-modal .qr-hint') || document.querySelector('#qr-modal .status-text');
+    const defaultQrMessage = 'Aponte a câmera para o QR Code. Mantenha o código centralizado e, se estiver escuro, ligue a lanterna do celular.';
     const filterOutlet = document.getElementById('filter-outlet');
     const filterRadius = document.getElementById('filter-radius');
     const filterOrder = document.getElementById('filter-order');
@@ -1143,6 +1159,7 @@
     // Contadores para sugerir melhorias de foco/iluminação ao usuário
     let qrErrorCount = 0;
     let qrDecodeCount = 0;
+    let qrHintTimeoutId = null;
 
     function setQrStatus(message) {
         if (qrInfoText) qrInfoText.textContent = message || defaultQrMessage;
@@ -1154,7 +1171,7 @@
     let qrZoomInitialized = false;
 
     async function initQrZoomControls() {
-        if (!qrScanner || !qrZoomSlider || qrZoomInitialized) return;
+        if (!qrScanner || qrZoomInitialized) return;
         if (typeof qrScanner.applyVideoConstraints !== 'function') {
             if (qrZoomControls) qrZoomControls.style.display = 'none';
             return;
@@ -1167,42 +1184,46 @@
             }
 
             const zoomCaps = caps && typeof caps.zoom === 'object' ? caps.zoom : null;
-            if (!zoomCaps || typeof zoomCaps.min !== 'number' || typeof zoomCaps.max !== 'number') {
+
+            // Se não houver suporte a zoom, esconde o bloco
+            if (!zoomCaps) {
                 if (qrZoomControls) qrZoomControls.style.display = 'none';
                 return;
             }
 
             qrZoomInitialized = true;
-            const min = zoomCaps.min;
-            const max = zoomCaps.max;
-            const step = zoomCaps.step || 0.1;
-            const initial = zoomCaps.default ?? Math.min(Math.max(1, min), max);
-
-            qrZoomSlider.min = String(min);
-            qrZoomSlider.max = String(max);
-            qrZoomSlider.step = String(step);
-            qrZoomSlider.value = String(initial);
-
             if (qrZoomControls) qrZoomControls.style.display = 'block';
 
-            qrZoomSlider.addEventListener('input', async (event) => {
-                const value = Number(event.target.value);
-                if (!Number.isFinite(value)) return;
+            if (zoomCaps && typeof zoomCaps.min === 'number' && typeof zoomCaps.max === 'number' && qrZoomSlider) {
+                const min = zoomCaps.min;
+                const max = zoomCaps.max;
+                const step = zoomCaps.step || 0.1;
+                const initial = zoomCaps.default ?? Math.min(Math.max(1, min), max);
+
+                qrZoomSlider.min = String(min);
+                qrZoomSlider.max = String(max);
+                qrZoomSlider.step = String(step);
+                qrZoomSlider.value = String(initial);
+
+                qrZoomSlider.addEventListener('input', async (event) => {
+                    const value = Number(event.target.value);
+                    if (!Number.isFinite(value)) return;
+                    try {
+                        await qrScanner.applyVideoConstraints({
+                            advanced: [{ zoom: value }]
+                        });
+                    } catch (e) {
+                        // Se der erro, mantém slider mas não quebra leitura
+                    }
+                });
+
+                // aplica valor inicial
                 try {
                     await qrScanner.applyVideoConstraints({
-                        advanced: [{ zoom: value }]
+                        advanced: [{ zoom: initial }]
                     });
-                } catch (e) {
-                    // Se der erro, mantém slider mas não quebra leitura
-                }
-            });
-
-            // aplica valor inicial
-            try {
-                await qrScanner.applyVideoConstraints({
-                    advanced: [{ zoom: initial }]
-                });
-            } catch (_e) { }
+                } catch (_e) { }
+            }
         } catch (_err) {
             if (qrZoomControls) qrZoomControls.style.display = 'none';
         }
@@ -1215,6 +1236,11 @@
         }
         qrErrorCount = 0;
         qrDecodeCount = 0;
+        if (qrHintTimeoutId !== null) {
+            clearTimeout(qrHintTimeoutId);
+            qrHintTimeoutId = null;
+        }
+        if (qrWarningBanner) qrWarningBanner.style.display = 'none';
         qrZoomInitialized = false;
         if (qrZoomControls) qrZoomControls.style.display = 'none';
         setQrStatus('Abrindo câmera...');
@@ -1284,6 +1310,10 @@
                 (decodedText) => {
                     qrDecodeCount += 1;
                     qrErrorCount = 0;
+                    if (qrHintTimeoutId !== null) {
+                        clearTimeout(qrHintTimeoutId);
+                        qrHintTimeoutId = null;
+                    }
                     setQrStatus('QR lido, preenchendo formulário...');
                     safeStopQrScanner();
                     setModal(qrModal, false);
@@ -1293,13 +1323,20 @@
                 () => {
                     // Erros de leitura contínuos: após algumas tentativas, orienta usuário
                     qrErrorCount += 1;
-                    if (qrErrorCount === 10 && qrDecodeCount === 0) {
-                        setQrStatus('Dica: aproxime mais o QR Code, mantenha-o centralizado na caixa e melhore a iluminação do ambiente.');
+                    if (qrErrorCount === 5 && qrDecodeCount === 0) {
+                        setQrStatus('Dica: aproxime mais o QR Code, mantenha-o centralizado na caixa e, se estiver escuro, ligue a lanterna do celular.');
+                        if (qrWarningBanner) qrWarningBanner.style.display = 'block';
                     }
                 }
             );
             // inicializa zoom se o dispositivo suportar
             initQrZoomControls();
+            // Após alguns segundos sem leitura, reforça a dica automaticamente
+            qrHintTimeoutId = window.setTimeout(() => {
+                if (qrDecodeCount === 0) {
+                    setQrStatus('Dica: aproxime mais o QR Code, mantenha-o centralizado na caixa e, se estiver escuro, ligue a lanterna do celular.');
+                }
+            }, 8000);
             setQrStatus(defaultQrMessage);
         } catch (err) {
             safeStopQrScanner();
