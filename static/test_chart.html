@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Chart</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <style>
+        body {
+            background: #0A0A0F;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #1F1F23;
+            padding: 20px;
+            border-radius: 12px;
+        }
+        h1 {
+            text-align: center;
+            color: #008CFF;
+        }
+        #chartContainer {
+            position: relative;
+            width: 100%;
+            height: 400px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Teste de Gráfico - Temperatura e Porta (Últimas 24h)</h1>
+        <div id="chartContainer">
+            <canvas id="testChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // Dados de teste
+        const testData = {
+            labels: ['00:00', '01:00', '02:00', '03:00', '04:00', '05:00', '06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00', '23:00'],
+            temperature: [18.5, 17.8, 17.2, 16.9, 16.5, 17.0, 18.2, 20.3, 22.1, 23.5, 24.8, 25.2, 25.0, 24.5, 23.8, 22.4, 20.9, 19.5, 18.7, 18.2, 17.9, 17.5, 17.2, 17.8],
+            door_count: [0, 0, 0, 1, 0, 0, 2, 5, 8, 12, 15, 18, 16, 14, 11, 8, 5, 3, 1, 0, 0, 0, 0, 0]
+        };
+
+        let testChart = null;
+
+        function displayChart(chartData) {
+            const ctx = document.getElementById('testChart');
+            if (!ctx) {
+                console.error('❌ Canvas não encontrado');
+                return;
+            }
+
+
+
+            if (testChart) {
+                testChart.destroy();
+            }
+
+            testChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: chartData.labels,
+                    datasets: [
+                        {
+                            label: '🌡️ Temperatura Média (°C)',
+                            data: chartData.temperature,
+                            type: 'line',
+                            borderColor: '#e74c3c',
+                            backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4,
+                            pointBackgroundColor: '#e74c3c',
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 2,
+                            pointRadius: 5,
+                            pointHoverRadius: 7,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: '🚪 Aberturas de Porta',
+                            data: chartData.door_count,
+                            type: 'bar',
+                            backgroundColor: '#4C3AFF',
+                            borderColor: '#4C3AFF',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                color: '#fff',
+                                font: { size: 12, weight: '600' },
+                                padding: 15,
+                                usePointStyle: true
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            titleColor: '#fff',
+                            bodyColor: '#fff',
+                            borderColor: '#4C3AFF',
+                            borderWidth: 1,
+                            padding: 10,
+                            displayColors: true,
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.dataset.type === 'line') {
+                                        label += context.parsed.y.toFixed(1) + '°C';
+                                    } else {
+                                        label += context.parsed.y + ' aberturas';
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Temperatura (°C)',
+                                color: '#e74c3c',
+                                font: { size: 12, weight: '600' }
+                            },
+                            ticks: {
+                                color: '#aaa',
+                                font: { size: 11 }
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Aberturas de Porta',
+                                color: '#4C3AFF',
+                                font: { size: 12, weight: '600' }
+                            },
+                            ticks: {
+                                color: '#aaa',
+                                font: { size: 11 }
+                            },
+                            grid: {
+                                drawOnChartArea: false
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#aaa',
+                                font: { size: 10 }
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        }
+                    }
+                }
+            });
+
+        }
+
+        // Executar ao carregar
+        displayChart(testData);
+    </script>
+</body>
+</html>

@@ -410,7 +410,6 @@
                         ip: data.ip
                     };
 
-                    // console.log('País detectado:', userLocation);
 
                     // Se for mobile, tentar obter GPS também
                     if (deviceInfo && deviceInfo.isMobile) {
@@ -499,10 +498,8 @@
                         clearInterval(waitForLocation);
 
                         if (locationReady) {
-                            console.log('[DEBUG] Localização pronta, continuando login');
                             proceedWithLogin();
                         } else {
-                            console.log('[DEBUG] Timeout na localização, continuando sem GPS');
                             proceedWithLogin();
                         }
                     }
@@ -533,11 +530,9 @@
                         (userLocation && userLocation.country ? '&country=' + encodeURIComponent(userLocation.country) : '')
                 })
                     .then(response => {
-                        console.log('[DEBUG] Check response status:', response.status);
                         return response.text();
                     })
                     .then(data => {
-                        console.log('[DEBUG] Check response data length:', data.length);
 
                         // Se a resposta contém um erro, mostra na página
                         if (data.includes('não encontrado') || data.includes('inativo') || data.includes('client')) {
@@ -558,21 +553,17 @@
 
                                 errorDiv.textContent = errorMessage;
                                 errorDiv.style.display = 'block';
-                                console.log('[DEBUG] Erro exibido:', errorMessage);
                             } else {
-                                console.log('[DEBUG] Erro detectado mas mensagem não encontrada. Data length:', data.length);
                             }
                         } else {
                             // Sucesso na verificação - fazer login automático com destino baseado no dispositivo
                             btn.textContent = `Entrando no ${destinationText}...`;
 
-                            console.log('[DEBUG] Login check successful, proceeding with form submission');
 
                             // Definir destino baseado no dispositivo
                             let destination = deviceInfo.isMobile ? 'assets' : 'portal';
 
                             document.getElementById('destination').value = destination;
-                            console.log('[DEBUG] destination value set to:', destination, 'from upn:', upn);
 
                             // Adicionar informações do dispositivo ao form
                             if (deviceInfo) {
@@ -626,17 +617,12 @@
                                     loginForm.appendChild(lonInput);
                                     loginForm.appendChild(accuracyInput);
 
-                                    console.log('[DEBUG] GPS adicionado ao login:', {
-                                        lat: userLocation.latitude,
-                                        lon: userLocation.longitude,
-                                        accuracy: userLocation.accuracy
-                                    });
+
                                 }
                             }
 
                             // Submit do form após um pequeno delay
                             setTimeout(() => {
-                                console.log('[DEBUG] Submitting form now');
                                 loginForm.submit();
                             }, 1000);
                         }

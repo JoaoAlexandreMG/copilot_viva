@@ -1,0 +1,1017 @@
+{% extends "portal/base.html" %}
+
+{% block title %}Rastreio de Assets{% endblock %}
+{% block page_title %}Rastreio de Assets{% endblock %}
+
+{% block breadcrumb %}
+<i class="fas fa-home"></i><span class="breadcrumb-separator">/</span>
+<span class="breadcrumb-item">Rastreio</span>
+{% endblock %}
+
+{% block extra_css %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+
+<style>
+    :root {
+        /* Paleta de Cores */
+        --primary: #4C3AFF;
+        --primary-hover: #3b2bc4;
+        --secondary: #008CFF;
+        --bg-dark: #0a1f44;
+        --bg-card: #1F1F23;
+        --bg-panel: rgba(31, 31, 35, 0.95);
+        --text-white: #ffffff;
+        --text-muted: rgba(255, 255, 255, 0.6);
+        --border-color: rgba(0, 195, 255, 0.15);
+        
+        /* Status Colors */
+        --success: #56ab2f;
+        --warning: #f39c12;
+        --danger: #e74c3c;
+        --info: #5dade2;
+
+        /* Layout */
+        --header-height: 70px; /* Ajuste conforme seu base.html */
+        --sidebar-width: 380px;
+        --panel-width: 500px;
+        --radius: 12px;
+    }
+
+    /* Layout Geral */
+    .tracking-container {
+        display: flex;
+        gap: 20px;
+        height: calc(100vh - 140px);
+        min-height: 500px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* Sidebar Esquerda (Lista) */
+    .tracking-sidebar {
+        width: var(--sidebar-width);
+        background: linear-gradient(135deg, rgba(31, 31, 35, 0.95) 0%, rgba(11, 11, 13, 0.98) 100%);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        display: flex;
+        flex-direction: column;
+        backdrop-filter: blur(10px);
+        z-index: 10;
+    }
+
+    .sidebar-header {
+        padding: 20px;
+        border-bottom: 1px solid var(--border-color);
+        flex-shrink: 0;
+    }
+
+    .sidebar-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 15px;
+    }
+
+    /* Mapa */
+    .tracking-map-container {
+        flex: 1;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius);
+        position: relative;
+        overflow: hidden;
+    }
+
+    #map {
+        width: 100%;
+        height: 100%;
+        border-radius: var(--radius);
+    }
+
+    /* Painel de Detalhes (Direita) - Sliding */
+    #detailsPanel {
+        position: absolute;
+        top: 20px;
+        right: 0;
+        bottom: 20px;
+        width: var(--panel-width);
+        background: var(--bg-dark);
+        border-radius: var(--radius) 0 0 var(--radius);
+        box-shadow: -5px 0 25px rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        transform: translateX(110%); /* Escondido por padrão */
+        transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+        display: flex;
+        flex-direction: column;
+        border: 1px solid var(--border-color);
+    }
+
+    #detailsPanel.active {
+        transform: translateX(0);
+    }
+
+    .panel-header {
+        background: var(--primary);
+        padding: 20px;
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-radius: var(--radius) 0 0 0;
+    }
+
+    .panel-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+        color: var(--text-white);
+    }
+
+    /* Componentes: Stat Cards */
+    .stat-card {
+        background: var(--primary);
+        padding: 15px;
+        border-radius: 8px;
+        color: white;
+        text-align: center;
+        margin-bottom: 15px;
+        border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .stat-value { font-size: 24px; font-weight: bold; }
+    .stat-label { font-size: 12px; opacity: 0.9; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    /* Componentes: Inputs e Selects */
+    .form-control-dark {
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 10px;
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        color: var(--text-white);
+        font-size: 13px;
+        transition: border-color 0.2s;
+    }
+
+    .form-control-dark:focus {
+        outline: none;
+        border-color: var(--secondary);
+    }
+
+    /* Filtros Avançados */
+    .advanced-filters {
+        background: rgba(0,0,0,0.2);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        overflow: hidden;
+        margin-bottom: 15px;
+    }
+    
+    .filters-toggle {
+        width: 100%;
+        padding: 12px;
+        background: rgba(255,255,255,0.05);
+        border: none;
+        color: var(--text-white);
+        text-align: left;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-weight: 600;
+    }
+
+    .filters-body {
+        padding: 15px;
+        display: none;
+        border-top: 1px solid var(--border-color);
+    }
+    
+    .filters-body.open { display: block; }
+
+    .filter-group label {
+        display: block;
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text-muted);
+        margin-bottom: 4px;
+    }
+
+    /* Lista de Dispositivos */
+    .device-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .device-item {
+        padding: 15px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 8px;
+        margin-bottom: 10px;
+        cursor: pointer;
+        background: rgba(255, 255, 255, 0.02);
+        transition: all 0.2s;
+    }
+
+    .device-item:hover {
+        background: rgba(0, 195, 255, 0.05);
+        border-color: var(--secondary);
+        transform: translateX(5px);
+    }
+
+    .device-item.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .device-name { font-weight: 700; color: var(--text-white); font-size: 14px; margin-bottom: 4px; }
+    .device-meta { font-size: 12px; color: var(--text-muted); margin-bottom: 2px; }
+    
+    /* Botão Fechar Painel */
+    .close-btn {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 24px;
+        cursor: pointer;
+        line-height: 1;
+    }
+
+    /* Botão Carregar Mais no Mapa */
+    #loadMoreMapBtn {
+        position: absolute;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 12px 24px;
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 30px;
+        font-weight: 600;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        cursor: pointer;
+        z-index: 5;
+        transition: background 0.3s;
+    }
+    #loadMoreMapBtn:hover { background: var(--primary-hover); }
+
+    /* Responsividade */
+    @media (max-width: 992px) {
+        .tracking-container { flex-direction: column; height: auto; }
+        .tracking-sidebar { width: 100%; height: 500px; }
+        .tracking-map-container { height: 500px; }
+        #detailsPanel { width: 100%; top: 0; bottom: 0; border-radius: 0; transform: translateY(100%); }
+        #detailsPanel.active { transform: translateY(0); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="tracking-container">
+    
+    <div class="tracking-sidebar">
+        <div class="sidebar-header">
+            <div class="stat-card">
+                <div class="stat-value" id="totalDevices">0</div>
+                <div class="stat-label">Assets Rastreáveis</div>
+            </div>
+
+            <select id="subclientFilter" class="form-control-dark">
+                <option value="">Todos os Subclients</option>
+            </select>
+
+            <div class="advanced-filters">
+                <button class="filters-toggle" onclick="TrackingApp.ui.toggleAdvancedFilters()">
+                    <span>🔧 Filtros Avançados</span>
+                    <span id="filterToggleIcon">▼</span>
+                </button>
+                <div id="advancedFiltersPanel" class="filters-body">
+                    <div class="filter-group">
+                        <label>Serial / Equipamento</label>
+                        <input type="text" id="filterText" class="form-control-dark" placeholder="Busca geral...">
+                    </div>
+                    <div class="filter-group">
+                        <label>Cidade</label>
+                        <input type="text" id="filterCity" class="form-control-dark" placeholder="Ex: São Paulo">
+                    </div>
+                    <div class="filter-group">
+                        <label>Estado (UF)</label>
+                        <input type="text" id="filterState" class="form-control-dark" placeholder="Ex: SP">
+                    </div>
+                    <div class="filter-group">
+                        <label>Status Online</label>
+                        <select id="filterIsOnline" class="form-control-dark">
+                            <option value="">Todos</option>
+                            <option value="true">🟢 Online</option>
+                            <option value="false">🔴 Offline</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Status Temperatura</label>
+                        <select id="filterTempIsOk" class="form-control-dark">
+                            <option value="">Todos</option>
+                            <option value="true">🟢 OK</option>
+                            <option value="false">🔴 Fora do Padrão</option>
+                        </select>
+                    </div>
+                    <button onclick="TrackingApp.filters.clearAll()" class="form-control-dark" style="background: #444; margin-top: 10px; cursor: pointer;">
+                        🔄 Limpar Filtros
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="sidebar-content">
+            <ul class="device-list" id="deviceList">
+                <li style="text-align: center; color: var(--text-muted); padding: 20px;">Carregando...</li>
+            </ul>
+            <div id="paginationControls" style="padding-top: 15px;"></div>
+        </div>
+    </div>
+
+    <div class="tracking-map-container">
+        <div id="map"></div>
+        </div>
+
+    <div id="detailsPanel">
+        <div class="panel-header">
+            <h2 id="detailsTitle" style="margin: 0; font-size: 18px;">Detalhes</h2>
+            <button class="close-btn" onclick="TrackingApp.ui.closeDetails()">×</button>
+        </div>
+        <div class="panel-content" id="detailsContent">
+            </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>(g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=`https://maps.googleapis.com/maps/api/js?`+e;d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once. Ignoring:",g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})({
+    key: "{{ google_maps_api_key }}",
+    v: "weekly",
+});</script>
+
+<script>
+/**
+ * TrackingApp Namespace
+ * Centraliza a lógica do Rastreamento de Assets
+ */
+const TrackingApp = {
+    // Estado da Aplicação
+    state: {
+        map: null,
+        markers: [],
+        allMapDevices: [], 
+        markersDisplayed: 0,
+        currentFilters: {},
+        infoWindow: null,
+        advancedMarkerClass: null,
+        chartInstance: null
+    },
+
+    // Configurações e Endpoints
+    config: {
+        markersPerLoad: 100, // Quantos marcadores carregar por vez no mapa
+        mapId: '4504f8b37365c3d0', // Seu Map ID (necessário para AdvancedMarker)
+        endpoints: {
+            list: '/portal_associacao/tracking/devices',
+            details: '/portal_associacao/tracking/asset-details',
+            // Endpoint atualizado para o seu novo backend Python
+            chart: '/portal_associacao/tracking/asset-hourly-chart' 
+        }
+    },
+
+    /**
+     * Inicialização
+     */
+    init: async function() {
+        
+        // 1. Carregar Mapa
+        await this.map.init();
+        
+        // 2. Carregar Filtros da URL e Dados Iniciais
+        this.filters.loadFromURL();
+        this.data.loadDevices(1, true); // Inicia na página 1 (modo otimizado)
+
+        // 3. Configurar Eventos (Inputs, Botões)
+        this.events.setup();
+    },
+
+    /**
+     * Módulo de Mapa (Google Maps)
+     */
+    map: {
+        init: async function() {
+            try {
+                // Importação dinâmica das bibliotecas do Google Maps
+                const { Map, InfoWindow } = await google.maps.importLibrary("maps");
+                const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
+                
+                TrackingApp.state.advancedMarkerClass = AdvancedMarkerElement;
+                TrackingApp.state.infoWindow = new InfoWindow();
+
+                TrackingApp.state.map = new Map(document.getElementById("map"), {
+                    center: { lat: -14.2350, lng: -51.9253 }, // Centro do Brasil
+                    zoom: 4,
+                    mapId: TrackingApp.config.mapId,
+                    disableDefaultUI: false,
+                    streetViewControl: false,
+                    mapTypeControl: false,
+                });
+
+            } catch (e) {
+                console.error("❌ Erro ao carregar mapa:", e);
+                document.getElementById('map').innerHTML = `<div style="color:white; padding:20px; text-align:center;">Erro ao carregar Google Maps.<br>Verifique sua API Key.</div>`;
+            }
+        },
+
+        addMarkers: function(devices) {
+            const state = TrackingApp.state;
+            state.allMapDevices = devices;
+            state.markersDisplayed = 0;
+            
+            // Limpar markers antigos do mapa para evitar memória duplicada
+            state.markers.forEach(m => m.map = null);
+            state.markers = [];
+
+            this.loadMoreMarkers();
+            this.updateLoadButton();
+        },
+
+        loadMoreMarkers: function() {
+            const state = TrackingApp.state;
+            const start = state.markersDisplayed;
+            const end = Math.min(start + TrackingApp.config.markersPerLoad, state.allMapDevices.length);
+            const AdvancedMarkerElement = state.advancedMarkerClass;
+
+
+            for (let i = start; i < end; i++) {
+                const device = state.allMapDevices[i];
+                // Pular dispositivos sem coordenadas válidas
+                if (!device.has_location || !device.latitude || !device.longitude) continue;
+
+                // Definir cor do Pin baseado no status
+                let color = '#56ab2f'; // Verde (OK)
+                let statusText = 'Normal';
+
+                if (device.is_missing) {
+                    color = '#e74c3c'; // Vermelho (Perdido)
+                    statusText = '⚠️ Perdido';
+                } else if (!device.is_online) {
+                    color = '#95a5a6'; // Cinza (Offline)
+                    statusText = 'Offline';
+                } else if (device.temperature_c !== null && parseFloat(device.temperature_c) > parseFloat(device.temp_max)) {
+                    color = '#f39c12'; // Laranja (Temp Alta)
+                    statusText = '🔥 Temp Alta';
+                }
+
+                // Criar elemento DOM para o Pin (AdvancedMarker usa HTML/CSS puro)
+                const pin = document.createElement('div');
+                pin.className = 'device-marker';
+                pin.style.cssText = `
+                    width: 18px; 
+                    height: 18px; 
+                    border-radius: 50%;
+                    background-color: ${color}; 
+                    border: 2px solid white;
+                    box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+                    cursor: pointer;
+                    transition: transform 0.2s;
+                `;
+
+                // Efeito de Hover
+                pin.onmouseover = () => { pin.style.transform = 'scale(1.3)'; };
+                pin.onmouseout = () => { pin.style.transform = 'scale(1)'; };
+
+                const marker = new AdvancedMarkerElement({
+                    map: state.map,
+                    position: { lat: parseFloat(device.latitude), lng: parseFloat(device.longitude) },
+                    content: pin,
+                    title: device.bottler_equipment_number
+                });
+
+                // Adicionar evento de clique no marker
+                marker.addListener('click', () => {
+                    state.infoWindow.setContent(`
+                        <div style="color:#333; padding:5px; min-width:150px;">
+                            <strong style="color:#4C3AFF">${device.bottler_equipment_number || 'Asset'}</strong><br>
+                            <div style="margin-top:4px; font-size:12px;">
+                                Serial: <strong>${device.oem_serial_number}</strong><br>
+                                Status: <strong>${statusText}</strong><br>
+                                Temp: <strong>${device.temperature_c ? parseFloat(device.temperature_c).toFixed(1) : '--'}°C</strong>
+                            </div>
+                        </div>
+                    `);
+                    state.infoWindow.open({ anchor: marker, map: state.map });
+                    
+                    // Abrir painel lateral
+                    TrackingApp.ui.selectDevice(device.oem_serial_number, device.latitude, device.longitude, false);
+                });
+
+                state.markers.push(marker);
+            }
+
+            state.markersDisplayed = end;
+            this.updateLoadButton();
+        },
+
+        updateLoadButton: function() {
+            const remaining = TrackingApp.state.allMapDevices.length - TrackingApp.state.markersDisplayed;
+            let btn = document.getElementById('loadMoreMapBtn');
+            
+            if (remaining > 0) {
+                if (!btn) {
+                    btn = document.createElement('button');
+                    btn.id = 'loadMoreMapBtn';
+                    btn.onclick = () => TrackingApp.map.loadMoreMarkers();
+                    document.querySelector('.tracking-map-container').appendChild(btn);
+                }
+                btn.textContent = `📍 Carregar Mais (${remaining})`;
+                btn.style.display = 'block';
+            } else if (btn) {
+                btn.style.display = 'none';
+            }
+        },
+
+        zoomTo: function(lat, lng) {
+            if (TrackingApp.state.map && lat && lng) {
+                TrackingApp.state.map.setCenter({ lat: parseFloat(lat), lng: parseFloat(lng) });
+                TrackingApp.state.map.setZoom(17);
+            }
+        }
+    },
+
+    /**
+     * Módulo de Dados (API)
+     */
+    data: {
+        loadDevices: async function(page = 1, useOptimized = false) {
+            const listEl = document.getElementById('deviceList');
+            listEl.innerHTML = '<li style="text-align:center; padding:20px; color:rgba(255,255,255,0.6);">Carregando assets...</li>';
+
+            try {
+                const params = new URLSearchParams(TrackingApp.state.currentFilters);
+                params.append('load_all', 'true'); // Sempre pedir dados do mapa
+                params.append('page', page);
+                
+                // Se solicitado e sem filtros complexos, usar view otimizada
+                if (useOptimized) params.append('optimized', 'true');
+
+                const response = await fetch(`${TrackingApp.config.endpoints.list}?${params.toString()}`);
+                
+                if (response.status === 401 || response.status === 302) {
+                    window.location.reload(); // Redirecionar para login se sessão expirou
+                    return;
+                }
+                
+                if (!response.ok) throw new Error("Falha na API");
+
+                const result = await response.json();
+                
+                // Atualizar UI
+                TrackingApp.ui.renderList(result.data);
+                TrackingApp.ui.renderPagination(result.pagination);
+                TrackingApp.ui.updateSubclients(result.available_subclients);
+                document.getElementById('totalDevices').textContent = result.pagination.total || result.data.length;
+
+                // Atualizar Mapa (usando map_data se existir, ou data da página)
+                TrackingApp.map.addMarkers(result.map_data || result.data);
+
+            } catch (error) {
+                console.error("Erro loadDevices:", error);
+                listEl.innerHTML = `<li style="text-align:center; color:#e74c3c; padding:20px;">
+                    Erro ao carregar dados.<br>
+                    <button onclick="TrackingApp.data.loadDevices(1)" style="margin-top:10px; padding:5px 10px; cursor:pointer;">Tentar Novamente</button>
+                </li>`;
+            }
+        },
+
+        loadDetails: async function(serial) {
+            const contentEl = document.getElementById('detailsContent');
+            contentEl.innerHTML = '<p style="text-align:center; color:#aaa; margin-top:50px;">Carregando detalhes do asset...</p>';
+            
+            try {
+                const res = await fetch(`${TrackingApp.config.endpoints.details}/${serial}`);
+                if(!res.ok) throw new Error("Erro API Detalhes");
+                
+                const data = await res.json();
+                const asset = data.asset_details || data; // Fallback dependendo da estrutura do JSON
+
+                TrackingApp.ui.renderDetailsPanel(asset);
+                
+                // Carregar Gráfico APÓS renderizar o painel (pois o canvas precisa existir)
+                this.loadChart(serial);
+
+            } catch (e) {
+                console.error(e);
+                contentEl.innerHTML = '<p style="color:#e74c3c; text-align:center; margin-top:20px;">Não foi possível carregar os detalhes deste asset.</p>';
+            }
+        },
+
+        loadChart: async function(serial) {
+            const chartContainer = document.getElementById('chartContainer');
+            if(!chartContainer) return;
+
+            // Feedback visual de carregamento no gráfico
+            // chartContainer.style.opacity = '0.5';
+
+            try {
+                const res = await fetch(`${TrackingApp.config.endpoints.chart}/${serial}`);
+                if(!res.ok) throw new Error("Erro API Gráfico");
+                
+                const data = await res.json();
+                
+                // O backend retorna: { labels: [], temperature: [], door_count: [] }
+                TrackingApp.ui.renderChart(data);
+                
+            } catch(e) {
+                console.error("Erro Chart:", e);
+                document.getElementById('chartContainer').innerHTML = '<p style="text-align:center; font-size:12px; color:#666; padding-top:40px;">Dados históricos indisponíveis</p>';
+            } finally {
+                // chartContainer.style.opacity = '1';
+            }
+        }
+    },
+
+    /**
+     * Módulo de Interface (UI)
+     */
+    ui: {
+        renderList: function(devices) {
+            const listEl = document.getElementById('deviceList');
+            
+            if (!devices || devices.length === 0) {
+                listEl.innerHTML = '<li style="padding:20px; text-align:center; color:rgba(255,255,255,0.5);">Nenhum asset encontrado com os filtros atuais.</li>';
+                return;
+            }
+
+            listEl.innerHTML = devices.map(d => {
+                const isOnline = d.is_online ? '<span style="color:#56ab2f">● Online</span>' : '<span style="color:#e74c3c">● Offline</span>';
+                const hasLoc = (d.has_location && d.latitude) ? '' : 'style="opacity:0.6; cursor:default;"';
+                const tempDisplay = d.temperature_c ? `<span style="color:${parseFloat(d.temperature_c) > 10 ? '#f39c12' : '#5dade2'}">${parseFloat(d.temperature_c).toFixed(1)}°C</span>` : '--';
+                
+                return `
+                <li class="device-item" ${hasLoc} onclick="event.stopPropagation(); TrackingApp.ui.selectDevice('${d.oem_serial_number}', ${d.latitude}, ${d.longitude})">
+                    <div class="device-name">${d.bottler_equipment_number || 'Equipamento S/N'}</div>
+                    <div class="device-info">🔑 Serial: ${d.oem_serial_number}</div>
+                    <div class="device-info">📍 ${d.outlet || 'Sem Outlet'}</div>
+                    <div style="margin-top:6px; display:flex; justify-content:space-between; font-size:12px; font-weight:600;">
+                        ${isOnline}
+                        ${tempDisplay}
+                    </div>
+                </li>
+                `;
+            }).join('');
+        },
+
+        renderPagination: function(p) {
+            const div = document.getElementById('paginationControls');
+            if (!div) {
+                // Criar div se não existir
+                const container = document.querySelector('.tracking-sidebar .sidebar-content');
+                const newDiv = document.createElement('div');
+                newDiv.id = 'paginationControls';
+                newDiv.style.paddingTop = '15px';
+                container.appendChild(newDiv);
+                return this.renderPagination(p);
+            }
+
+            if (!p || p.pages <= 1) {
+                div.innerHTML = '';
+                return;
+            }
+
+            div.innerHTML = `
+                <div style="display:flex; justify-content:center; gap:10px; align-items:center;">
+                    <button class="form-control-dark" style="width:auto; padding:5px 15px;" 
+                        ${!p.has_prev ? 'disabled' : ''} 
+                        onclick="TrackingApp.data.loadDevices(${p.page - 1})">← Anterior</button>
+                    
+                    <span style="color:white; font-size:12px;">Pág <strong>${p.page}</strong> de ${p.pages}</span>
+                    
+                    <button class="form-control-dark" style="width:auto; padding:5px 15px;" 
+                        ${!p.has_next ? 'disabled' : ''} 
+                        onclick="TrackingApp.data.loadDevices(${p.page + 1})">Próxima →</button>
+                </div>
+            `;
+        },
+
+        updateSubclients: function(list) {
+            const sel = document.getElementById('subclientFilter');
+            if (!sel) return;
+            
+            // Se já tem opções carregadas e a lista nova veio vazia, não limpar
+            if (sel.options.length > 1 && (!list || list.length === 0)) return;
+            
+            const currentVal = sel.value;
+            sel.innerHTML = '<option value="">Todos os Subclients</option>';
+            
+            if (list) {
+                list.forEach(s => {
+                    const opt = document.createElement('option');
+                    // Ajuste para lidar com diferentes formatos de resposta da API
+                    opt.value = s.subclient_code || s.subclient || '';
+                    opt.textContent = s.subclient_name || s.subclient || 'Desconhecido';
+                    if (opt.value) sel.appendChild(opt);
+                });
+            }
+            sel.value = currentVal; 
+        },
+
+        selectDevice: function(serial, lat, lng, zoomMap = true) {
+            // 1. Zoom no mapa (opcional, pois as vezes clicamos no próprio mapa)
+            if (zoomMap && lat && lng) {
+                TrackingApp.map.zoomTo(lat, lng);
+            }
+            
+            // 2. Abrir Painel e carregar dados
+            const panel = document.getElementById('detailsPanel');
+            panel.classList.add('active');
+            
+            // Scroll para o topo do conteúdo
+            document.getElementById('detailsContent').scrollTop = 0;
+            
+            TrackingApp.data.loadDetails(serial);
+        },
+
+        closeDetails: function() {
+            document.getElementById('detailsPanel').classList.remove('active');
+        },
+
+        renderDetailsPanel: function(asset) {
+            const div = document.getElementById('detailsContent');
+            const colorTemp = (asset.temperature_c > asset.temp_max) ? '#e74c3c' : '#56ab2f';
+            const batteryLevel = asset.battery_level || asset.battery || 0;
+            const batteryColor = batteryLevel < 20 ? '#e74c3c' : (batteryLevel < 50 ? '#f39c12' : '#56ab2f');
+            
+            div.innerHTML = `
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:15px;">
+                    <div style="background:#252538; padding:15px; border-radius:8px; text-align:center;">
+                        <div style="font-size:11px; color:#aaa; font-weight:600;">TEMPERATURA</div>
+                        <div style="font-size:24px; font-weight:bold; color:${colorTemp}; margin-top:5px;">
+                            ${asset.temperature_c ? parseFloat(asset.temperature_c).toFixed(1) : '--'}°C
+                        </div>
+                    </div>
+                    <div style="background:#252538; padding:15px; border-radius:8px; text-align:center; position:relative; overflow:hidden;">
+                        <div style="font-size:11px; color:#aaa; font-weight:600; position:relative; z-index:2;">BATERIA</div>
+                        <div style="font-size:24px; font-weight:bold; color:${batteryColor}; margin-top:5px; position:relative; z-index:2;">
+                            ${batteryLevel}%
+                        </div>
+                        <div style="position:absolute; bottom:0; left:0; height:4px; width:${batteryLevel}%; background:${batteryColor}; transition:width 1s;"></div>
+                    </div>
+                </div>
+
+                <div style="background:#252538; padding:15px; border-radius:8px; margin-bottom:15px;">
+                    <h4 style="margin:0 0 12px 0; font-size:14px; color:#4C3AFF; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:8px;">
+                        📋 Dados Cadastrais
+                    </h4>
+                    <p style="margin:6px 0; font-size:13px;"><strong style="color:#888">Outlet:</strong> <span style="color:white">${asset.outlet || 'N/A'}</span></p>
+                    <p style="margin:6px 0; font-size:13px;"><strong style="color:#888">Endereço:</strong> <span style="color:white">${[asset.street, asset.city, asset.state].filter(Boolean).join(', ')}</span></p>
+                    <p style="margin:6px 0; font-size:13px;"><strong style="color:#888">Modelo:</strong> <span style="color:white">${asset.asset_type || 'N/A'}</span></p>
+                    <p style="margin:6px 0; font-size:13px;"><strong style="color:#888">Último Sinal:</strong> <span style="color:white">${asset.last_reading_date || 'N/A'}</span></p>
+                </div>
+
+                <div style="background:#252538; padding:15px; border-radius:8px; margin-bottom:15px;">
+                    <h4 style="margin:0 0 10px 0; font-size:14px; color:#4C3AFF;">
+                        📊 Histórico 30 Dias (Hora a Hora)
+                    </h4>
+                    <div id="chartContainer" style="height:250px; position:relative; width:100%;">
+                        <canvas id="detailsChart"></canvas>
+                    </div>
+                    <div style="text-align:center; margin-top:5px; font-size:10px; color:#666;">
+                        Linha: Temperatura | Barra: Aberturas de Porta
+                    </div>
+                </div>
+                
+                ${(asset.latitude && asset.longitude) ? `
+                <a href="https://www.google.com/maps/search/?api=1&query=${asset.latitude},${asset.longitude}" target="_blank" 
+                   style="display:block; text-align:center; background:linear-gradient(45deg, #4C3AFF, #008CFF); color:white; padding:12px; margin-top:10px; border-radius:8px; text-decoration:none; font-weight:600; box-shadow:0 4px 10px rgba(76, 58, 255, 0.3);">
+                   🌍 Abrir no Google Maps Externo
+                </a>` : ''}
+            `;
+            
+            document.getElementById('detailsTitle').textContent = asset.bottler_equipment_number || 'Detalhes do Asset';
+        },
+
+        // Renderização do Gráfico Combinado (Linha + Barra) com Backend Python
+        renderChart: function(data) {
+            const ctx = document.getElementById('detailsChart');
+            if(!ctx) return;
+
+            // Destruir gráfico anterior se existir
+            if(TrackingApp.state.chartInstance) {
+                TrackingApp.state.chartInstance.destroy();
+                TrackingApp.state.chartInstance = null;
+            }
+
+            // Configuração do Chart.js
+            TrackingApp.state.chartInstance = new Chart(ctx, {
+                type: 'bar', // Tipo base é BAR para permitir mixing
+                data: {
+                    labels: data.labels, // Labels vindas do Python (ex: "09/12 14h")
+                    datasets: [
+                        {
+                            type: 'line',
+                            label: 'Temp. Média (°C)',
+                            data: data.temperature,
+                            borderColor: '#FF5733', // Laranja
+                            backgroundColor: 'rgba(255, 87, 51, 0.2)',
+                            borderWidth: 2,
+                            pointRadius: 0, // Remove bolinhas para limpar visual (muitos dados)
+                            pointHoverRadius: 4,
+                            pointHoverBackgroundColor: '#fff',
+                            tension: 0.4, // Curva suave
+                            yAxisID: 'y', // Eixo Esquerdo
+                            fill: false,
+                            order: 0 // Z-index maior (frente)
+                        },
+                        {
+                            type: 'bar',
+                            label: 'Aberturas',
+                            data: data.door_count, // Use a chave correta retornada pelo Python (door_count)
+                            backgroundColor: 'rgba(76, 58, 255, 0.7)', // Roxo
+                            hoverBackgroundColor: '#4C3AFF',
+                            borderColor: 'transparent',
+                            barThickness: 'flex', 
+                            maxBarThickness: 10,
+                            yAxisID: 'y1', // Eixo Direito
+                            order: 1 // Z-index menor (fundo)
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: { duration: 800 },
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        legend: {
+                            labels: { color: '#ccc', font: { size: 10 }, boxWidth: 10 }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0,0,0,0.9)',
+                            titleColor: '#fff',
+                            bodyColor: '#fff',
+                            borderColor: 'rgba(255,255,255,0.1)',
+                            borderWidth: 1,
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += context.parsed.y;
+                                        if (context.dataset.yAxisID === 'y') label += '°C';
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { 
+                                color: '#888',
+                                font: { size: 9 },
+                                maxTicksLimit: 12, // Limita labels no eixo X para não encavalar (importante para 720h)
+                                maxRotation: 0
+                            },
+                            grid: { display: false }
+                        },
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: { display: true, text: '°C', color: '#FF5733', font: {size: 10} },
+                            ticks: { color: '#888', font: { size: 10 } },
+                            grid: { color: 'rgba(255,255,255,0.05)' }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            min: 0, // Aberturas não podem ser negativas
+                            title: { display: false },
+                            ticks: { color: '#667eea', font: { size: 10 }, precision: 0 },
+                            grid: { drawOnChartArea: false } // Remove grade do eixo direito
+                        }
+                    }
+                }
+            });
+        },
+
+        toggleAdvancedFilters: function() {
+            const panel = document.getElementById('advancedFiltersPanel');
+            const icon = document.getElementById('filterToggleIcon');
+            panel.classList.toggle('open');
+            icon.textContent = panel.classList.contains('open') ? '▲' : '▼';
+        }
+    },
+
+    /**
+     * Módulo de Filtros
+     */
+    filters: {
+        collect: function() {
+            return {
+                search: document.getElementById('filterText')?.value || '',
+                subclient: document.getElementById('subclientFilter')?.value || '',
+                city: document.getElementById('filterCity')?.value || '',
+                state: document.getElementById('filterState')?.value || '',
+                is_online: document.getElementById('filterIsOnline')?.value || '',
+                temp_is_ok: document.getElementById('filterTempIsOk')?.value || '',
+            };
+        },
+
+        apply: function() {
+            TrackingApp.state.currentFilters = this.collect();
+            
+            // Atualizar URL para permitir compartilhar o link com filtros
+            const params = new URLSearchParams(TrackingApp.state.currentFilters);
+            // Remover parâmetros vazios da URL
+            for (const [key, value] of Array.from(params.entries())) {
+                if (!value) params.delete(key);
+            }
+            window.history.replaceState({}, '', `${window.location.pathname}?${params}`);
+            
+            // Recarregar dados (false = desativa otimização pois temos filtros)
+            TrackingApp.data.loadDevices(1, false);
+        },
+
+        clearAll: function() {
+            document.querySelectorAll('.form-control-dark').forEach(el => el.value = '');
+            document.getElementById('subclientFilter').value = '';
+            this.apply();
+        },
+
+        loadFromURL: function() {
+            const params = new URLSearchParams(window.location.search);
+            
+            // Mapeamento ID -> Param URL
+            const map = {
+                'filterText': 'search',
+                'subclientFilter': 'subclient',
+                'filterCity': 'city',
+                'filterState': 'state',
+                'filterIsOnline': 'is_online',
+                'filterTempIsOk': 'temp_is_ok'
+            };
+
+            for (const [id, param] of Object.entries(map)) {
+                const val = params.get(param);
+                const el = document.getElementById(id);
+                if (val && el) el.value = val;
+            }
+            
+            // Atualiza o estado interno
+            TrackingApp.state.currentFilters = this.collect();
+        }
+    },
+
+    /**
+     * Gerenciamento de Eventos
+     */
+    events: {
+        setup: function() {
+            // Debounce para inputs de texto (espera parar de digitar)
+            let timeout;
+            const debounceApply = () => {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => TrackingApp.filters.apply(), 800);
+            };
+
+            // Inputs de texto
+            ['filterText', 'filterCity', 'filterState'].forEach(id => {
+                document.getElementById(id)?.addEventListener('input', debounceApply);
+            });
+
+            // Selects (aplica imediatamente)
+            ['subclientFilter', 'filterIsOnline', 'filterTempIsOk'].forEach(id => {
+                document.getElementById(id)?.addEventListener('change', () => TrackingApp.filters.apply());
+            });
+
+            // Auto-refresh a cada 60s (apenas se a aba estiver visível)
+            setInterval(() => {
+                if(!document.hidden) {
+                    const hasFilters = Object.values(TrackingApp.filters.collect()).some(x => x !== '');
+                    // Mantém a página atual na atualização automática
+                    const currentPage = parseInt(document.querySelector('#paginationControls strong')?.innerText || 1);
+                    TrackingApp.data.loadDevices(currentPage, !hasFilters);
+                }
+            }, 60000);
+        }
+    }
+};
+
+// Inicialização Global
+document.addEventListener('DOMContentLoaded', () => TrackingApp.init());
+
+</script>
+{% endblock %}

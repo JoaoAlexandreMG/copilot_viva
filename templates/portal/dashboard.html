@@ -105,13 +105,13 @@
             <p class="stat-label">Bateria <small class="click-hint"></small></p>
 
             <div class="split-values">
-                <a href="https://vivaservicesai.com/portal_associacao/tracking/?battery_is_ok=true" class="split-item clickable-split">
+                <a href="{{url_for('portal_tracking.render_tracking')}}?battery_is_ok=good" class="split-item clickable-split">
                     <span class="dot green"></span>
                     <span class="split-text">OK:</span>
                     <span class="split-val" id="batteryOkPercentage">0%</span>
                 </a>
                 <div class="split-divider"></div>
-                <a href="https://vivaservicesai.com/portal_associacao/tracking/?battery_is_ok=false" class="split-item clickable-split">
+                <a href="{{url_for('portal_tracking.render_tracking')}}?battery_is_ok=low" class="split-item clickable-split">
                     <span class="dot red"></span>
                     <span class="split-text">Baixa:</span>
                     <span class="split-val" id="batteryNotOkPercentage">0%</span>
@@ -1294,7 +1294,6 @@
                 .then(data => {
                     if (data.status === 'ok') {
                         DashboardManager.updateDashboard(data.data);
-                        console.log('Dashboard atualizado automaticamente');
                     }
                 })
                 .catch(error => {
