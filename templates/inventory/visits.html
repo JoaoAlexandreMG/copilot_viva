@@ -5,7 +5,28 @@
 {% block page_title %}Visitas (Inventário){% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
 <style>
+    #visits-map {
+        height: 450px;
+        border-radius: 14px;
+        overflow: hidden;
+        background: #0c1424;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    #visits-map .map-status, #table-status {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        color: #9cb3d9;
+        font-size: 14px;
+        background: #0c1424;
+        padding: 2rem;
+        border-radius: 14px;
+    }
     .inventory-table-card {
         border-radius: 14px;
         overflow: hidden;
@@ -13,7 +34,6 @@
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
         border: 1px solid rgba(255, 255, 255, 0.06);
     }
-
     .inventory-table thead {
         background: linear-gradient(90deg, #0c1424, #162b4a);
         color: #f4f7ff;
@@ -21,245 +41,374 @@
         letter-spacing: 0.02em;
         font-size: 12px;
     }
+    .inventory-table { table-layout: fixed; }
+    .inventory-table tbody tr { color: #f2f4fa; transition: background 180ms ease, transform 120ms ease; }
+    .inventory-table tbody tr:nth-child(odd) { background: rgba(255, 255, 255, 0.06); }
+    .inventory-table tbody tr:nth-child(even) { background: rgba(255, 255, 255, 0.03); }
+    .inventory-table tbody tr + tr { border-top: 1px solid rgba(255, 255, 255, 0.05); }
+    .inventory-table tbody tr:hover { background: rgba(0, 195, 255, 0.18); transform: translateY(-1px); }
+    .inventory-table th, .inventory-table td { padding: 12px 14px; border: none; vertical-align: middle; font-size: 13px; color: #f2f4fa; word-break: break-word; white-space: normal; }
+    .badge-outlet { display: inline-block; padding: 4px 10px; border-radius: 999px; background: rgba(0, 195, 255, 0.12); color: #9be7ff; border: 1px solid rgba(0, 195, 255, 0.35); font-weight: 600; font-size: 12px; }
+    .pill-muted { display: inline-block; padding: 4px 10px; border-radius: 999px; background: rgba(255, 255, 255, 0.06); color: #d6d9e3; font-size: 12px; }
+    .table-wrap { overflow-x: auto; }
+    .muted { color: #cfd3df; font-size: 12px; }
+    .location-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 12px; font-weight: 700; font-size: 12px; letter-spacing: 0.01em; border: 1px solid transparent; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12); }
+    .location-chip small { text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; opacity: 0.9; }
+    .location-chip.to { color: #2dd36f; background: rgba(45, 211, 111, 0.12); border-color: rgba(45, 211, 111, 0.35); }
+    .location-chip.from { color: #ff6b6b; background: rgba(255, 107, 107, 0.12); border-color: rgba(255, 107, 107, 0.35); }
+    .location-stack { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .first-visit-pill { display: inline-flex; padding: 6px 12px; border-radius: 14px; background: rgba(255, 255, 255, 0.06); color: #d6d9e3; font-size: 12px; font-weight: 600; }
+    .visit-number-icon { border-radius: 50%; border: 2px solid white; color: white; font-weight: bold; font-size: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 4px rgba(0,0,0,0.4); text-align: center; }
 
-    .inventory-table tbody tr {
-        color: #f2f4fa;
-        transition: background 180ms ease;
+    /* Filter Modal Styles (only this modal) */
+    #filter-modal.modal-backdrop { position: fixed; inset: 0; background: rgba(10, 31, 68, 0.65); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 9999; padding: 16px; }
+    #filter-modal.modal-backdrop.active { display: flex; }
+    #filter-modal .modal-card { background: linear-gradient(160deg, #0c1424 0%, #10203c 100%); color: #f4f7ff; border-radius: 14px; padding: 0; width: 100%; max-width: 640px; box-shadow: 0 8px 32px rgba(0, 195, 255, 0.18); border: 1px solid rgba(255, 255, 255, 0.08); overflow: hidden; }
+    #filter-modal .modal-header { padding: 24px 24px 16px; background: transparent; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+    #filter-modal .modal-header h4 { margin: 0; font-size: 20px; font-weight: 600; color: #f4f7ff; }
+    #filter-modal .modal-body { max-height: 70vh; overflow-y: auto; padding: 24px; }
+    .filter-search-bar { position: relative; margin-bottom: 1rem; }
+    .filter-search-bar i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #9cb3d9; font-size: 14px; }
+    #asset-search-input { width: 100%; padding: 12px 16px 12px 42px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.3); color: white; font-size: 15px; }
+    #asset-search-input::placeholder { color: #8a9bb5; }
+    #asset-search-input:focus { outline: none; border-color: var(--primary, #00c3ff); box-shadow: 0 0 0 3px rgba(0, 195, 255, 0.3); }
+    #asset-filter-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; max-height: 45vh; overflow-y: auto; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 8px; }
+    .filter-item { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 8px; transition: background-color 0.2s ease; cursor: pointer; }
+    .filter-item:hover { background-color: rgba(255,255,255,0.05); }
+    .filter-item label { cursor: pointer; color: #e0e8f5; }
+    .filter-item input[type="checkbox"] { transform: scale(1.2); }
+    #filter-modal .modal-footer { display: flex; justify-content: space-between; align-items: center; padding: 1.5rem 24px; border-top: 1px solid rgba(255, 255, 255, 0.1); background: transparent; }
+    #filter-modal .footer-info { color: #9cb3d9; font-size: 14px; }
+    #filter-modal .footer-actions { display: flex; gap: 10px; }
+
+    @media (max-width: 1024px) {
+        .inventory-table thead { display: none; }
+        .inventory-table tbody tr { display: grid; grid-template-columns: 1fr; gap: 10px; padding: 14px; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.15)); box-shadow: 0 10px 24px rgba(0,0,0,0.25); margin-bottom: 12px; }
+        .inventory-table td { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; padding: 4px 0; }
+        .inventory-table td::before { content: attr(data-label); font-weight: 700; color: #9be7ff; min-width: 120px; }
     }
-
-    .inventory-table tbody tr:nth-child(odd) {
-        background: rgba(255, 255, 255, 0.04);
-    }
-
-    .inventory-table tbody tr:hover {
-        background: rgba(0, 195, 255, 0.18);
-    }
-
-    .inventory-table th,
-    .inventory-table td {
-        padding: 12px 14px;
-        border: none;
-        vertical-align: middle;
-        font-size: 13px;
-        color: #f2f4fa;
-    }
-
-    .badge-outlet {
-        display: inline-block;
-        padding: 4px 10px;
-        border-radius: 999px;
-        background: rgba(0, 195, 255, 0.12);
-        color: #9be7ff;
-        border: 1px solid rgba(0, 195, 255, 0.35);
-        font-weight: 600;
-        font-size: 12px;
-    }
-
-    .pill-muted {
-        display: inline-block;
-        padding: 4px 10px;
-        border-radius: 999px;
-        background: rgba(255, 255, 255, 0.06);
-        color: #d6d9e3;
-        font-size: 12px;
-    }
-
-    .table-wrap {
-        overflow-x: auto;
-    }
-
-    .muted {
-        color: #cfd3df;
-        font-size: 12px;
-    }
-
-    .location-from {
-        color: #ff6b6b;
-        font-weight: 700;
-    }
-
-    .location-to {
-        color: #2dd36f;
-        font-weight: 700;
-    }
-
-    .location-chip {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 6px 10px;
-        border-radius: 12px;
-        font-weight: 700;
-        font-size: 12px;
-        letter-spacing: 0.01em;
-        border: 1px solid transparent;
-        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
-    }
-
-    .location-chip small {
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        font-weight: 600;
-        opacity: 0.9;
-    }
-
-    .location-chip.to {
-        color: #2dd36f;
-        background: rgba(45, 211, 111, 0.12);
-        border-color: rgba(45, 211, 111, 0.35);
-    }
-
-    .location-chip.from {
-        color: #ff6b6b;
-        background: rgba(255, 107, 107, 0.12);
-        border-color: rgba(255, 107, 107, 0.35);
-    }
-
-    .location-stack {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-        align-items: center;
-    }
-
-    .prev-visit-block {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-        align-items: flex-start;
-    }
-
-    .prev-visit-date {
-        display: block;
-        margin-bottom: 8px;
-        font-weight: 600;
-    }
-
-    .previous-visit-cell {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        align-items: flex-start;
-    }
-
-    .first-visit-pill {
-        display: inline-flex;
-        padding: 6px 12px;
-        border-radius: 14px;
-        background: rgba(255, 255, 255, 0.06);
-        color: #d6d9e3;
-        font-size: 12px;
-        font-weight: 600;
+    
+    @media (max-width: 767px) {
+        #filter-modal .modal-footer {
+            flex-direction: column-reverse; /* Stack actions above info text */
+            gap: 1rem;
+        }
+        .footer-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            width: 100%;
+        }
+        .footer-actions .btn-primary {
+            grid-column: 1 / -1; /* Make apply button full-width */
+        }
+        #asset-filter-list {
+            /* On mobile, use a single column for the list */
+            grid-template-columns: 1fr;
+        }
     }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container">
-    <h2>Histórico de Visitas</h2>
-    <p>Visualize todas as visitas registradas para os assets do inventário.</p>
+    <div class="card" style="margin-bottom: 1.25rem;">
+        <div class="card-header">
+            <strong>Histórico de Visitas</strong>
+        </div>
+        <div class="card-body">
+            <p>Visualize todas as visitas registradas para os assets do inventário.</p>
+            <div id="visits-map"></div>
+        </div>
+    </div>
 
     <div class="inventory-table-card" style="margin-top: 1rem;">
-        <div class="card-header">
+        <div class="card-header d-flex justify-content-between align-items-center">
             <strong>Visitas dos Assets</strong>
+            <button class="btn btn-sm btn-primary" id="open-filter-btn"><i class="fas fa-filter"></i> Filtrar</button>
         </div>
-        <div class="card-body" style="padding: 0;">
-            {% if visits %}
-            <div class="table-wrap">
-                <table class="table inventory-table" style="width: 100%; min-width: 1100px;">
-                    <thead>
-                        <tr>
-                            <th>Serial</th>
-                            <th>Visitado em</th>
-                            <th>Localização</th>
-                            <th>Distância da visita anterior (m)</th>
-                            <th>Visita anterior</th>
-                            <th>Localização anterior</th>
-                            <th>Outlet</th>
-                            <th>Local</th>
-                            <th>Scanner</th>
-                            <th>Notas</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for visit in visits %}
-                        <tr>
-                            <td>
-                                <div><strong>{{ visit.serial_number }}</strong></div>
-                                <div class="muted">{{ visit.asset_type or 'Tipo não informado' }}</div>
-                            </td>
-                            <td>{{ visit.visit_at or '-' }}</td>
-                            <td>
-                                {% if visit.latitude is not none or visit.longitude is not none %}
-                                    <div class="location-stack">
-                                        {% if visit.latitude is not none %}
-                                            <span class="location-chip to">
-                                                <small>Lat</small> {{ '%.6f' % visit.latitude }}
-                                            </span>
-                                        {% endif %}
-                                        {% if visit.longitude is not none %}
-                                            <span class="location-chip to">
-                                                <small>Lng</small> {{ '%.6f' % visit.longitude }}
-                                            </span>
-                                        {% endif %}
-                                    </div>
-                                {% else %}
-                                    -
-                                {% endif %}
-                            </td>
-                            <td>{{ visit.distance_from_prev_m is not none and ('%.2f' % visit.distance_from_prev_m) or '-' }}</td>
-                            <td>
-                                {% if visit.prev_visit_at %}
-                                    <span class="muted prev-visit-date">{{ visit.prev_visit_at }}</span>
-                                {% else %}
-                                    <span class="first-visit-pill">Primeira visita</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if visit.prev_visit_at and (visit.prev_latitude is not none or visit.prev_longitude is not none) %}
-                                    <div class="location-stack">
-                                        {% if visit.prev_latitude is not none %}
-                                            <span class="location-chip from">
-                                                <small>Lat</small> {{ '%.6f' % visit.prev_latitude }}
-                                            </span>
-                                        {% endif %}
-                                        {% if visit.prev_longitude is not none %}
-                                            <span class="location-chip from">
-                                                <small>Lng</small> {{ '%.6f' % visit.prev_longitude }}
-                                            </span>
-                                        {% endif %}
-                                    </div>
-                                {% elif visit.prev_visit_at %}
-                                    <span class="pill-muted">Sem coordenadas</span>
-                                {% else %}
-                                    <span class="first-visit-pill">Primeira visita</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if visit.outlet_name %}
-                                    <span class="badge-outlet">{{ visit.outlet_name }}</span>
-                                {% else %}
-                                    <span class="pill-muted">Sem outlet</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                <div>{{ visit.city or '-' }}</div>
-                                <div class="muted">{{ visit.street or '' }}</div>
-                            </td>
-                            <td>{{ visit.scanned_by or '-' }}</td>
-                            <td>{{ visit.notes or '-' }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+        <div class="card-body" style="padding: 0;" id="visits-table-container">
+            <!-- Tabela será renderizada aqui via JS -->
+        </div>
+    </div>
+</div>
+
+<!-- Filter Modal -->
+<div class="modal-backdrop" id="filter-modal">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h4>Filtrar Assets</h4>
+        </div>
+        <div class="modal-body">
+            <div class="filter-search-bar">
+                <i class="fas fa-search"></i>
+                <input type="text" id="asset-search-input" placeholder="Buscar por serial number...">
             </div>
-            {% else %}
-            <div style="padding: 16px;">Nenhuma visita registrada até o momento.</div>
-            {% endif %}
+            <div id="asset-filter-list">
+                <!-- Checkboxes will be populated by JS -->
+            </div>
+        </div>
+        <div class="modal-footer">
+             <div class="footer-info" id="selection-counter"></div>
+            <div class="footer-actions">
+                <button type="button" class="btn btn-light" id="filter-select-all">Selecionar Todos</button>
+                <button type="button" class="btn btn-light" id="filter-clear-all">Limpar</button>
+                <button type="button" class="btn btn-primary" id="apply-filter-btn">Aplicar Filtro</button>
+            </div>
         </div>
     </div>
 </div>
 {% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // --- DATA FROM FLASK ---
+    const ALL_VISITS_DATA = {{ visits | default([]) | tojson }};
+    const ALL_MAP_DATA = {{ visits_map_data | default({}) | tojson }};
+    const ALL_ASSETS = {{ all_assets | default([]) | tojson }};
+
+    // --- DOM ELEMENTS ---
+    const mapContainer = document.getElementById('visits-map');
+    const tableContainer = document.getElementById('visits-table-container');
+    const filterModal = document.getElementById('filter-modal');
+    const filterList = document.getElementById('asset-filter-list');
+    const openFilterBtn = document.getElementById('open-filter-btn');
+    const applyFilterBtn = document.getElementById('apply-filter-btn');
+    const selectAllBtn = document.getElementById('filter-select-all');
+    const clearAllBtn = document.getElementById('filter-clear-all');
+    const searchInput = document.getElementById('asset-search-input');
+    const selectionCounter = document.getElementById('selection-counter');
+
+    // --- LEAFLET VARS ---
+    let map = null;
+    let markers = null;
+    let assetLayers = {};
+
+    // --- INITIALIZATION ---
+    function init() {
+        populateFilterModal();
+        openFilterBtn.addEventListener('click', () => filterModal.classList.add('active'));
+        applyFilterBtn.addEventListener('click', applyFiltersAndRender);
+        selectAllBtn.addEventListener('click', () => toggleAllCheckboxes(true));
+        clearAllBtn.addEventListener('click', () => toggleAllCheckboxes(false));
+        searchInput.addEventListener('input', filterAssetsByName);
+        filterList.addEventListener('change', updateSelectionCounter);
+        
+        // Show modal on first load
+        filterModal.classList.add('active');
+        
+        // Set initial empty state, instructing user to use the filter
+        mapContainer.innerHTML = '<div class="map-status">Selecione os assets e aplique o filtro para ver as visitas.</div>';
+        tableContainer.innerHTML = '<div id="table-status">Selecione os assets e aplique o filtro para ver a tabela.</div>';
+    }
+
+    function populateFilterModal() {
+        if (!filterList) return;
+        filterList.innerHTML = '';
+        ALL_ASSETS.forEach(asset => {
+            const [id, serial] = asset;
+            const item = document.createElement('div');
+            item.className = 'filter-item';
+            item.innerHTML = `
+                <input type="checkbox" id="asset-${id}" value="${id}" checked>
+                <label for="asset-${id}">${serial}</label>
+            `;
+            filterList.appendChild(item);
+        });
+        updateSelectionCounter();
+    }
+
+    function toggleAllCheckboxes(checked) {
+        filterList.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            cb.checked = checked;
+        });
+        updateSelectionCounter();
+    }
+
+    function filterAssetsByName() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const items = filterList.querySelectorAll('.filter-item');
+        items.forEach(item => {
+            const label = item.querySelector('label');
+            if (label) {
+                const name = label.textContent.toLowerCase();
+                item.style.display = name.includes(searchTerm) ? 'flex' : 'none';
+            }
+        });
+    }
+
+    function updateSelectionCounter() {
+        const total = ALL_ASSETS.length;
+        const selected = filterList.querySelectorAll('input:checked').length;
+        if(selectionCounter) {
+            selectionCounter.textContent = `${selected} de ${total} assets`;
+        }
+    }
+
+    function applyFiltersAndRender() {
+        const selectedAssetIds = Array.from(filterList.querySelectorAll('input:checked')).map(cb => parseInt(cb.value, 10));
+
+        const filteredMapData = {};
+        for(const id of selectedAssetIds) {
+            if(ALL_MAP_DATA[id]) {
+                filteredMapData[id] = ALL_MAP_DATA[id];
+            }
+        }
+        
+        const filteredVisits = ALL_VISITS_DATA.filter(v => selectedAssetIds.includes(v.asset_id));
+
+        renderMap(filteredMapData);
+        renderTable(filteredVisits);
+
+        filterModal.classList.remove('active');
+    }
+
+    // --- RENDER FUNCTIONS ---
+    function renderMap(mapData) {
+        if (map) {
+            map.remove();
+            map = null;
+        }
+        
+        mapContainer.innerHTML = '';
+
+        if (Object.keys(mapData).length === 0 || Object.values(mapData).every(d => !d.path || d.path.length === 0)) {
+            mapContainer.innerHTML = '<div class="map-status">Nenhuma visita com coordenadas para os assets selecionados.</div>';
+            return;
+        }
+
+        map = L.map(mapContainer).setView([-15.7801, -47.9292], 4);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(map);
+
+        markers = L.markerClusterGroup({
+            spiderfyOnMaxZoom: true, showCoverageOnHover: false, zoomToBoundsOnClick: false,
+        });
+        markers.on('clusterclick', (a) => a.layer.spiderfy());
+
+        assetLayers = {};
+        const bounds = L.latLngBounds();
+        const colors = ['#00C3FF', '#4C3AFF', '#FFC93C', '#00F5B5', '#FF6B6B', '#1F8EF1', '#7C4DFF', '#FF8A65'];
+        let colorIndex = 0;
+
+        for (const assetId in mapData) {
+            const assetData = mapData[assetId];
+            const path = assetData.path;
+
+            if (path.length > 0) {
+                assetLayers[assetId] = { markers: [], polyline: null };
+                const latLngs = path.map(p => [p.lat, p.lng]);
+                const color = colors[colorIndex % colors.length];
+                colorIndex++;
+
+                const polyline = L.polyline(latLngs, { color: color, weight: 4, opacity: 0.8 });
+                assetLayers[assetId].polyline = polyline;
+                bounds.extend(polyline.getBounds());
+
+                path.forEach((point, index) => {
+                    const isLast = index === path.length - 1;
+                    const iconSize = isLast ? 28 : 22;
+                    const markerIcon = L.divIcon({
+                        html: `<div class="visit-number-icon" style="background-color:${color}; width:${iconSize}px; height:${iconSize}px;">${index + 1}</div>`,
+                        className: '', iconSize: [iconSize, iconSize], iconAnchor: [iconSize/2, iconSize/2]
+                    });
+                    const marker = L.marker([point.lat, point.lng], { icon: markerIcon });
+                    assetLayers[assetId].markers.push(marker);
+                    marker.bindPopup(`<b>${assetData.serial_number}</b><br>Visita ${index + 1}<br>${new Date(point.at).toLocaleString()}`);
+                    markers.addLayer(marker);
+                });
+            }
+        }
+        map.addLayer(markers);
+        
+        const updatePolylines = () => {
+            for (const assetId in assetLayers) {
+                const layer = assetLayers[assetId];
+                if (layer.markers.length < 2) continue;
+                const isAnyMarkerVisible = layer.markers.some(marker => map.hasLayer(marker));
+                if (isAnyMarkerVisible) {
+                    if (!map.hasLayer(layer.polyline)) map.addLayer(layer.polyline);
+                } else {
+                    if (map.hasLayer(layer.polyline)) map.removeLayer(layer.polyline);
+                }
+            }
+        };
+
+        markers.on('animationend', updatePolylines);
+        map.on('zoomend', updatePolylines);
+        updatePolylines();
+        if (bounds.isValid()) map.fitBounds(bounds, { padding: [40, 40] });
+    }
+
+    function renderTable(visits) {
+        if (visits.length === 0) {
+            tableContainer.innerHTML = '<div id="table-status">Nenhuma visita encontrada para os assets selecionados.</div>';
+            return;
+        }
+
+        let tableHtml = `
+            <div class="table-wrap">
+                <table class="table inventory-table" style="width: 100%;">
+                    <thead>
+                        <tr>
+                            <th>Serial</th> <th>Visitado em</th> <th>Localização</th>
+                            <th>Dist. anterior (m)</th> <th>Visita anterior</th> <th>Loc. anterior</th>
+                            <th>Outlet</th> <th>Local</th> <th>Scanner</th> <th>Notas</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        visits.forEach(visit => {
+            tableHtml += `
+                <tr>
+                    <td data-label="Serial">
+                        <div><strong>${visit.serial_number || ''}</strong></div>
+                        <div class="muted">${visit.asset_type || 'N/A'}</div>
+                    </td>
+                    <td data-label="Visitado em">${visit.visit_at || '-'}</td>
+                    <td data-label="Localização">
+                        ${(visit.latitude !== null || visit.longitude !== null) ? `
+                            <div class="location-stack">
+                                ${visit.latitude !== null ? `<span class="location-chip to"><small>Lat</small> ${Number(visit.latitude).toFixed(6)}</span>` : ''}
+                                ${visit.longitude !== null ? `<span class="location-chip to"><small>Lng</small> ${Number(visit.longitude).toFixed(6)}</span>` : ''}
+                            </div>` : '-'}
+                    </td>
+                    <td data-label="Dist. anterior (m)">${visit.distance_from_prev_m !== null ? Number(visit.distance_from_prev_m).toFixed(2) : '-'}</td>
+                    <td data-label="Visita anterior">
+                        ${visit.prev_visit_at ? `<span class="muted">${visit.prev_visit_at}</span>` : '<span class="first-visit-pill">Primeira visita</span>'}
+                    </td>
+                     <td data-label="Localização anterior">
+                        ${(visit.prev_visit_at && (visit.prev_latitude !== null || visit.prev_longitude !== null)) ? `
+                            <div class="location-stack">
+                                ${visit.prev_latitude !== null ? `<span class="location-chip from"><small>Lat</small> ${Number(visit.prev_latitude).toFixed(6)}</span>` : ''}
+                                ${visit.prev_longitude !== null ? `<span class="location-chip from"><small>Lng</small> ${Number(visit.prev_longitude).toFixed(6)}</span>` : ''}
+                            </div>` : (visit.prev_visit_at ? '<span class="pill-muted">Sem coords</span>' : '<span class="first-visit-pill">Primeira visita</span>')}
+                    </td>
+                    <td data-label="Outlet">
+                        ${visit.outlet_name ? `<span class="badge-outlet">${visit.outlet_name}</span>` : '<span class="pill-muted">Sem outlet</span>'}
+                    </td>
+                    <td data-label="Local">
+                        <div>${visit.city || '-'}</div>
+                        <div class="muted">${visit.street || ''}</div>
+                    </td>
+                    <td data-label="Scanner">${visit.scanned_by || '-'}</td>
+                    <td data-label="Notas">${visit.notes || '-'}</td>
+                </tr>
+            `;
+        });
+        tableHtml += '</tbody></table></div>';
+        tableContainer.innerHTML = tableHtml;
+    }
+
+    init();
+});
+</script>
+{% endblock %}
+
 
 {% block sidebar %}
 <!-- Inventory sidebar with Visitas link -->
