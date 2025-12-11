@@ -362,7 +362,8 @@
 {% endblock %}
 
 {% block sidebar %}
-<!-- Inventory sidebar for list -->
+{% if is_inventory_client_admin or is_inventory_technician %}
+<!-- Inventory-only sidebar (roles de inventário) -->
 <aside class="sidebar" id="sidebar">
     <div class="sidebar-logo">
         <img src="{{ url_for('static', filename='images/logo.png') }}" alt="VivaAI Logo">
@@ -375,6 +376,7 @@
     <nav class="sidebar-nav">
         <div class="sidebar-nav-section">
             <div class="sidebar-nav-title">Principal</div>
+            {% if is_inventory_client_admin %}
             <a href="{{ url_for('inventory.render_inventory_list') }}"
                 class="sidebar-nav-link {% if request.path.startswith('/inventory/list') or request.path == '/inventory/' or request.path == '/inventory' %}active{% endif %}">
                 <i class="fas fa-boxes"></i>
@@ -390,6 +392,13 @@
                 <i class="fas fa-route"></i>
                 <span>Visitas</span>
             </a>
+            {% elif is_inventory_technician %}
+            <a href="{{ url_for('inventory.render_inventory_operation') }}"
+                class="sidebar-nav-link {% if request.path.startswith('/inventory/operation') %}active{% endif %}">
+                <i class="fas fa-cogs"></i>
+                <span>Operação</span>
+            </a>
+            {% endif %}
         </div>
     </nav>
     <div class="sidebar-footer">
@@ -410,6 +419,9 @@
         </form>
     </div>
 </aside>
+{% else %}
+{{ super() }}
+{% endif %}
 {% endblock %}
 
 {% block extra_js %}

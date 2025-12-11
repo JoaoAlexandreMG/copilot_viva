@@ -47,8 +47,14 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 @app.context_processor
 def inject_user():
     """Inject user information into template context"""
-    user_data = {}
+    user_data = {
+        "is_inventory_authorized": False,
+        "is_simple_tracking_authorized": False,
+        "is_inventory_client_admin": False,
+        "is_inventory_technician": False,
+    }
     client_code = None
+    role = None
 
     if "user" in session:
         user = session["user"]
@@ -58,11 +64,20 @@ def inject_user():
         )
         user_data["user_email"] = user.get("email", "")
         client_code = user.get("client")
+        role = user.get("role")
 
     # Add function to check if client has access to simple tracking
     user_data["is_simple_tracking_authorized"] = (
         client_code in SIMPLE_TRACKING_AUTHORIZED_CLIENTS
     )
+    # Flag para controle de acesso ao Inventário (usado em templates)
+    user_data["is_inventory_authorized"] = (
+        isinstance(client_code, str)
+        and client_code.lower() in INVENTORY_AUTHORIZED_CLIENTS
+    )
+    # Flags de role específicas para Inventário
+    user_data["is_inventory_client_admin"] = role == "Client Admin_Inventory"
+    user_data["is_inventory_technician"] = role == "Technician_inventory"
 
     return user_data
 
@@ -111,6 +126,42 @@ def handle_method_override():
         method_override = request.form.get("_method", "").upper()
         if method_override in ["PUT", "DELETE", "PATCH"]:
             request.environ["REQUEST_METHOD"] = method_override
+
+
+# Middleware para restringir rotas de acordo com roles de Inventário
+@app.before_request
+def enforce_inventory_role_restrictions():
+    """
+    Garante que:
+    - Usuários com role 'Client Admin_Inventory' só acessem rotas /inventory/...;
+    - Usuários com role 'Technician_inventory' só acessem /inventory/operation
+      (e endpoints auxiliares com esse prefixo).
+    """
+    # Ignora requests de static, login e logout
+    path = request.path or ""
+    if path.startswith("/static"):
+        return
+    if path == "/" or path.startswith("/api-docs"):
+        return
+    if path == "/logout":
+        return
+
+    user = session.get("user")
+    if not user:
+        return
+
+    role = user.get("role")
+
+    # Client Admin_Inventory: apenas rotas de inventário (qualquer /inventory/...)
+    if role == "Client Admin_Inventory":
+        if not path.startswith("/inventory"):
+            return redirect(url_for("inventory.render_inventory_list"))
+
+    # Technician_inventory: apenas operação de inventário (/inventory/operation...)
+    if role == "Technician_inventory":
+        # Permite apenas operação e seus endpoints auxiliares
+        if not path.startswith("/inventory/operation"):
+            return redirect(url_for("inventory.render_inventory_operation"))
 
 
 # Registrar blueprints - eles já têm seus próprios url_prefix
@@ -261,14 +312,13 @@ def index():
         user.last_login_on = datetime.now()
         db_session.commit()
 
-        # Força inventário se o client estiver na lista autorizada
-        if user.client and user.client.lower() in INVENTORY_AUTHORIZED_CLIENTS:
-            destination = "inventory"
-
         # Redirect based on destination
         # Check `inventory` explicitly before `portal` to permit custom inventory redirect
         if destination == "inventory":
-            return redirect(url_for("inventory.render_inventory_operation", open="add"))
+            # Só permite ir para Inventário se o client estiver autorizado.
+            if user.client and user.client.lower() in INVENTORY_AUTHORIZED_CLIENTS:
+                return redirect(url_for("inventory.render_inventory_operation", open="add"))
+            # Se não estiver autorizado, cai no fluxo normal abaixo (portal/tracking/assets)
 
         if destination == "portal":
             return redirect(url_for("dashboard.render_dashboard"))
