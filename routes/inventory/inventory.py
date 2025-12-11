@@ -4,7 +4,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 from routes.portal.decorators import require_authentication
 from db.database import get_session
-from models.models import AssetsInventory, AssetInventoryVisit
+from models.models import AssetsInventory, AssetInventoryVisit, User
 from sqlalchemy import func
 
 inventory_bp = Blueprint("inventory", __name__, url_prefix="/inventory")
@@ -99,8 +99,19 @@ def render_inventory_list():
         user = session.get('user')
         if not user:
             return redirect(url_for('index'))
+        client_code = user.get('client')
+        if not client_code:
+            return redirect(url_for('index'))
         db_session = get_session()
-        assets = db_session.query(AssetsInventory).filter(AssetsInventory.is_deleted.is_(False)).all()
+        assets = (
+            db_session.query(AssetsInventory)
+            .join(User, User.upn == AssetsInventory.created_by_user)
+            .filter(
+                AssetsInventory.is_deleted.is_(False),
+                User.client == client_code
+            )
+            .all()
+        )
         assets_serialized = [_serialize_inventory_asset(asset) for asset in assets]
         return render_template(
             'inventory/list.html',
@@ -128,20 +139,36 @@ def render_inventory_visits():
         user = session.get('user')
         if not user:
             return redirect(url_for('index'))
+        client_code = user.get('client')
+        if not client_code:
+            return redirect(url_for('index'))
 
         db_session = get_session()
 
         # Busca todos os assets para popular o modal de filtro
-        all_assets_query = db_session.query(
-            AssetsInventory.id, 
-            AssetsInventory.serial_number
-        ).filter(AssetsInventory.is_deleted.is_(False)).order_by(AssetsInventory.serial_number).all()
+        all_assets_query = (
+            db_session.query(
+                AssetsInventory.id,
+                AssetsInventory.serial_number
+            )
+            .join(User, User.upn == AssetsInventory.created_by_user)
+            .filter(
+                AssetsInventory.is_deleted.is_(False),
+                User.client == client_code
+            )
+            .order_by(AssetsInventory.serial_number)
+            .all()
+        )
         all_assets = [(asset.id, asset.serial_number) for asset in all_assets_query]
 
         visits_query = (
             db_session.query(AssetInventoryVisit, AssetsInventory)
             .join(AssetsInventory, AssetInventoryVisit.asset_id == AssetsInventory.id)
-            .filter(AssetsInventory.is_deleted.is_(False))
+            .join(User, User.upn == AssetsInventory.created_by_user)
+            .filter(
+                AssetsInventory.is_deleted.is_(False),
+                User.client == client_code
+            )
             .order_by(AssetInventoryVisit.visit_at.desc())
         )
 
@@ -201,6 +228,9 @@ def render_inventory_operation():
         user = session.get('user')
         if not user:
             return redirect(url_for('index'))
+        client_code = user.get('client')
+        if not client_code:
+            return redirect(url_for('index'))
         db_session = get_session()
 
         # Subquery com última visita por asset
@@ -217,7 +247,11 @@ def render_inventory_operation():
         assets_with_visit = (
             db_session.query(AssetsInventory, visits_subq.c.last_visit_at)
             .outerjoin(visits_subq, visits_subq.c.asset_id == AssetsInventory.id)
-            .filter(AssetsInventory.is_deleted.is_(False))
+            .join(User, User.upn == AssetsInventory.created_by_user)
+            .filter(
+                AssetsInventory.is_deleted.is_(False),
+                User.client == client_code
+            )
             .all()
         )
         operation_assets = []
@@ -240,8 +274,23 @@ def render_inventory_operation():
 def get_inventory_operation_data():
     """JSON endpoint com os assets para o mapa de operações."""
     try:
+        user = session.get('user')
+        if not user:
+            return jsonify({"error": "Não autenticado"}), 401
+        client_code = user.get('client')
+        if not client_code:
+            return jsonify({"error": "Cliente não definido"}), 400
+
         db_session = get_session()
-        assets = db_session.query(AssetsInventory).filter(AssetsInventory.is_deleted.is_(False)).all()
+        assets = (
+            db_session.query(AssetsInventory)
+            .join(User, User.upn == AssetsInventory.created_by_user)
+            .filter(
+                AssetsInventory.is_deleted.is_(False),
+                User.client == client_code
+            )
+            .all()
+        )
         return jsonify([_serialize_inventory_asset(asset) for asset in assets])
     except Exception as e:
         print(f"[ERROR] Error fetching inventory operation data: {e}")
@@ -253,11 +302,24 @@ def get_inventory_operation_data():
 def check_inventory_asset(serial_number):
     """Retorna o asset pelo serial, se existir (uso para pré-checagem no front)."""
     try:
+        user = session.get('user')
+        if not user:
+            return jsonify({"error": "Não autenticado"}), 401
+        client_code = user.get('client')
+        if not client_code:
+            return jsonify({"error": "Cliente não definido"}), 400
+
         db_session = get_session()
-        asset = db_session.query(AssetsInventory).filter(
-            AssetsInventory.serial_number == serial_number,
-            AssetsInventory.is_deleted.is_(False)
-        ).first()
+        asset = (
+            db_session.query(AssetsInventory)
+            .join(User, User.upn == AssetsInventory.created_by_user)
+            .filter(
+                AssetsInventory.serial_number == serial_number,
+                AssetsInventory.is_deleted.is_(False),
+                User.client == client_code
+            )
+            .first()
+        )
         if not asset:
             return jsonify({"error": "Not found"}), 404
         return jsonify(_serialize_inventory_asset(asset)), 200
@@ -272,6 +334,11 @@ def create_inventory_asset():
     """Cria um novo asset no inventário via JSON ou form."""
     try:
         payload = request.get_json(silent=True) or request.form
+
+        user_session = session.get('user') or {}
+        client_code = user_session.get('client')
+        if not client_code:
+            return jsonify({"error": "Cliente não definido"}), 400
 
         serial_number = (payload.get('serial_number') or '').strip()
         if not serial_number:
@@ -302,13 +369,18 @@ def create_inventory_asset():
         db_session = get_session()
 
         # Evita duplicidade simples pelo serial_number quando não deletado
-        existing = db_session.query(AssetsInventory).filter(
-            AssetsInventory.serial_number == serial_number,
-            AssetsInventory.is_deleted.is_(False)
-        ).first()
+        existing = (
+            db_session.query(AssetsInventory)
+            .join(User, User.upn == AssetsInventory.created_by_user)
+            .filter(
+                AssetsInventory.serial_number == serial_number,
+                AssetsInventory.is_deleted.is_(False),
+                User.client == client_code,
+            )
+            .first()
+        )
 
-        user = session.get('user') or {}
-        created_by = user.get('upn') or user.get('email') or 'system'
+        created_by = user_session.get('upn') or user_session.get('email') or 'system'
 
         if existing:
             # Atualiza coordenadas e calcula distância se possível
