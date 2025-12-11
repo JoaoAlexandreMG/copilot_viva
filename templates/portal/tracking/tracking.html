@@ -820,6 +820,13 @@
                 </select>
             </div>
             <div class="filter-input-group">
+                <label>Desligados (>100°C)</label>
+                <select id="filterOverheated">
+                    <option value="">Todos</option>
+                    <option value="true">🔥 Desligados</option>
+                </select>
+            </div>
+            <div class="filter-input-group">
                 <label>Bateria</label>
                 <select id="filterBattery">
                     <option value="">Todos</option>
@@ -923,6 +930,7 @@
             state: '',
             is_online: '',
             temp_is_ok: '',
+            overheated: '',
             battery_is_ok: '',
             is_missing: '',
             is_active: '',
@@ -938,19 +946,9 @@
     };
 
     // ============ MAP FUNCTIONS ============
-    let googleMapsReady = false;
     let googleMapsReadyPromise = null;
     
-    // Função chamada pelo callback do Google Maps
-    window.initGoogleMaps = function() {
-        googleMapsReady = true;
-    };
-    
     function waitForGoogleMaps() {
-        if (googleMapsReady && window.google && window.google.maps && window.google.maps.Map) {
-            return Promise.resolve();
-        }
-        
         if (!googleMapsReadyPromise) {
             googleMapsReadyPromise = new Promise((resolve, reject) => {
                 let attempts = 0;
@@ -960,7 +958,6 @@
                     attempts++;
                     if (window.google && window.google.maps && window.google.maps.Map) {
                         clearInterval(checkMaps);
-                        googleMapsReady = true;
                         resolve();
                     } else if (attempts >= maxAttempts) {
                         clearInterval(checkMaps);
@@ -986,19 +983,11 @@
             state.map = new google.maps.Map(mapElement, {
                 center: { lat: -14.2350, lng: -51.9253 },
                 zoom: 4,
+                mapId: 'tracking-map',
                 mapTypeControl: true,
                 fullscreenControl: true,
                 zoomControl: true,
-                streetViewControl: false,
-                styles: [
-                    { elementType: 'geometry', stylers: [{ color: '#1a1a2e' }] },
-                    { elementType: 'labels.text.stroke', stylers: [{ color: '#1a1a2e' }] },
-                    { elementType: 'labels.text.fill', stylers: [{ color: '#cbd5e1' }] },
-                    { featureType: 'administrative.locality', elementType: 'labels.text.fill', stylers: [{ color: '#cbd5e1' }] },
-                    { featureType: 'poi', stylers: [{ visibility: 'off' }] },
-                    { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#2a2a3e' }] },
-                    { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0a0a14' }] }
-                ]
+                streetViewControl: false
             });
             
         } catch (error) {
@@ -1027,6 +1016,7 @@
             'state': 'filterState',
             'is_online': 'filterOnlineStatus',
             'temp_is_ok': 'filterTemperatureStatus',
+            'overheated': 'filterOverheated',
             'battery_is_ok': 'filterBattery',
             'is_missing': 'filterMissing',
             'is_active': 'filterActive',
@@ -1270,7 +1260,8 @@
         if (state.markerCluster) {
             state.markerCluster.clearMarkers();
         }
-        state.markers.forEach(marker => marker.setMap(null));
+        // Remover AdvancedMarkerElements do mapa
+        state.markers.forEach(marker => marker.map = null);
         state.markers = [];
         
         if (!markers || markers.length === 0) return;
@@ -1295,18 +1286,21 @@
                 markerColor = '#f39c12'; // Laranja - temperatura alta
             }
             
-            // Criar marker
-            const marker = new google.maps.Marker({
+            // Criar elemento visual do marker com SVG
+            const markerElement = document.createElement('div');
+            markerElement.innerHTML = `
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="12" cy="12" r="10" fill="${markerColor}" stroke="white" stroke-width="2"/>
+                </svg>
+            `;
+            markerElement.style.cursor = 'pointer';
+            
+            // Criar marker com AdvancedMarkerElement
+            const marker = new google.maps.marker.AdvancedMarkerElement({
                 position: { lat, lng },
+                map: state.map,
                 title: m.equip || m.serial,
-                icon: {
-                    path: google.maps.SymbolPath.CIRCLE,
-                    fillColor: markerColor,
-                    fillOpacity: 1,
-                    strokeColor: '#ffffff',
-                    strokeWeight: 2,
-                    scale: 8
-                }
+                content: markerElement
             });
             
             // Armazenar dados do marker para uso posterior
@@ -1350,30 +1344,26 @@
                     render: ({ count, position }) => {
                         // Customizar aparência do cluster
                         const color = count > 100 ? '#e74c3c' : count > 50 ? '#f39c12' : '#4C3AFF';
-                        return new google.maps.Marker({
+                        const size = Math.min(20 + Math.log(count) * 5, 40);
+                        
+                        // Criar elemento visual do cluster com SVG
+                        const clusterElement = document.createElement('div');
+                        clusterElement.innerHTML = `
+                            <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="${size/2}" cy="${size/2}" r="${size/2 - 2}" fill="${color}" stroke="white" stroke-width="2"/>
+                                <text x="${size/2}" y="${size/2 + size/8}" text-anchor="middle" font-size="${Math.max(10, size/2)}" font-weight="bold" fill="white">${count}</text>
+                            </svg>
+                        `;
+                        clusterElement.style.cursor = 'pointer';
+                        
+                        return new google.maps.marker.AdvancedMarkerElement({
                             position,
-                            icon: {
-                                path: google.maps.SymbolPath.CIRCLE,
-                                fillColor: color,
-                                fillOpacity: 0.9,
-                                strokeColor: '#ffffff',
-                                strokeWeight: 3,
-                                scale: Math.min(20 + Math.log(count) * 5, 40)
-                            },
-                            label: {
-                                text: String(count),
-                                color: '#ffffff',
-                                fontWeight: 'bold',
-                                fontSize: '12px'
-                            },
+                            content: clusterElement,
                             title: `${count} assets`
                         });
                     }
                 }
             });
-        } else {
-            // Fallback: adicionar markers diretamente sem cluster
-            googleMarkers.forEach(marker => marker.setMap(state.map));
         }
         
         // Ajustar visualização do mapa
@@ -1865,6 +1855,7 @@
             state: document.getElementById('filterState').value.trim(),
             is_online: document.getElementById('filterOnlineStatus').value,
             temp_is_ok: document.getElementById('filterTemperatureStatus').value,
+            overheated: document.getElementById('filterOverheated').value,
             battery_is_ok: document.getElementById('filterBattery').value,
             is_missing: document.getElementById('filterMissing').value,
             is_active: document.getElementById('filterActive').value,
@@ -1884,6 +1875,7 @@
         document.getElementById('filterState').value = '';
         document.getElementById('filterOnlineStatus').value = '';
         document.getElementById('filterTemperatureStatus').value = '';
+        document.getElementById('filterOverheated').value = '';
         document.getElementById('filterBattery').value = '';
         document.getElementById('filterMissing').value = '';
         document.getElementById('filterActive').value = '';
@@ -1910,7 +1902,7 @@
     }
 </script>
 
-<!-- Carregador do Google Maps com callback -->
-<script async defer src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initGoogleMaps"></script>
+<!-- Carregador do Google Maps com loading async -->
+<script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&loading=async&libraries=marker"></script>
 
 {% endblock %}

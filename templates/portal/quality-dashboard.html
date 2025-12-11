@@ -1,0 +1,719 @@
+{% extends "portal/base.html" %}
+
+{% block title %}Quality Dashboard{% endblock %}
+{% block page_title %}Quality Dashboard - Monitoramento de Performance{% endblock %}
+
+{% block breadcrumb %}
+    <i class="fas fa-home"></i>
+    <span>/</span>
+    <i class="fas fa-chart-bar"></i>
+    <span>Quality Dashboard</span>
+{% endblock %}
+
+{% block styles %}
+    <style>
+        .quality-container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+        }
+
+        .ranking-card {
+            background: linear-gradient(135deg, var(--atlas-gray-pro) 0%, var(--atlas-black-tech) 100%);
+            border: 1px solid rgba(0, 195, 255, 0.1);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            box-shadow: var(--shadow-md);
+        }
+
+        .ranking-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            gap: 1rem;
+        }
+
+        .ranking-icon {
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--radius-md);
+            font-size: 1.5rem;
+        }
+
+        .ranking-icon.technicians {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(139, 92, 246, 0.1) 100%);
+            color: #a78bfa;
+        }
+
+        .ranking-icon.compressor {
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.2) 0%, rgba(6, 182, 212, 0.1) 100%);
+            color: #22d3ee;
+        }
+
+        .ranking-icon.consumption {
+            background: linear-gradient(135deg, rgba(251, 146, 60, 0.2) 0%, rgba(251, 146, 60, 0.1) 100%);
+            color: #fb923c;
+        }
+
+        .ranking-title {
+            margin: 0;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--atlas-white);
+        }
+
+        .ranking-subtitle {
+            font-size: 0.875rem;
+            color: var(--color-gray-400);
+            margin-top: 0.25rem;
+        }
+
+        .ranking-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .ranking-table thead {
+            border-bottom: 2px solid rgba(0, 195, 255, 0.2);
+        }
+
+        .ranking-table th {
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: var(--color-gray-400);
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .ranking-table tbody tr {
+            border-bottom: 1px solid rgba(0, 195, 255, 0.1);
+            transition: background-color var(--transition-base);
+        }
+
+        .ranking-table tbody tr:hover {
+            background-color: rgba(0, 195, 255, 0.05);
+        }
+
+        .ranking-table td {
+            padding: 1rem;
+            color: var(--atlas-white);
+        }
+
+        .rank-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            font-weight: 700;
+            font-size: 0.875rem;
+            margin-right: 0.5rem;
+        }
+
+        .rank-badge.top1 {
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+            color: #1f2937;
+        }
+
+        .rank-badge.top2 {
+            background: linear-gradient(135deg, #c7d2fe 0%, #a5b4fc 100%);
+            color: #1f2937;
+        }
+
+        .rank-badge.top3 {
+            background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%);
+            color: #1f2937;
+        }
+
+        .rank-badge.other {
+            background: rgba(107, 114, 128, 0.3);
+            color: var(--color-gray-400);
+        }
+
+        .rank-position {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .metric-value {
+            font-weight: 600;
+            color: #00f5b5;
+            text-align: right;
+        }
+
+        .metric-value.high {
+            color: #f87171;
+        }
+
+        .metric-value.medium {
+            color: #fbbf24;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--color-gray-500);
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .pagination-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid rgba(0, 195, 255, 0.1);
+        }
+
+        .pagination-btn {
+            padding: 0.5rem 1rem;
+            background: rgba(0, 195, 255, 0.1);
+            border: 1px solid rgba(0, 195, 255, 0.2);
+            border-radius: var(--radius-md);
+            color: var(--atlas-white);
+            cursor: pointer;
+            transition: all var(--transition-base);
+            font-weight: 500;
+        }
+
+        .pagination-btn:hover:not(:disabled) {
+            background: rgba(0, 195, 255, 0.2);
+            border-color: rgba(0, 195, 255, 0.4);
+        }
+
+        .pagination-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .page-info {
+            color: var(--color-gray-400);
+            font-size: 0.875rem;
+        }
+
+        .tech-name {
+            font-weight: 500;
+        }
+
+        .tech-email {
+            font-size: 0.875rem;
+            color: var(--color-gray-500);
+        }
+
+        .asset-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .asset-code {
+            font-weight: 500;
+        }
+
+        .asset-code-link {
+            font-weight: 500;
+            color: #22d3ee !important;
+            text-decoration: none;
+            border-bottom: 1px dotted #22d3ee;
+            transition: all var(--transition-base);
+            cursor: pointer;
+        }
+
+        .asset-code-link:hover {
+            color: #00f5b5 !important;
+            border-bottom-color: #00f5b5;
+        }
+
+        .asset-code-link::after {
+            content: " ↗";
+            font-size: 0.8em;
+            margin-left: 0.25rem;
+        }
+
+        .outlet-name {
+            font-size: 0.875rem;
+            color: var(--color-gray-500);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: var(--color-gray-400);
+        }
+
+        .loading i {
+            font-size: 2rem;
+            margin-right: 1rem;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+
+<div class="quality-container">
+    <!-- Aviso de Interatividade -->
+    <div style="background: linear-gradient(135deg, rgba(34, 211, 238, 0.1) 0%, rgba(34, 211, 238, 0.05) 100%); border: 1px solid rgba(34, 211, 238, 0.2); border-radius: var(--radius-lg); padding: 1rem 1.5rem; margin-bottom: 2rem;">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+            <i class="fas fa-info-circle" style="color: #22d3ee; font-size: 1.25rem;"></i>
+            <p style="margin: 0; color: var(--color-gray-300);">
+                💡 <strong>Dica:</strong> Clique nos nomes dos ativos (em <span style="color: #22d3ee;">cyan</span>) para abrir a tela de Tracking em uma nova janela e analisar os detalhes!
+            </p>
+        </div>
+    </div>
+    <!-- Ranking 1: Technicians Activity -->
+    <div class="ranking-card">
+        <div class="ranking-header">
+            <div class="ranking-icon technicians">
+                <i class="fas fa-users"></i>
+            </div>
+            <div>
+                <h2 class="ranking-title">Desempenho dos Técnicos</h2>
+                <p class="ranking-subtitle">Últimos 30 dias | <span id="total-technicians">0</span> técnicos ativos</p>
+            </div>
+        </div>
+
+        <div id="technicians-content">
+            <div style="overflow-x: auto;">
+                <table class="ranking-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;">#</th>
+                            <th style="width: 200px;">Técnico</th>
+                            <th style="width: 150px;">Leituras</th>
+                            <th style="width: 150px;">Ativos Fantasma</th>
+                            <th style="width: 150px; text-align: right;">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="technicians-table">
+                        <tr><td colspan="5" style="text-align: center; padding: 2rem; color: var(--color-gray-500);">Carregando...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="pagination-container">
+                <button class="pagination-btn" id="tech-prev" onclick="changeTechPage(-1)">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <span class="page-info">Página <span id="tech-page">1</span> de <span id="tech-total-pages">1</span></span>
+                <button class="pagination-btn" id="tech-next" onclick="changeTechPage(1)">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ranking 2: Assets by Compressor On Time -->
+    <div class="ranking-card">
+        <div class="ranking-header">
+            <div class="ranking-icon compressor">
+                <i class="fas fa-cogs"></i>
+            </div>
+            <div>
+                <h2 class="ranking-title">Tempo do Compressor Ligado</h2>
+                <p class="ranking-subtitle">Últimos 30 dias | <span id="total-assets">0</span> ativos monitorados</p>
+            </div>
+        </div>
+
+        <div id="compressor-content">
+            <div style="overflow-x: auto;">
+                <table class="ranking-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;">#</th>
+                            <th style="width: 250px;">Ativo</th>
+                            <th style="width: 200px;">Outlet</th>
+                            <th style="width: 150px; text-align: right;">Tempo Ligado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="compressor-table">
+                        <tr><td colspan="4" style="text-align: center; padding: 2rem; color: var(--color-gray-500);">Carregando...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="pagination-container">
+                <button class="pagination-btn" id="comp-prev" onclick="changeCompressorPage(-1)">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <span class="page-info">Página <span id="comp-page">1</span> de <span id="comp-total-pages">1</span></span>
+                <button class="pagination-btn" id="comp-next" onclick="changeCompressorPage(1)">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ranking 3: Assets by Power Consumption -->
+    <div class="ranking-card">
+        <div class="ranking-header">
+            <div class="ranking-icon consumption">
+                <i class="fas fa-bolt"></i>
+            </div>
+            <div>
+                <h2 class="ranking-title">Consumo de Energia</h2>
+                <p class="ranking-subtitle">Últimos 30 dias | <span id="total-assets-cons">0</span> ativos monitorados</p>
+            </div>
+        </div>
+
+        <div id="consumption-content">
+            <div style="overflow-x: auto;">
+                <table class="ranking-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;">#</th>
+                            <th style="width: 250px;">Ativo</th>
+                            <th style="width: 200px;">Outlet</th>
+                            <th style="width: 150px; text-align: right;">Consumo Médio</th>
+                        </tr>
+                    </thead>
+                    <tbody id="consumption-table">
+                        <tr><td colspan="4" style="text-align: center; padding: 2rem; color: var(--color-gray-500);">Carregando...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="pagination-container">
+                <button class="pagination-btn" id="cons-prev" onclick="changeConsumptionPage(-1)">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <span class="page-info">Página <span id="cons-page">1</span> de <span id="cons-total-pages">1</span></span>
+                <button class="pagination-btn" id="cons-next" onclick="changeConsumptionPage(1)">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Estado de paginação para cada ranking
+let techState = { page: 1, perPage: 10, total: 0, totalPages: 0 };
+let compressorState = { page: 1, perPage: 10, total: 0, totalPages: 0 };
+let consumptionState = { page: 1, perPage: 10, total: 0, totalPages: 0 };
+
+// Carrega dados via AJAX
+async function loadTechnicians(page = 1) {
+    try {
+        const response = await fetch(`/portal_associacao/api/quality-dashboard/technicians?page=${page}`);
+        const result = await response.json();
+        
+        if (!response.ok) {
+            console.error('Erro ao carregar técnicos:', result.error);
+            return;
+        }
+        
+        techState = {
+            page: result.page,
+            perPage: 10,
+            total: result.total,
+            totalPages: result.total_pages,
+            data: result.data
+        };
+        
+        renderTechniciansTable();
+        updateTechTotals();
+    } catch (error) {
+        console.error('Erro ao buscar técnicos:', error);
+    }
+}
+
+async function loadCompressor(page = 1) {
+    try {
+        const response = await fetch(`/portal_associacao/api/quality-dashboard/compressor?page=${page}`);
+        const result = await response.json();
+        
+        if (!response.ok) {
+            console.error('Erro ao carregar compressor:', result.error);
+            return;
+        }
+        
+        compressorState = {
+            page: result.page,
+            perPage: 10,
+            total: result.total,
+            totalPages: result.total_pages,
+            data: result.data
+        };
+        
+        renderCompressorTable();
+        document.getElementById('total-assets').textContent = compressorState.total;
+    } catch (error) {
+        console.error('Erro ao buscar compressor:', error);
+    }
+}
+
+async function loadConsumption(page = 1) {
+    try {
+        const response = await fetch(`/portal_associacao/api/quality-dashboard/consumption?page=${page}`);
+        const result = await response.json();
+        
+        if (!response.ok) {
+            console.error('Erro ao carregar consumo:', result.error);
+            return;
+        }
+        
+        consumptionState = {
+            page: result.page,
+            perPage: 10,
+            total: result.total,
+            totalPages: result.total_pages,
+            data: result.data
+        };
+        
+        renderConsumptionTable();
+        document.getElementById('total-assets-cons').textContent = consumptionState.total;
+    } catch (error) {
+        console.error('Erro ao buscar consumo:', error);
+    }
+}
+
+// Renderizar tabela de técnicos
+function renderTechniciansTable() {
+    const tbody = document.getElementById('technicians-table');
+    
+    if (!techState.data || techState.data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem; color: var(--color-gray-500);">Nenhum técnico encontrado</td></tr>';
+        document.getElementById('technicians-content').style.display = 'block';
+        updatePaginationControls('tech', techState);
+        return;
+    }
+    
+    const startIdx = (techState.page - 1) * techState.perPage;
+    
+    tbody.innerHTML = techState.data.map((tech, idx) => `
+        <tr>
+            <td>
+                <div class="rank-position">
+                    <span class="rank-badge ${getBadgeClass(startIdx + idx + 1)}">
+                        ${startIdx + idx + 1}
+                    </span>
+                </div>
+            </td>
+            <td>
+                <div class="tech-name">${escapeHtml(tech.name)}</div>
+                <div class="tech-email">${escapeHtml(tech.email || '')}</div>
+            </td>
+            <td>
+                <span class="metric-value">${tech.user_coolers_read || 0}</span>
+            </td>
+            <td>
+                <span class="metric-value ${tech.ghost_read > 5 ? 'high' : (tech.ghost_read > 2 ? 'medium' : '')}">
+                    ${tech.ghost_read || 0}
+                </span>
+            </td>
+            <td style="text-align: right;">
+                <span class="metric-value">${tech.total_activity || 0}</span>
+            </td>
+        </tr>
+    `).join('');
+    
+    updatePaginationControls('tech', techState);
+}
+
+// Renderizar tabela de compressor
+function renderCompressorTable() {
+    const tbody = document.getElementById('compressor-table');
+    
+    if (!compressorState.data || compressorState.data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 2rem; color: var(--color-gray-500);">Nenhum ativo encontrado</td></tr>';
+        updatePaginationControls('comp', compressorState);
+        return;
+    }
+    
+    const startIdx = (compressorState.page - 1) * compressorState.perPage;
+    
+    tbody.innerHTML = compressorState.data.map((asset, idx) => `
+        <tr>
+            <td>
+                <div class="rank-position">
+                    <span class="rank-badge ${getBadgeClass(startIdx + idx + 1)}">
+                        ${startIdx + idx + 1}
+                    </span>
+                </div>
+            </td>
+            <td>
+                <div class="asset-info">
+                    <a href="javascript:void(0)" onclick="window.open('/portal_associacao/tracking?oem_serial_number=${encodeURIComponent(asset.asset_id || asset.oem_serial_number || '')}', '_blank')" class="asset-code-link" title="Clique para abrir Tracking em nova janela">
+                        ${escapeHtml(asset.asset_id || asset.oem_serial_number || '')}
+                    </a>
+                </div>
+            </td>
+            <td>
+                <div class="asset-info">
+                    <span class="asset-code">${escapeHtml(asset.outlet_code || '')}</span>
+                    <span class="outlet-name">${escapeHtml(asset.outlet_name || '-')}</span>
+                </div>
+            </td>
+            <td style="text-align: right;">
+                <span class="metric-value ${(parseFloat(asset.compressor_on_time) || 0) > 80 ? 'high' : ((parseFloat(asset.compressor_on_time) || 0) > 50 ? 'medium' : '')}">
+                    ${(parseFloat(asset.compressor_on_time) || 0).toFixed(1)}%
+                </span>
+            </td>
+        </tr>
+    `).join('');
+    
+    updatePaginationControls('comp', compressorState);
+}
+
+// Renderizar tabela de consumo
+function renderConsumptionTable() {
+    const tbody = document.getElementById('consumption-table');
+    
+    if (!consumptionState.data || consumptionState.data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 2rem; color: var(--color-gray-500);">Nenhum ativo encontrado</td></tr>';
+        updatePaginationControls('cons', consumptionState);
+        return;
+    }
+    
+    const startIdx = (consumptionState.page - 1) * consumptionState.perPage;
+    
+    tbody.innerHTML = consumptionState.data.map((asset, idx) => `
+        <tr>
+            <td>
+                <div class="rank-position">
+                    <span class="rank-badge ${getBadgeClass(startIdx + idx + 1)}">
+                        ${startIdx + idx + 1}
+                    </span>
+                </div>
+            </td>
+            <td>
+                <div class="asset-info">
+                    <a href="javascript:void(0)" onclick="window.open('/portal_associacao/tracking?oem_serial_number=${encodeURIComponent(asset.asset_id || asset.oem_serial_number || '')}', '_blank')" class="asset-code-link" title="Clique para abrir Tracking em nova janela">
+                        ${escapeHtml(asset.asset_id || asset.oem_serial_number || '')}
+                    </a>
+                </div>
+            </td>
+            <td>
+                <div class="asset-info">
+                    <span class="asset-code">${escapeHtml(asset.outlet_code || '')}</span>
+                    <span class="outlet-name">${escapeHtml(asset.outlet_name || '-')}</span>
+                </div>
+            </td>
+            <td style="text-align: right;">
+                <span class="metric-value ${(parseFloat(asset.power_consumption) || 0) > 20 ? 'high' : ((parseFloat(asset.power_consumption) || 0) > 10 ? 'medium' : '')}">
+                    ${(parseFloat(asset.power_consumption) || 0).toFixed(2)} kW
+                </span>
+            </td>
+        </tr>
+    `).join('');
+    
+    updatePaginationControls('cons', consumptionState);
+}
+
+// Funções de mudança de página
+function changeTechPage(delta) {
+    const newPage = techState.page + delta;
+    if (newPage >= 1 && newPage <= techState.totalPages) {
+        loadTechnicians(newPage);
+    }
+}
+
+function changeCompressorPage(delta) {
+    const newPage = compressorState.page + delta;
+    if (newPage >= 1 && newPage <= compressorState.totalPages) {
+        loadCompressor(newPage);
+    }
+}
+
+function changeConsumptionPage(delta) {
+    const newPage = consumptionState.page + delta;
+    if (newPage >= 1 && newPage <= consumptionState.totalPages) {
+        loadConsumption(newPage);
+    }
+}
+
+// Helpers
+function getBadgeClass(position) {
+    if (position === 1) return 'top1';
+    if (position === 2) return 'top2';
+    if (position === 3) return 'top3';
+    return 'other';
+}
+
+function updatePaginationControls(prefix, state) {
+    document.getElementById(`${prefix}-page`).textContent = state.page;
+    document.getElementById(`${prefix}-total-pages`).textContent = state.totalPages;
+    document.getElementById(`${prefix}-prev`).disabled = state.page <= 1;
+    document.getElementById(`${prefix}-next`).disabled = state.page >= state.totalPages;
+}
+
+function updateTechTotals() {
+    document.getElementById('total-technicians').textContent = techState.total;
+}
+
+function escapeHtml(text) {
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return String(text || '').replace(/[&<>"']/g, m => map[m]);
+}
+
+// Função para extrair parâmetro de query
+function getQueryParam(param) {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get(param);
+}
+
+// Função para focar em uma seção
+function focusSection(section) {
+    const sectionMap = {
+        'compressor': 'compressor-content',
+        'consumption': 'consumption-content',
+        'technicians': 'technicians-content'
+    };
+
+    const elementId = sectionMap[section];
+    if (elementId) {
+        const element = document.getElementById(elementId);
+        if (element) {
+            // Aguarda um pouco para garantir que os dados foram carregados
+            setTimeout(() => {
+                element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                // Adiciona um destaque visual temporário
+                const card = element.closest('.ranking-card');
+                if (card) {
+                    card.style.boxShadow = '0 0 20px rgba(0, 245, 181, 0.3)';
+                    setTimeout(() => {
+                        card.style.transition = 'box-shadow 0.5s ease-out';
+                        card.style.boxShadow = 'var(--shadow-md)';
+                    }, 500);
+                }
+            }, 500);
+        }
+    }
+}
+
+// Carregar dados ao inicializar página
+document.addEventListener('DOMContentLoaded', () => {
+    loadTechnicians(1);
+    loadCompressor(1);
+    loadConsumption(1);
+
+    // Verificar se há parâmetro de seção na URL
+    const section = getQueryParam('section');
+    if (section) {
+        focusSection(section);
+        // Remover o parâmetro da URL após focar
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+});
+</script>
+
+{% endblock %}

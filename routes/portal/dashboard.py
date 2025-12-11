@@ -6,6 +6,7 @@ from flask import (
     url_for,
     request,
     jsonify,
+    flash,
 )
 from sqlalchemy import text
 from .decorators import require_authentication
@@ -224,6 +225,19 @@ def stats_for_dashboard(days=30):
         db_session.execute(active_assets_24h_sql, {"client": client}).scalar() or 0
     )
 
+    # Query 3: Obter contagem de assets potencialmente desligados (temperatura > 100°C)
+    overheated_assets_sql = text(
+        """
+        SELECT COUNT(*) 
+        FROM mv_asset_current_status
+        WHERE client = :client 
+        AND temperature_c > 100
+    """
+    )
+    overheated_assets_count = (
+        db_session.execute(overheated_assets_sql, {"client": client}).scalar() or 0
+    )
+
     if not status_results:
         # Se o cliente não tem dados na MV, retorna zero
         temp_min = 0
@@ -412,6 +426,7 @@ def stats_for_dashboard(days=30):
         # Métricas de Cartão (Totais e Contagens)
         "total_assets": int(status_results.total_assets_count or 0),
         "assets_health_last_24h_count": int(assets_health_last_24h_count),
+        "overheated_assets_count": int(overheated_assets_count),
         "alerts_period_count": int(alerts_period_count or 0),  # Dinâmico (7/30d)
         "assets_missing_count": int(assets_missing_count or 0),  # Dinâmico (7/30d)
         # Métricas de Temperatura (Contagens e Percentuais)
@@ -496,37 +511,6 @@ def render_dashboard():
         return redirect(url_for("index"))
 
 
-@dashboard_bp.route("/technicians", methods=["GET"])
-@require_authentication
-def render_technicians_page():
-    """
-    Render technicians monitoring page
-    Shows activity metrics for all technicians in the last 30 days
-    """
-    try:
-        user = session.get("user")
-        if not user:
-            return redirect(url_for("index"))
-
-        client = user.get("client")
-        if not client:
-            return redirect(url_for("index"))
-
-        # Get technicians activity data
-        technicians_data = get_technicians_activity(client)
-
-        return render_template(
-            "portal/technicians.html", technicians=technicians_data, page_type="list"
-        )
-
-    except Exception as e:
-        print(f"[ERROR] Error rendering technicians page: {str(e)}")
-        import traceback
-
-        traceback.print_exc()
-        return redirect(url_for("dashboard.render_dashboard"))
-
-
 @dashboard_bp.route("/api/dashboard-stats", methods=["GET"])
 @require_authentication
 def get_dashboard_stats():
@@ -596,3 +580,203 @@ def get_technicians_activity_api():
 
         traceback.print_exc()
         return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@dashboard_bp.route("/quality-dashboard")
+@require_authentication
+def render_quality_dashboard():
+    """
+    Renderiza a página inicial de Quality Dashboard.
+    Os dados são carregados via AJAX para cada tabela independentemente.
+    """
+    try:
+        db_session = get_session()
+        client = session.get("user", {}).get("client")
+
+        if not client:
+            return redirect(url_for("dashboard.render_dashboard"))
+
+        db_session.close()
+
+        return render_template(
+            "portal/quality-dashboard.html",
+            technicians=[],
+            assets_compressor=[],
+            assets_consumption=[],
+        )
+
+    except Exception as e:
+        import traceback
+
+        traceback.print_exc()
+        flash(f"Erro ao carregar Quality Dashboard: {str(e)}", "error")
+        return redirect(url_for("dashboard.render_dashboard"))
+
+
+@dashboard_bp.route("/api/quality-dashboard/technicians")
+@require_authentication
+def api_quality_technicians():
+    """
+    API para carregar técnicos paginados via AJAX.
+    """
+    try:
+        db_session = get_session()
+        client = session.get("user", {}).get("client")
+        page = request.args.get("page", 1, type=int) or 1
+        per_page = 10
+
+        if not client:
+            return jsonify({"error": "Unauthorized"}), 401
+
+        # Get all technicians and sort
+        technicians_data = get_technicians_activity(client)
+        technicians_sorted = sorted(
+            technicians_data, key=lambda x: x["total_activity"], reverse=True
+        )
+
+        total = len(technicians_sorted)
+        total_pages = (total + per_page - 1) // per_page if total else 0
+
+        # Paginar em memória
+        start_idx = (page - 1) * per_page
+        end_idx = start_idx + per_page
+        page_data = technicians_sorted[start_idx:end_idx]
+
+        db_session.close()
+
+        return jsonify(
+            {
+                "data": page_data,
+                "page": page,
+                "total_pages": total_pages,
+                "total": total,
+            }
+        )
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@dashboard_bp.route("/api/quality-dashboard/compressor")
+@require_authentication
+def api_quality_compressor():
+    """
+    API para carregar assets por compressor paginados via AJAX.
+    Usa mv_asset_current_status para performance, com cálculos consistentes com health_events.
+    """
+    try:
+        db_session = get_session()
+        client = session.get("user", {}).get("client")
+        page = request.args.get("page", 1, type=int) or 1
+        per_page = 10
+
+        if not client:
+            return jsonify({"error": "Unauthorized"}), 401
+
+        # Get total count
+        total_sql = text(
+            """
+            SELECT COUNT(DISTINCT oem_serial_number)
+            FROM mv_asset_current_status
+            WHERE client = :client 
+            AND total_compressor_on_time_percent IS NOT NULL
+            """
+        )
+        total = db_session.execute(total_sql, {"client": client}).scalar() or 0
+        total_pages = (total + per_page - 1) // per_page if total else 0
+
+        # Get paginated data - usando mv_asset_current_status para performance
+        compressor_sql = text(
+            """
+            SELECT
+                oem_serial_number as asset_id,
+                outlet_code,
+                outlet as outlet_name,
+                total_compressor_on_time_percent as compressor_on_time
+            FROM mv_asset_current_status
+            WHERE client = :client
+                AND total_compressor_on_time_percent IS NOT NULL
+            ORDER BY
+                compressor_on_time DESC
+            LIMIT :limit OFFSET :offset
+            """
+        )
+
+        assets = db_session.execute(
+            compressor_sql,
+            {"client": client, "limit": per_page, "offset": (page - 1) * per_page},
+        ).fetchall()
+
+        data = [dict(row._mapping) for row in assets]
+
+        db_session.close()
+
+        return jsonify(
+            {"data": data, "page": page, "total_pages": total_pages, "total": total}
+        )
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@dashboard_bp.route("/api/quality-dashboard/consumption")
+@require_authentication
+def api_quality_consumption():
+    """
+    API para carregar assets por consumo paginados via AJAX.
+    Usa mv_asset_current_status para melhor performance e carregamento mais rápido.
+    """
+    try:
+        db_session = get_session()
+        client = session.get("user", {}).get("client")
+        page = request.args.get("page", 1, type=int) or 1
+        per_page = 10
+
+        if not client:
+            return jsonify({"error": "Unauthorized"}), 401
+
+        # Get total count
+        total_sql = text(
+            """
+            SELECT COUNT(DISTINCT oem_serial_number)
+            FROM mv_asset_current_status
+            WHERE client = :client
+            AND avg_power_consumption_watt IS NOT NULL
+            """
+        )
+        total = db_session.execute(total_sql, {"client": client}).scalar() or 0
+        total_pages = (total + per_page - 1) // per_page if total else 0
+
+        # Get paginated data - usando mv_asset_current_status para performance
+        consumption_sql = text(
+            """
+            SELECT
+                oem_serial_number as asset_id,
+                outlet_code,
+                outlet as outlet_name,
+                avg_power_consumption_watt as power_consumption
+            FROM mv_asset_current_status
+            WHERE
+                client = :client
+                AND avg_power_consumption_watt IS NOT NULL
+            ORDER BY
+                power_consumption DESC
+            LIMIT :limit OFFSET :offset
+            """
+        )
+
+        assets = db_session.execute(
+            consumption_sql,
+            {"client": client, "limit": per_page, "offset": (page - 1) * per_page},
+        ).fetchall()
+
+        data = [dict(row._mapping) for row in assets]
+
+        db_session.close()
+
+        return jsonify(
+            {"data": data, "page": page, "total_pages": total_pages, "total": total}
+        )
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

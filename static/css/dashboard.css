@@ -95,6 +95,21 @@ a.stat-card.clickable:hover { background: linear-gradient(135deg, rgba(31, 31, 3
     transition: all var(--transition-fast);
 }
 
+.temp-alert-badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: linear-gradient(135deg, rgba(255, 107, 107, 0.15) 0%, rgba(255, 69, 0, 0.1) 100%);
+    color: #ff6b6b;
+    font-size: var(--text-xs);
+    font-weight: var(--font-weight-bold);
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(255, 107, 107, 0.3);
+    pointer-events: none;
+    transition: all var(--transition-fast);
+}
+
 /* =========================================
    LAYOUT ESPECIAL PARA TEMPERATURA (Split)
    ========================================= */

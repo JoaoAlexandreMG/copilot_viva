@@ -52,7 +52,7 @@
 
 <div class="stats-grid">
     
-    <div class="stat-card">
+    <a href="{{url_for('portal_tracking.render_tracking')}}" class="stat-card clickable">
         <div class="stat-icon bg-indigo">
             <i class="fas fa-boxes"></i>
         </div>
@@ -60,7 +60,7 @@
             <p class="stat-label">Total de Ativos</p>
             <h4 class="stat-value" id="kpiTotalAssets">{{ stats.total_assets }}</h4>
         </div>
-    </div>
+    </a>
 
     <a href="{{url_for('portal_tracking.render_tracking')}}?is_active=true" class="stat-card clickable">
         <div class="stat-icon bg-green">
@@ -142,7 +142,18 @@
         <span class="period-badge">30d</span>
     </a>
 
-    <div class="stat-card" id="cardCompressor" style="display: {{ 'flex' if stats.avg_compressor_on_time and stats.avg_compressor_on_time > 0 else 'none' }};">
+    <a href="{{url_for('portal_tracking.render_tracking')}}?overheated=true" class="stat-card clickable" data-overheated-card>
+        <div class="stat-icon bg-orange">
+            <i class="fas fa-fire"></i>
+        </div>
+        <div class="stat-content">
+            <p class="stat-label">Potencialmente Desligados</p>
+            <h4 class="stat-value" id="kpiOverheated">{{ stats.overheated_assets_count }}</h4>
+        </div>
+        <span class="temp-alert-badge">🔥 >100°C</span>
+    </a>
+
+    <a href="{{url_for('dashboard.render_quality_dashboard')}}?section=compressor" class="stat-card clickable" id="cardCompressor" style="display: {{ 'flex' if stats.avg_compressor_on_time and stats.avg_compressor_on_time > 0 else 'none' }};">
         <div class="stat-icon bg-cyan">
             <i class="fas fa-cogs"></i>
         </div>
@@ -151,9 +162,9 @@
             <h4 class="stat-value" id="kpiCompressor">{{ stats.avg_compressor_on_time }}%</h4>
         </div>
         <span class="period-badge">30d</span>
-    </div>
+    </a>
 
-    <div class="stat-card" id="cardConsumption" style="display: {{ 'flex' if stats.avg_power_consumption and stats.avg_power_consumption > 0 else 'none' }};">
+    <a href="{{url_for('dashboard.render_quality_dashboard')}}?section=consumption" class="stat-card clickable" id="cardConsumption" style="display: {{ 'flex' if stats.avg_power_consumption and stats.avg_power_consumption > 0 else 'none' }};">
         <div class="stat-icon bg-orange">
             <i class="fas fa-bolt"></i>
         </div>
@@ -162,7 +173,7 @@
             <h4 class="stat-value" id="kpiConsumption">{{ stats.avg_power_consumption }} kW</h4>
         </div>
         <span class="period-badge">30d</span>
-    </div>
+    </a>
 
 </div>
 

@@ -91,10 +91,37 @@
         </div>
         <div class="modal-footer">
             <button type="button" class="btn btn-secondary" onclick="manager.closeFormModal()">Cancelar</button>
-            <button type="button" class="btn btn-primary" onclick="manager.submitForm()">
-                <i class="fas fa-save"></i>
-                Salvar
-            </button>
         </div>
     </div>
 </div>
+
+<!-- Form Validation Setup -->
+<script src="{{ url_for('static', filename='js/form-validation.js') }}"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/form-validation.css') }}">
+<script>
+    // Hook into the CRUDManager to setup form validation
+    if (typeof manager !== 'undefined' && typeof FormValidator !== 'undefined') {
+        const originalShowCreateForm = manager.showCreateForm.bind(manager);
+        const originalShowEditForm = manager.showEditForm.bind(manager);
+        
+        manager.showCreateForm = function() {
+            originalShowCreateForm();
+            setTimeout(() => {
+                const form = document.getElementById('entityForm');
+                if (form) {
+                    FormValidator.setupLiveValidation(form, 'outlets');
+                }
+            }, 100);
+        };
+        
+        manager.showEditForm = function(entityId) {
+            originalShowEditForm(entityId);
+            setTimeout(() => {
+                const form = document.getElementById('entityForm');
+                if (form) {
+                    FormValidator.setupLiveValidation(form, 'outlets');
+                }
+            }, 100);
+        };
+    }
+</script>

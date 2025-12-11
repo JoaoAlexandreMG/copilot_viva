@@ -154,6 +154,14 @@ class CRUDManager {
         // Clear any previous form validation messages
         this.clearFormError();
 
+        // Use FormValidator if available for custom validation (outlets, assets, smartdevices)
+        if (typeof FormValidator !== 'undefined' && this.entityNamePlural) {
+            const formType = this.entityNamePlural; // 'outlets', 'assets', 'smartdevices'
+            if (!FormValidator.validate(formType, form)) {
+                return;
+            }
+        }
+
         // Validate form before submitting
         if (!form.checkValidity()) {
             form.reportValidity();

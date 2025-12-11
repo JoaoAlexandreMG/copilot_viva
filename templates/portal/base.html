@@ -144,7 +144,7 @@
                 </div>
 
                 <div class="sidebar-nav-section">
-                    <div class="sidebar-nav-title">Rastreamento</div>
+                    <div class="sidebar-nav-title">Operacional</div>
                     <a href="{{ url_for('portal_tracking.render_tracking') }}"
                         class="sidebar-nav-link {% if request.path.startswith('/portal_associacao/tracking') and 'simple' not in request.path %}active{% endif %}">
                         <i class="fas fa-location-dot"></i>
@@ -161,11 +161,11 @@
                 </div>
 
                 <div class="sidebar-nav-section">
-                    <div class="sidebar-nav-title">Monitoramento</div>
-                    <a href="{{ url_for('dashboard.render_technicians_page') }}"
-                        class="sidebar-nav-link {% if request.path.startswith('/portal_associacao/technicians') %}active{% endif %}">
-                        <i class="fas fa-user-cog"></i>
-                        <span>Técnicos</span>
+                    <div class="sidebar-nav-title">Análise</div>
+                    <a href="{{ url_for('dashboard.render_quality_dashboard') }}"
+                        class="sidebar-nav-link {% if request.path.startswith('/portal_associacao/quality-dashboard') %}active{% endif %}">
+                        <i class="fas fa-chart-bar"></i>
+                        <span>Quality Dashboard</span>
                     </a>
                 </div>
 
@@ -191,11 +191,10 @@
                         <i class="fas fa-mobile-alt"></i>
                         <span>Smart Devices</span>
                     </a>
-                    <!-- Inventário link moved to its own blueprint/view (do not show on portal sidebar) -->
                 </div>
 
                 <div class="sidebar-nav-section">
-                    <div class="sidebar-nav-title">Inventário</div>
+                    <div class="sidebar-nav-title">Externo</div>
                     <a href="https://vivaservicesai.com/inventory"
                         class="sidebar-nav-link"
                         target="_blank"

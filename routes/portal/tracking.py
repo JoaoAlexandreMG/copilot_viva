@@ -193,6 +193,7 @@ def render_tracking():
             "is_missing": request.args.get("is_missing", ""),
             "is_active": request.args.get("is_active", ""),
             "temp_is_ok": request.args.get("temp_is_ok", ""),
+            "overheated": request.args.get("overheated", ""),
             "battery_is_ok": request.args.get("battery_is_ok", ""),
         }
 
@@ -251,6 +252,7 @@ def get_assets_optimized():
         is_missing = request.args.get("is_missing", "").strip().lower()
         battery_is_ok = request.args.get("battery_is_ok", "").strip().lower()
         temp_is_ok = request.args.get("temp_is_ok", "").strip().lower()
+        overheated = request.args.get("overheated", "").strip().lower()
         load_all = request.args.get("load_all", "false").strip().lower() == "true"
 
         # Adicionar filtros de string (case-insensitive)
@@ -349,6 +351,11 @@ def get_assets_optimized():
             )
             params["temp_min"] = temp_min
             params["temp_max"] = temp_max
+
+        # Filtro para desligados (temperatura > 100°C)
+        if overheated in ("true", "1", "yes"):
+            where_clauses.append("temperature_c > :overheated_threshold")
+            params["overheated_threshold"] = 100
 
         if battery_is_ok in ("true", "1", "yes", "good"):
             where_clauses.append("battery > 50")
@@ -545,6 +552,7 @@ def get_assets_optimized():
             "is_missing": is_missing,
             "is_active": is_active,
             "temp_is_ok": temp_is_ok,
+            "overheated": overheated,
             "battery_is_ok": battery_is_ok,
         }
         active_filters = {k: v for k, v in active_filters.items() if v}
@@ -624,6 +632,7 @@ def get_map_markers():
         battery_is_ok = request.args.get("battery_is_ok", "").strip().lower()
         is_missing = request.args.get("is_missing", "").strip().lower()
         is_active = request.args.get("is_active", "").strip().lower()
+        overheated = request.args.get("overheated", "").strip().lower()
         subclient = request.args.get("subclient", "").strip()
 
         if bottler_equipment_number:
@@ -695,6 +704,11 @@ def get_map_markers():
                 where_clauses.append("battery BETWEEN 20 AND 50")
             elif battery_is_ok == "low":
                 where_clauses.append("battery < 20")
+
+        # Filtro para desligados (temperatura > 100°C)
+        if overheated in ("true", "1", "yes"):
+            where_clauses.append("temperature_c > :overheated_threshold")
+            params["overheated_threshold"] = 100
 
         # Filtro de ausência (deslocamento GPS)
         if is_missing in ("true", "1", "yes", "false", "0", "no"):
@@ -997,16 +1011,15 @@ def get_asset_details(serial_number):
                 }
             )
 
-        # 5. Calcular média de consumo e compressor dos últimos 30 dias POR ASSET
+        # 5. Obter consumo e compressor dos últimos 30 dias da MV
         health_avg_sql = text(
             """
-            SELECT 
-                AVG(avg_power_consumption_watt) FILTER (WHERE avg_power_consumption_watt > 0) as avg_power_30d,
-                AVG(total_compressor_on_time_percent) FILTER (WHERE total_compressor_on_time_percent > 0) as avg_compressor_30d
-            FROM health_events
-            WHERE client = :client 
-            AND asset_serial_number = :serial
-            AND event_time >= (NOW() AT TIME ZONE 'UTC' - INTERVAL '30 days')
+            SELECT
+                avg_power_consumption_watt as avg_power_30d,
+                total_compressor_on_time_percent as avg_compressor_30d
+            FROM mv_asset_current_status
+            WHERE client = :client
+            AND oem_serial_number = :serial
         """
         )
         health_avg_result = db_session.execute(
