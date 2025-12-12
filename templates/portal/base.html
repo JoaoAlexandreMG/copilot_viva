@@ -173,7 +173,7 @@
                 </div>
 
                 <div class="sidebar-nav-section">
-                    <div class="sidebar-nav-title">Operacional</div>
+                    <div class="sidebar-nav-title">Monitoramento</div>
                     <a href="{{ url_for('portal_tracking.render_tracking') }}"
                         class="sidebar-nav-link {% if request.path.startswith('/portal_associacao/tracking') and 'simple' not in request.path %}active{% endif %}">
                         <i class="fas fa-location-dot"></i>
@@ -187,14 +187,15 @@
                         <span>Rastreio Simples</span>
                     </a>
                     {% endif %}
-                </div>
-
-                <div class="sidebar-nav-section">
-                    <div class="sidebar-nav-title">Análise</div>
                     <a href="{{ url_for('dashboard.render_quality_dashboard') }}"
                         class="sidebar-nav-link {% if request.path.startswith('/portal_associacao/quality-dashboard') %}active{% endif %}">
                         <i class="fas fa-chart-bar"></i>
                         <span>Quality Dashboard</span>
+                    </a>
+                    <a href="{{ url_for('portal_alerts.render_alerts') }}"
+                        class="sidebar-nav-link {% if request.path.startswith('/portal_associacao/alerts') %}active{% endif %}">
+                        <i class="fas fa-bell"></i>
+                        <span>Alertas</span>
                     </a>
                 </div>
 
@@ -234,6 +235,7 @@
                     </a>
                 </div>
             </nav>
+            {% endif %}
 
             <!-- User Info -->
             <div class="sidebar-footer">

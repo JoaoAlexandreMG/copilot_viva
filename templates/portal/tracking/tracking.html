@@ -1478,19 +1478,21 @@
     function displayDeviceDetails(device) {
         const detailsTitle = document.getElementById('detailsTitle');
         const detailsContent = document.getElementById('detailsContent');
-        
+
         detailsTitle.textContent = device.oem_serial_number || 'Detalhes';
-        
+
         // Valores calculados
         const temperature = parseFloat(device.temperature_c || 0);
         const battery = parseInt(device.battery_level || device.battery_from_stats || 0);
         // Usar médias de 30 dias
         const avgPower = parseFloat(device.avg_power_consumption_watt_30d || 0); // W para kW
         const compressorTime = parseFloat(device.avg_compressor_percent_30d || 0);
-        
+        const ambientTemperature = parseFloat(device.ambient_temperature_from_api || 0);
+
         // Cores para métricas
         const tempColor = temperature > 8 ? '#FF5A5F' : temperature < 0 ? '#00C3FF' : '#34C759';
         const batteryColor = battery > 50 ? '#34C759' : battery > 20 ? '#FFB800' : '#FF5A5F';
+        const ambientTempColor = ambientTemperature > 30 ? '#FF5A5F' : ambientTemperature < 10 ? '#00C3FF' : '#34C759';
         
         // Determinar badges de status
         let badges = '';
@@ -1543,7 +1545,7 @@
                     <div class="metric-item">
                         <span class="metric-icon">🌡️</span>
                         <div class="metric-value" style="color: ${tempColor};">${displayNumber(temperature, 1, '°C')}</div>
-                        <div class="metric-label">Temperatura</div>
+                        <div class="metric-label">Asset</div>
                     </div>
                     <div class="metric-item">
                         <span class="metric-icon">🔋</span>
@@ -1559,6 +1561,25 @@
                         <span class="metric-icon">⏱️</span>
                         <div class="metric-value">${displayNumber(compressorTime, 1, '%')}</div>
                         <div class="metric-label">Compressor (30d)</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Registro de Temperatura -->
+            <div class="details-section">
+                <div class="details-section-title">🌡️ Registro de Temperatura</div>
+                <div class="info-list">
+                    <div class="info-item">
+                        <span class="info-label">📅 Último Registro de Temperatura</span>
+                        <span class="info-value">${device.last_health_event ? formatDateTime(device.last_health_event) : '—'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">📦 Temperatura do Asset</span>
+                        <span class="info-value" style="color: ${tempColor};">${displayNumber(temperature, 1, '°C')}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">🌍 Temperatura Ambiente (Local)</span>
+                        <span class="info-value" style="color: ${ambientTempColor};">${displayNumber(ambientTemperature, 1, '°C')} <small style="color: var(--text-muted);"></small></span>
                     </div>
                 </div>
             </div>
@@ -1843,6 +1864,68 @@
                 if (e.key === 'Enter') applyFilters();
             });
         });
+
+        // Adicionar event listeners para atualizar URL em tempo real quando um filtro muda
+        const filterElements = [
+            'filterEquipmentNumber', 'filterSerialNumber', 'filterOutlet', 'filterCity', 'filterState',
+            'filterOnlineStatus', 'filterTemperatureStatus', 'filterOverheated', 'filterBattery',
+            'filterMissing', 'filterActive', 'filterSubclient'
+        ];
+
+        filterElements.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.addEventListener('change', updateURLFromFilters);
+                if (element.tagName === 'INPUT') {
+                    // Debounce para inputs de texto
+                    element.addEventListener('input', debounceUpdateURL);
+                }
+            }
+        });
+    }
+
+    // Debounce para evitar muitas atualizações de URL
+    let urlUpdateTimeout;
+    function debounceUpdateURL() {
+        clearTimeout(urlUpdateTimeout);
+        urlUpdateTimeout = setTimeout(updateURLFromFilters, 500);
+    }
+
+    // Função para atualizar URL com os filtros atuais
+    function updateURLFromFilters() {
+        const params = new URLSearchParams();
+
+        const filterMapping = {
+            'bottler_equipment_number': 'filterEquipmentNumber',
+            'oem_serial_number': 'filterSerialNumber',
+            'outlet': 'filterOutlet',
+            'city': 'filterCity',
+            'state': 'filterState',
+            'is_online': 'filterOnlineStatus',
+            'temp_is_ok': 'filterTemperatureStatus',
+            'overheated': 'filterOverheated',
+            'battery_is_ok': 'filterBattery',
+            'is_missing': 'filterMissing',
+            'is_active': 'filterActive',
+            'subclient': 'filterSubclient'
+        };
+
+        // Adicionar parâmetros não vazios à URL
+        for (const [param, elementId] of Object.entries(filterMapping)) {
+            const element = document.getElementById(elementId);
+            const value = element ? element.value.trim() : '';
+
+            if (value) {
+                params.append(param, value);
+            }
+        }
+
+        // Atualizar URL sem recarregar a página
+        const newUrl = params.toString()
+            ? `${window.location.pathname}?${params.toString()}`
+            : window.location.pathname;
+
+        window.history.replaceState({ filters: Object.fromEntries(params) }, '', newUrl);
     }
 
     async function applyFilters() {
@@ -1861,7 +1944,10 @@
             is_active: document.getElementById('filterActive').value,
             subclient: document.getElementById('filterSubclient').value
         };
-        
+
+        // Atualizar URL
+        updateURLFromFilters();
+
         state.currentPage = 1; // Resetar para página 1 ao aplicar filtros
         await loadDevices(1);
         await loadMapMarkers(); // Recarregar markers do mapa com filtros
@@ -1880,7 +1966,7 @@
         document.getElementById('filterMissing').value = '';
         document.getElementById('filterActive').value = '';
         document.getElementById('filterSubclient').value = '';
-        
+
         applyFilters();
     }
 

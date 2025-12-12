@@ -258,21 +258,167 @@
             font-size: 2rem;
             margin-right: 1rem;
         }
+
+        /* Animação de pulso para links */
+        @keyframes pulse-glow {
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.4);
+            }
+            50% {
+                box-shadow: 0 0 0 8px rgba(34, 211, 238, 0.1);
+            }
+        }
+
+        .asset-code-link.pulse-animation {
+            animation: pulse-glow 2s infinite;
+        }
+
+        /* Tooltip */
+        .asset-code-link {
+            position: relative;
+        }
+
+        .asset-code-link::before {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 130%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: #00f5b5;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.375rem;
+            white-space: nowrap;
+            font-size: 0.75rem;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            z-index: 1000;
+            font-weight: 500;
+            border: 1px solid rgba(0, 245, 181, 0.3);
+        }
+
+        .asset-code-link::after {
+            z-index: 999;
+        }
+
+        .asset-code-link:hover::before {
+            opacity: 1;
+        }
+
+        /* Toast Notification */
+        .toast-container {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .toast {
+            background: linear-gradient(135deg, rgba(34, 211, 238, 0.95) 0%, rgba(6, 182, 212, 0.95) 100%);
+            border: 1px solid rgba(34, 211, 238, 0.4);
+            border-radius: 0.5rem;
+            padding: 1rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            min-width: 300px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+        }
+
+        .toast.hide {
+            animation: slideOut 0.3s ease-out forwards;
+        }
+
+        .toast-icon {
+            font-size: 1.25rem;
+            color: #00f5b5;
+            flex-shrink: 0;
+        }
+
+        .toast-content {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            flex: 1;
+        }
+
+        .toast-title {
+            color: var(--atlas-white);
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .toast-message {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.85rem;
+        }
+
+        .toast-close {
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.6);
+            cursor: pointer;
+            font-size: 1.25rem;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.2s;
+            flex-shrink: 0;
+        }
+
+        .toast-close:hover {
+            color: var(--atlas-white);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .toast-container {
+                bottom: 1rem;
+                right: 1rem;
+                left: 1rem;
+            }
+
+            .toast {
+                min-width: unset;
+            }
+        }
     </style>
 {% endblock %}
 
 {% block content %}
 
+<!-- Toast Container -->
+<div class="toast-container" id="toast-container"></div>
+
 <div class="quality-container">
-    <!-- Aviso de Interatividade -->
-    <div style="background: linear-gradient(135deg, rgba(34, 211, 238, 0.1) 0%, rgba(34, 211, 238, 0.05) 100%); border: 1px solid rgba(34, 211, 238, 0.2); border-radius: var(--radius-lg); padding: 1rem 1.5rem; margin-bottom: 2rem;">
-        <div style="display: flex; align-items: center; gap: 1rem;">
-            <i class="fas fa-info-circle" style="color: #22d3ee; font-size: 1.25rem;"></i>
-            <p style="margin: 0; color: var(--color-gray-300);">
-                💡 <strong>Dica:</strong> Clique nos nomes dos ativos (em <span style="color: #22d3ee;">cyan</span>) para abrir a tela de Tracking em uma nova janela e analisar os detalhes!
-            </p>
-        </div>
-    </div>
     <!-- Ranking 1: Technicians Activity -->
     <div class="ranking-card">
         <div class="ranking-header">
@@ -526,15 +672,15 @@ function renderTechniciansTable() {
 // Renderizar tabela de compressor
 function renderCompressorTable() {
     const tbody = document.getElementById('compressor-table');
-    
+
     if (!compressorState.data || compressorState.data.length === 0) {
         tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 2rem; color: var(--color-gray-500);">Nenhum ativo encontrado</td></tr>';
         updatePaginationControls('comp', compressorState);
         return;
     }
-    
+
     const startIdx = (compressorState.page - 1) * compressorState.perPage;
-    
+
     tbody.innerHTML = compressorState.data.map((asset, idx) => `
         <tr>
             <td>
@@ -546,7 +692,7 @@ function renderCompressorTable() {
             </td>
             <td>
                 <div class="asset-info">
-                    <a href="javascript:void(0)" onclick="window.open('/portal_associacao/tracking?oem_serial_number=${encodeURIComponent(asset.asset_id || asset.oem_serial_number || '')}', '_blank')" class="asset-code-link" title="Clique para abrir Tracking em nova janela">
+                    <a href="javascript:void(0)" onclick="window.open('/portal_associacao/tracking?oem_serial_number=${encodeURIComponent(asset.asset_id || asset.oem_serial_number || '')}', '_blank')" class="asset-code-link" data-tooltip="Clique para abrir Tracking" title="Clique para abrir Tracking em nova janela">
                         ${escapeHtml(asset.asset_id || asset.oem_serial_number || '')}
                     </a>
                 </div>
@@ -564,22 +710,23 @@ function renderCompressorTable() {
             </td>
         </tr>
     `).join('');
-    
+
     updatePaginationControls('comp', compressorState);
+    addPulseAnimationToLinks();
 }
 
 // Renderizar tabela de consumo
 function renderConsumptionTable() {
     const tbody = document.getElementById('consumption-table');
-    
+
     if (!consumptionState.data || consumptionState.data.length === 0) {
         tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 2rem; color: var(--color-gray-500);">Nenhum ativo encontrado</td></tr>';
         updatePaginationControls('cons', consumptionState);
         return;
     }
-    
+
     const startIdx = (consumptionState.page - 1) * consumptionState.perPage;
-    
+
     tbody.innerHTML = consumptionState.data.map((asset, idx) => `
         <tr>
             <td>
@@ -591,7 +738,7 @@ function renderConsumptionTable() {
             </td>
             <td>
                 <div class="asset-info">
-                    <a href="javascript:void(0)" onclick="window.open('/portal_associacao/tracking?oem_serial_number=${encodeURIComponent(asset.asset_id || asset.oem_serial_number || '')}', '_blank')" class="asset-code-link" title="Clique para abrir Tracking em nova janela">
+                    <a href="javascript:void(0)" onclick="window.open('/portal_associacao/tracking?oem_serial_number=${encodeURIComponent(asset.asset_id || asset.oem_serial_number || '')}', '_blank')" class="asset-code-link" data-tooltip="Clique para abrir Tracking" title="Clique para abrir Tracking em nova janela">
                         ${escapeHtml(asset.asset_id || asset.oem_serial_number || '')}
                     </a>
                 </div>
@@ -609,8 +756,9 @@ function renderConsumptionTable() {
             </td>
         </tr>
     `).join('');
-    
+
     updatePaginationControls('cons', consumptionState);
+    addPulseAnimationToLinks();
 }
 
 // Funções de mudança de página
@@ -641,6 +789,66 @@ function getBadgeClass(position) {
     if (position === 2) return 'top2';
     if (position === 3) return 'top3';
     return 'other';
+}
+
+// Toast Notification
+function showToast(title, message, duration = 5000) {
+    const container = document.getElementById('toast-container');
+    const toastId = 'toast-' + Date.now();
+
+    const toast = document.createElement('div');
+    toast.id = toastId;
+    toast.className = 'toast';
+    toast.innerHTML = `
+        <i class="fas fa-lightbulb toast-icon"></i>
+        <div class="toast-content">
+            <div class="toast-title">${title}</div>
+            <div class="toast-message">${message}</div>
+        </div>
+        <button class="toast-close" onclick="removeToast('${toastId}')">
+            <i class="fas fa-times"></i>
+        </button>
+    `;
+
+    container.appendChild(toast);
+
+    // Auto remove após duration
+    const timeoutId = setTimeout(() => {
+        removeToast(toastId);
+    }, duration);
+
+    // Store para limpeza caso necessário
+    toast.timeoutId = timeoutId;
+}
+
+function removeToast(toastId) {
+    const toast = document.getElementById(toastId);
+    if (toast) {
+        clearTimeout(toast.timeoutId);
+        toast.classList.add('hide');
+        setTimeout(() => {
+            toast.remove();
+        }, 300);
+    }
+}
+
+// Adiciona animação de pulso aos links
+function addPulseAnimationToLinks() {
+    const links = document.querySelectorAll('.asset-code-link');
+    links.forEach((link, index) => {
+        // Remove animação anterior se existir
+        link.classList.remove('pulse-animation');
+
+        // Adiciona delay gradual para cada link
+        setTimeout(() => {
+            link.classList.add('pulse-animation');
+        }, index * 100);
+
+        // Remove animação após 6 segundos (3 ciclos de 2 segundos)
+        setTimeout(() => {
+            link.classList.remove('pulse-animation');
+        }, 6000 + (index * 100));
+    });
 }
 
 function updatePaginationControls(prefix, state) {
@@ -705,6 +913,15 @@ document.addEventListener('DOMContentLoaded', () => {
     loadTechnicians(1);
     loadCompressor(1);
     loadConsumption(1);
+
+    // Mostrar toast notification após 1 segundo
+    setTimeout(() => {
+        showToast(
+            'Dica: Ativos interativos',
+            'Clique nos nomes em cyan para analisar detalhes no Tracking',
+            5000
+        );
+    }, 1000);
 
     // Verificar se há parâmetro de seção na URL
     const section = getQueryParam('section');

@@ -15,13 +15,19 @@ import re
 import unicodedata
 import os
 from datetime import datetime, timedelta
+import requests_cache
+from retry_requests import retry
+import openmeteo_requests
 
 tracking_bp = Blueprint(
     "portal_tracking", __name__, url_prefix="/portal_associacao/tracking"
 )
 
 # Clients autorizados para usar a seção de Rastreio Simples
-SIMPLE_TRACKING_AUTHORIZED_CLIENTS = {"Fogel de Centroamerica, S.A."}
+SIMPLE_TRACKING_AUTHORIZED_CLIENTS = {
+    "Fogel de Centroamerica, S.A.",
+    "Philip Morris Brasil",
+}
 
 
 def remover_special_caracteres(text):
@@ -117,6 +123,43 @@ def check_gps_displacement_alert(db_session, client_code, asset, movement_event)
     return None, None, None
 
 
+def get_ambient_temperature(latitude, longitude):
+    """
+    Fetch current ambient temperature from Open-Meteo API.
+    Returns temperature in Celsius or None if request fails.
+    """
+    try:
+        if latitude is None or longitude is None:
+            return None
+
+        # Setup the Open-Meteo API client with cache and retry
+        cache_session = requests_cache.CachedSession('.cache', expire_after=-1)
+        retry_session = retry(cache_session, retries=5, backoff_factor=0.2)
+        openmeteo = openmeteo_requests.Client(session=retry_session)
+
+        # Get current temperature
+        params = {
+            "latitude": latitude,
+            "longitude": longitude,
+            "current": "temperature_2m",
+            "timezone": "auto",
+        }
+
+        responses = openmeteo.weather_api("https://api.open-meteo.com/v1/forecast", params=params)
+
+        if responses and len(responses) > 0:
+            response = responses[0]
+            current = response.Current()
+            temperature = current.Variables(0).Value() if current else None
+            return float(temperature) if temperature is not None else None
+
+        return None
+
+    except Exception as e:
+        print(f"[WARNING] Erro ao buscar temperatura ambiente do Open-Meteo: {str(e)}")
+        return None
+
+
 def calculate_door_event_statistics(db_session, asset_serial_number, days=30):
     """
     Calculate door event statistics for morning, afternoon, and night over the last `days` days.
@@ -139,6 +182,7 @@ def calculate_door_event_statistics(db_session, asset_serial_number, days=30):
                 DoorEvent.time_of_day == period,
                 DoorEvent.asset_serial_number == asset_serial_number,
                 DoorEvent.open_event_time >= (datetime.utcnow() - timedelta(days=days)),
+                DoorEvent.door_count < 150,
             )
             .all()
         )
@@ -911,7 +955,7 @@ def get_asset_details(serial_number):
         if not basic_result:
             return jsonify({"error": "Asset não encontrado"}), 404
 
-        # 2. Dados de saúde detalhados (assets_health_latest_event_24h_view)
+        # 2. Dados de saúde detalhados (health_events)
         health_sql = text(
             """
             SELECT
@@ -934,7 +978,7 @@ def get_asset_details(serial_number):
                 event_time,
                 asset_type,
                 outlet_type
-            FROM assets_health_latest_event_24h_view
+            FROM health_events
             WHERE client = :client AND asset_serial_number = :serial
             ORDER BY event_time DESC
             LIMIT 1
@@ -1046,7 +1090,17 @@ def get_asset_details(serial_number):
             }
         )
 
-        # 7. Garantir que nenhum valor None seja enviado
+        # 7. Buscar temperatura do ambiente local via Open-Meteo API
+        if asset_details.get("latitude") and asset_details.get("longitude"):
+            ambient_temp = get_ambient_temperature(
+                asset_details.get("latitude"),
+                asset_details.get("longitude")
+            )
+            asset_details["ambient_temperature_from_api"] = ambient_temp
+        else:
+            asset_details["ambient_temperature_from_api"] = None
+
+        # 8. Garantir que nenhum valor None seja enviado
         for key, value in asset_details.items():
             if value is None:
                 if any(

@@ -21,15 +21,22 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 2rem;
-            padding: 1.5rem;
-            background: #4C3AFF;
-            border-radius: 8px;
-            color: white;
+            padding: 2rem;
+            background: linear-gradient(135deg, var(--atlas-gray-pro) 0%, var(--atlas-black-tech) 100%);
+            border: 1px solid rgba(0, 195, 255, 0.2);
+            border-radius: var(--radius-lg);
+            color: var(--atlas-white);
+            box-shadow: var(--shadow-md);
         }
 
         .alerts-header h2 {
             margin: 0;
             font-size: 1.5rem;
+            color: var(--atlas-white);
+        }
+
+        .alerts-header p {
+            color: rgba(255, 255, 255, 0.7);
         }
 
         .alerts-stats {
@@ -44,14 +51,15 @@
         }
 
         .stat-value {
-            font-size: 1.5rem;
-            font-weight: bold;
+            font-size: 2rem;
+            font-weight: 700;
             margin-bottom: 0.25rem;
+            color: #00f5b5;
         }
 
         .stat-label {
             font-size: 0.875rem;
-            opacity: 0.9;
+            color: rgba(255, 255, 255, 0.7);
         }
 
         .period-selector {
@@ -62,177 +70,251 @@
 
         .period-btn {
             padding: 0.75rem 1.5rem;
-            border: 2px solid #e2e8f0;
-            background: white;
-            border-radius: 6px;
+            border: 1px solid rgba(0, 195, 255, 0.2);
+            background: rgba(0, 195, 255, 0.05);
+            color: var(--atlas-white);
+            border-radius: var(--radius-md);
             cursor: pointer;
             font-weight: 500;
-            transition: all 0.3s ease;
+            transition: all var(--transition-base);
         }
 
         .period-btn:hover {
-            border-color: #4C3AFF;
-            color: #4C3AFF;
+            border-color: rgba(0, 195, 255, 0.4);
+            background: rgba(0, 195, 255, 0.1);
+            color: #22d3ee;
         }
 
         .period-btn.active {
-            background: #4C3AFF;
-            color: white;
-            border-color: #4C3AFF;
+            background: linear-gradient(135deg, rgba(34, 211, 238, 0.2) 0%, rgba(34, 211, 238, 0.1) 100%);
+            color: #22d3ee;
+            border-color: rgba(34, 211, 238, 0.4);
+            box-shadow: 0 0 15px rgba(34, 211, 238, 0.1);
         }
 
         .alerts-list {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
         }
 
         .alert-item {
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 1.5rem;
+            background: linear-gradient(135deg, rgba(34, 211, 238, 0.05) 0%, rgba(34, 211, 238, 0.02) 100%);
+            border: 1px solid rgba(0, 195, 255, 0.15);
+            border-left: 3px solid #22d3ee;
+            border-radius: var(--radius-md);
+            padding: 1.25rem;
             display: flex;
+            flex-direction: column;
+            height: 100%;
+            min-height: 380px;
+            transition: all var(--transition-base);
+            position: relative;
+        }
+
+        .alert-item-header {
+            display: flex;
+            justify-content: space-between;
             align-items: flex-start;
-            gap: 1.5rem;
-            transition: all 0.3s ease;
-            border-left: 4px solid #667eea;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(0, 195, 255, 0.1);
+        }
+
+        .alert-item-icon-wrap {
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .alert-item:hover {
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            border-color: rgba(0, 195, 255, 0.3);
+            border-left-color: #22d3ee;
+            box-shadow: 0 8px 24px rgba(34, 211, 238, 0.1);
             transform: translateY(-2px);
         }
 
         .alert-item.critical {
-            border-left-color: #f56565;
-            background: rgba(245, 101, 101, 0.05);
+            border-left-color: #f87171;
+            border-color: rgba(248, 113, 113, 0.2);
+            background: linear-gradient(135deg, rgba(248, 113, 113, 0.08) 0%, rgba(248, 113, 113, 0.02) 100%);
+        }
+
+        .alert-item.critical:hover {
+            border-color: rgba(248, 113, 113, 0.4);
+            box-shadow: 0 8px 24px rgba(248, 113, 113, 0.15);
         }
 
         .alert-item.warning {
-            border-left-color: #f6ad55;
-            background: rgba(246, 173, 85, 0.05);
+            border-left-color: #fb923c;
+            border-color: rgba(251, 146, 60, 0.2);
+            background: linear-gradient(135deg, rgba(251, 146, 60, 0.08) 0%, rgba(251, 146, 60, 0.02) 100%);
+        }
+
+        .alert-item.warning:hover {
+            border-color: rgba(251, 146, 60, 0.4);
+            box-shadow: 0 8px 24px rgba(251, 146, 60, 0.15);
         }
 
         .alert-item.info {
-            border-left-color: #4299e1;
-            background: rgba(66, 153, 225, 0.05);
+            border-left-color: #22d3ee;
+            border-color: rgba(34, 211, 238, 0.2);
+            background: linear-gradient(135deg, rgba(34, 211, 238, 0.08) 0%, rgba(34, 211, 238, 0.02) 100%);
+        }
+
+        .alert-item.info:hover {
+            border-color: rgba(34, 211, 238, 0.4);
+            box-shadow: 0 8px 24px rgba(34, 211, 238, 0.15);
         }
 
         .alert-icon {
             display: flex;
             align-items: center;
             justify-content: center;
-            min-width: 48px;
-            width: 48px;
-            height: 48px;
-            border-radius: 8px;
-            font-size: 1.25rem;
+            min-width: 56px;
+            width: 56px;
+            height: 56px;
+            border-radius: var(--radius-md);
+            font-size: 1.5rem;
+            flex-shrink: 0;
         }
 
         .alert-icon.critical {
-            background: #fed7d7;
-            color: #f56565;
+            background: linear-gradient(135deg, rgba(248, 113, 113, 0.2) 0%, rgba(248, 113, 113, 0.1) 100%);
+            color: #f87171;
+            border: 1px solid rgba(248, 113, 113, 0.3);
         }
 
         .alert-icon.warning {
-            background: #feebc8;
-            color: #f6ad55;
+            background: linear-gradient(135deg, rgba(251, 146, 60, 0.2) 0%, rgba(251, 146, 60, 0.1) 100%);
+            color: #fb923c;
+            border: 1px solid rgba(251, 146, 60, 0.3);
         }
 
         .alert-icon.info {
-            background: #bee3f8;
-            color: #4299e1;
+            background: linear-gradient(135deg, rgba(34, 211, 238, 0.2) 0%, rgba(34, 211, 238, 0.1) 100%);
+            color: #22d3ee;
+            border: 1px solid rgba(34, 211, 238, 0.3);
         }
 
         .alert-content {
             flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            overflow: hidden;
+            text-align: center;
         }
 
         .alert-header-row {
             display: flex;
-            justify-content: space-between;
-            align-items: start;
-            margin-bottom: 0.5rem;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0;
+            flex-shrink: 0;
+            width: 100%;
         }
 
         .alert-title {
             font-weight: 600;
-            font-size: 1rem;
-            color: white;
+            font-size: 0.95rem;
+            color: var(--atlas-white);
             margin: 0;
+            line-height: 1.5;
+            word-break: break-word;
         }
 
         .alert-type {
             display: inline-block;
-            padding: 0.25rem 0.75rem;
-            background: #edf2f7;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            font-weight: 500;
-            color: #4a5568;
+            padding: 0.35rem 0.85rem;
+            background: rgba(0, 195, 255, 0.12);
+            border: 1px solid rgba(0, 195, 255, 0.25);
+            border-radius: var(--radius-sm);
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #22d3ee;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.75px;
+            margin-bottom: 0.75rem;
         }
 
         .alert-meta {
             display: flex;
-            gap: 1.5rem;
-            font-size: .875rem;
-            color: #FFFFFF;
-            margin-top: .75rem;
+            gap: 0.5rem;
+            font-size: 0.72rem;
+            color: rgba(255, 255, 255, 0.55);
+            margin-top: 0.75rem;
+            flex-wrap: wrap;
+            justify-content: center;
         }
 
         .alert-meta-item {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 0.35rem;
+            position: relative;
         }
 
         .alert-meta-item i {
-            color: #cbd5e0;
+            color: #22d3ee;
+            font-size: 0.85rem;
         }
 
         .alert-priority {
             font-weight: 600;
-            padding: 0.25rem 0.75rem;
-            border-radius: 4px;
-            font-size: 0.75rem;
+            padding: 0.3rem 0.8rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.7rem;
             text-transform: uppercase;
+            border: 1px solid;
+            letter-spacing: 0.5px;
+            flex-shrink: 0;
         }
 
         .alert-priority.high {
-            background: #fed7d7;
-            color: #c53030;
+            background: rgba(248, 113, 113, 0.12);
+            color: #f87171;
+            border-color: rgba(248, 113, 113, 0.35);
         }
 
         .alert-priority.medium {
-            background: #feebc8;
-            color: #c05621;
+            background: rgba(251, 146, 60, 0.12);
+            color: #fb923c;
+            border-color: rgba(251, 146, 60, 0.35);
         }
 
         .alert-priority.low {
-            background: #c6f6d5;
-            color: #22543d;
+            background: rgba(0, 245, 181, 0.12);
+            color: #00f5b5;
+            border-color: rgba(0, 245, 181, 0.35);
         }
 
         .empty-state {
             text-align: center;
             padding: 3rem 2rem;
-            background: #f7fafc;
-            border-radius: 8px;
-            color: #718096;
+            background: linear-gradient(135deg, rgba(34, 211, 238, 0.05) 0%, rgba(34, 211, 238, 0.02) 100%);
+            border: 1px solid rgba(0, 195, 255, 0.15);
+            border-radius: var(--radius-lg);
+            color: rgba(255, 255, 255, 0.6);
         }
 
         .empty-state i {
             font-size: 3rem;
-            color: #cbd5e0;
+            color: rgba(34, 211, 238, 0.3);
             margin-bottom: 1rem;
         }
 
         .empty-state p {
             font-size: 1rem;
             margin: 0.5rem 0;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .empty-state strong {
+            color: var(--atlas-white);
         }
 
         .loading-spinner {
@@ -245,8 +327,8 @@
         .spinner {
             width: 40px;
             height: 40px;
-            border: 4px solid #e2e8f0;
-            border-top-color: #667eea;
+            border: 4px solid rgba(0, 195, 255, 0.2);
+            border-top-color: #22d3ee;
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
         }
@@ -261,28 +343,30 @@
             gap: 0.5rem;
             margin-top: 2rem;
             padding-top: 2rem;
-            border-top: 1px solid #e2e8f0;
+            border-top: 1px solid rgba(0, 195, 255, 0.1);
         }
 
         .pagination-btn {
             padding: 0.5rem 1rem;
-            border: 1px solid #e2e8f0;
-            background: white;
-            border-radius: 4px;
+            border: 1px solid rgba(0, 195, 255, 0.2);
+            background: rgba(0, 195, 255, 0.05);
+            color: var(--atlas-white);
+            border-radius: var(--radius-md);
             cursor: pointer;
             font-size: 0.875rem;
-            transition: all 0.3s ease;
+            transition: all var(--transition-base);
         }
 
         .pagination-btn:hover:not(:disabled) {
-            background: #edf2f7;
-            border-color: #667eea;
+            background: rgba(0, 195, 255, 0.1);
+            border-color: rgba(0, 195, 255, 0.4);
+            color: #22d3ee;
         }
 
         .pagination-btn.active {
-            background: #667eea;
-            color: white;
-            border-color: #667eea;
+            background: rgba(34, 211, 238, 0.15);
+            color: #22d3ee;
+            border-color: rgba(34, 211, 238, 0.4);
         }
 
         .pagination-btn:disabled {
@@ -291,9 +375,9 @@
         }
 
         .filters-section {
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
+            background: linear-gradient(135deg, rgba(34, 211, 238, 0.05) 0%, rgba(34, 211, 238, 0.02) 100%);
+            border: 1px solid rgba(0, 195, 255, 0.15);
+            border-radius: var(--radius-lg);
             padding: 1.5rem;
             margin-bottom: 2rem;
         }
@@ -301,13 +385,17 @@
         .filters-title {
             font-size: 0.875rem;
             font-weight: 600;
-            color: #0B0B0D;
+            color: var(--atlas-white);
             text-transform: uppercase;
             letter-spacing: 0.5px;
             margin-bottom: 1rem;
             display: flex;
             align-items: center;
             gap: 0.5rem;
+        }
+
+        .filters-title i {
+            color: #22d3ee;
         }
 
         .filters-grid {
@@ -325,25 +413,37 @@
         .filter-label {
             font-size: 0.875rem;
             font-weight: 500;
-            color: #0B0B0D;
+            color: rgba(255, 255, 255, 0.8);
         }
 
         .filter-input,
         .filter-select {
             padding: 0.625rem;
-            border: 1px solid #cbd5e0;
-            border-radius: 6px;
+            border: 1px solid rgba(0, 195, 255, 0.2);
+            border-radius: var(--radius-md);
             font-size: 0.875rem;
             font-family: inherit;
-            transition: all 0.2s ease;
-            background: white;
+            transition: all var(--transition-base);
+            background: rgba(0, 195, 255, 0.03);
+            color: var(--atlas-white);
+        }
+
+        .filter-input::placeholder,
+        .filter-select option {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .filter-select option {
+            background: var(--atlas-black-tech);
+            color: var(--atlas-white);
         }
 
         .filter-input:focus,
         .filter-select:focus {
             outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            border-color: rgba(0, 195, 255, 0.4);
+            box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.1);
+            background: rgba(0, 195, 255, 0.05);
         }
 
         .filters-actions {
@@ -354,36 +454,38 @@
 
         .btn-apply-filters {
             padding: 0.625rem 1.25rem;
-            background: #4C3AFF;
-            color: white;
-            border: none;
-            border-radius: 6px;
+            background: rgba(34, 211, 238, 0.2);
+            color: #22d3ee;
+            border: 1px solid rgba(34, 211, 238, 0.3);
+            border-radius: var(--radius-md);
             font-size: 0.875rem;
             font-weight: 500;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all var(--transition-base);
         }
 
         .btn-apply-filters:hover {
-            background: #5a67d8;
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            background: rgba(34, 211, 238, 0.3);
+            border-color: rgba(34, 211, 238, 0.5);
+            box-shadow: 0 4px 12px rgba(34, 211, 238, 0.15);
         }
 
         .btn-clear-filters {
             padding: 0.625rem 1.25rem;
-            background: #f7fafc;
-            color: #4a5568;
-            border: 1px solid #cbd5e0;
-            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            color: rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: var(--radius-md);
             font-size: 0.875rem;
             font-weight: 500;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all var(--transition-base);
         }
 
         .btn-clear-filters:hover {
-            background: #edf2f7;
-            border-color: #a0aec0;
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+            color: var(--atlas-white);
         }
 
         .active-filters {
@@ -393,25 +495,239 @@
             margin-top: 1rem;
         }
 
+        .active-filters > span {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
         .filter-badge {
             display: inline-flex;
             align-items: center;
             gap: 0.5rem;
             padding: 0.25rem 0.75rem;
-            background: #bee3f8;
-            color: #2c5282;
-            border-radius: 4px;
+            background: rgba(34, 211, 238, 0.15);
+            color: #22d3ee;
+            border: 1px solid rgba(34, 211, 238, 0.3);
+            border-radius: var(--radius-sm);
             font-size: 0.75rem;
             font-weight: 500;
         }
 
         .filter-badge i {
             cursor: pointer;
-            transition: transform 0.2s ease;
+            transition: all var(--transition-base);
         }
 
         .filter-badge i:hover {
             transform: scale(1.2);
+            color: #00f5b5;
+        }
+
+        /* Alert Action Buttons */
+        .alert-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: auto;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(0, 195, 255, 0.1);
+            width: 100%;
+        }
+
+        .alert-action-btn {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+            padding: 0.6rem 0.75rem;
+            background: rgba(34, 211, 238, 0.15);
+            color: #22d3ee;
+            border: 1px solid rgba(34, 211, 238, 0.3);
+            border-radius: var(--radius-md);
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all var(--transition-base);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .alert-action-btn:hover {
+            background: rgba(34, 211, 238, 0.25);
+            border-color: rgba(34, 211, 238, 0.5);
+            box-shadow: 0 4px 12px rgba(34, 211, 238, 0.15);
+            transform: translateY(-1px);
+        }
+
+        .alert-action-btn i {
+            font-size: 0.8rem;
+            flex-shrink: 0;
+        }
+
+        .alert-value-display {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.4rem;
+            width: 100%;
+        }
+
+        .alert-value {
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: #22d3ee;
+            line-height: 1;
+            letter-spacing: -0.5px;
+        }
+
+        .alert-unit {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.65);
+            font-weight: 500;
+            text-transform: lowercase;
+        }
+
+        /* Backwards compatibility - keep old classes working */
+        .alert-displacement-title {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.4rem;
+            width: 100%;
+        }
+
+        .displacement-value {
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: #22d3ee;
+            line-height: 1;
+            letter-spacing: -0.5px;
+        }
+
+        .displacement-label {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.65);
+            font-weight: 500;
+            text-transform: lowercase;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 1200px) {
+            .alerts-list {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .alerts-list {
+                grid-template-columns: 1fr;
+                gap: 1.25rem;
+            }
+
+            .alert-item {
+                padding: 1.25rem;
+                min-height: 360px;
+            }
+
+            .alert-item-header {
+                margin-bottom: 1.25rem;
+                padding-bottom: 0.75rem;
+            }
+
+            .alert-icon {
+                min-width: 48px;
+                width: 48px;
+                height: 48px;
+                font-size: 1.25rem;
+            }
+
+            .displacement-value,
+            .alert-value {
+                font-size: 1.8rem;
+            }
+
+            .alert-title {
+                font-size: 0.9rem;
+            }
+
+            .alert-meta {
+                gap: 0.4rem;
+                font-size: 0.68rem;
+                margin-top: 0.5rem;
+            }
+
+            .alert-meta-item i {
+                font-size: 0.7rem;
+            }
+
+            .alert-actions {
+                gap: 0.4rem;
+            }
+
+            .alert-action-btn {
+                font-size: 0.68rem;
+                padding: 0.5rem 0.6rem;
+                gap: 0.3rem;
+            }
+
+            .alert-action-btn i {
+                font-size: 0.7rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .alerts-list {
+                gap: 0.75rem;
+            }
+
+            .alert-item {
+                padding: 1rem;
+                min-height: 340px;
+            }
+
+            .alert-item-header {
+                margin-bottom: 1rem;
+                padding-bottom: 0.65rem;
+            }
+
+            .displacement-value,
+            .alert-value {
+                font-size: 1.6rem;
+            }
+
+            .alert-title {
+                font-size: 0.85rem;
+            }
+
+            .alert-type {
+                font-size: 0.65rem;
+                padding: 0.3rem 0.7rem;
+                margin-bottom: 0.6rem;
+            }
+
+            .alert-meta {
+                gap: 0.35rem;
+                font-size: 0.64rem;
+                margin-top: 0.4rem;
+            }
+
+            .alert-meta-item i {
+                font-size: 0.65rem;
+            }
+
+            .alert-action-btn span {
+                display: none;
+            }
+
+            .alert-action-btn {
+                padding: 0.45rem 0.5rem;
+                font-size: 0.6rem;
+            }
+
+            .alert-action-btn i {
+                font-size: 0.65rem;
+            }
         }
     </style>
 {% endblock %}
@@ -547,52 +863,107 @@
         {% if alerts %}
             {% for alert in alerts %}
             <div class="alert-item {% if alert.priority == 'High' %}critical{% elif alert.priority == 'Medium' %}warning{% else %}info{% endif %}">
-                <div class="alert-icon {% if alert.priority == 'High' %}critical{% elif alert.priority == 'Medium' %}warning{% else %}info{% endif %}">
-                    {% if alert.priority == 'High' %}
-                        <i class="fas fa-exclamation-circle"></i>
-                    {% elif alert.priority == 'Medium' %}
-                        <i class="fas fa-exclamation-triangle"></i>
-                    {% else %}
-                        <i class="fas fa-info-circle"></i>
+                <!-- HEADER: Icon (left) + Priority (right) -->
+                <div class="alert-item-header">
+                    <div class="alert-item-icon-wrap">
+                        <div class="alert-icon {% if alert.priority == 'High' %}critical{% elif alert.priority == 'Medium' %}warning{% else %}info{% endif %}">
+                            {% if alert.priority == 'High' %}
+                                <i class="fas fa-exclamation-circle"></i>
+                            {% elif alert.priority == 'Medium' %}
+                                <i class="fas fa-exclamation-triangle"></i>
+                            {% else %}
+                                <i class="fas fa-info-circle"></i>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% if alert.priority %}
+                    <span class="alert-priority {% if alert.priority == 'High' %}high{% elif alert.priority == 'Medium' %}medium{% else %}low{% endif %}">
+                        {{ alert.priority }}
+                    </span>
                     {% endif %}
                 </div>
+
+                <!-- CONTENT: Title/Displacement + Type + Metadata -->
                 <div class="alert-content">
+                    <!-- Main Title or Value Display -->
                     <div class="alert-header-row">
-                        <h3 class="alert-title">{{ alert.alert_text or alert.alert_definition }}</h3>
-                        {% if alert.priority %}
-                        <span class="alert-priority {% if alert.priority == 'High' %}high{% elif alert.priority == 'Medium' %}medium{% else %}low{% endif %}">
-                            {{ alert.priority }}
-                        </span>
-                        {% endif %}
+                        <div class="alert-value-display">
+                            {% if alert.value %}
+                                {% set numeric_value = alert.value|float %}
+                                {% if alert.alert_type == 'GPS Displacement' %}
+                                    {% if numeric_value > 1000 %}
+                                        <span class="alert-value">{{ "%.2f"|format(numeric_value / 1000) }}</span>
+                                        <span class="alert-unit">km</span>
+                                    {% else %}
+                                        <span class="alert-value">{{ numeric_value|int }}</span>
+                                        <span class="alert-unit">metros</span>
+                                    {% endif %}
+                                {% elif alert.alert_type in ['Temperature', 'Temperatura'] %}
+                                    <span class="alert-value">{{ "%.1f"|format(numeric_value) }}</span>
+                                    <span class="alert-unit">°C</span>
+                                {% elif alert.alert_type in ['Humidity', 'Umidade'] %}
+                                    <span class="alert-value">{{ numeric_value|int }}</span>
+                                    <span class="alert-unit">%</span>
+                                {% elif alert.alert_type in ['Pressure', 'Pressão'] %}
+                                    <span class="alert-value">{{ "%.1f"|format(numeric_value) }}</span>
+                                    <span class="alert-unit">PSI</span>
+                                {% elif alert.alert_type in ['Vibration', 'Vibração'] %}
+                                    <span class="alert-value">{{ "%.2f"|format(numeric_value) }}</span>
+                                    <span class="alert-unit">mm/s</span>
+                                {% else %}
+                                    <span class="alert-value">{{ numeric_value }}</span>
+                                    {% if alert.alert_type %}
+                                        <span class="alert-unit" style="text-transform: lowercase;">{{ alert.alert_type }}</span>
+                                    {% endif %}
+                                {% endif %}
+                            {% else %}
+                                <span class="alert-value">?</span>
+                                <span class="alert-unit">N/A</span>
+                            {% endif %}
+                        </div>
                     </div>
+
+                    <!-- Alert Type Badge -->
                     <span class="alert-type">{{ alert.alert_type }}</span>
+
+                    <!-- Metadata -->
                     <div class="alert-meta">
                         {% if alert.asset_serial_number %}
-                        <div class="alert-meta-item">
+                        <div class="alert-meta-item" title="{{ alert.asset_serial_number }}">
                             <i class="fas fa-barcode"></i>
-                            <span>{{ alert.asset_serial_number }}</span>
-                        </div>
-                        {% endif %}
-                        {% if alert.outlet %}
-                        <div class="alert-meta-item">
-                            <i class="fas fa-store"></i>
-                            <span>{{ alert.outlet }}</span>
+                            <span>{{ alert.asset_serial_number|truncate(10, True) }}</span>
                         </div>
                         {% endif %}
                         {% if alert.outlet_city %}
-                        <div class="alert-meta-item">
-                            <i class="fas fa-map-marker-alt"></i>
-                            <span>{{ alert.outlet_city }}</span>
+                        <div class="alert-meta-item" title="{{ alert.outlet_city }}">
+                            <i class="fas fa-map-pin"></i>
+                            <span>{{ alert.outlet_city|truncate(10, True) }}</span>
                         </div>
                         {% endif %}
                         {% if alert.alert_at %}
-                        <div class="alert-meta-item">
+                        <div class="alert-meta-item" title="{{ alert.alert_at.strftime('%d/%m/%Y %H:%M') }}">
                             <i class="fas fa-clock"></i>
-                            <span id="alert-time-{{ loop.index0 }}" data-timestamp="{{ alert.alert_at.isoformat() if alert.alert_at else '' }}">{{ alert.alert_at.strftime('%d/%m/%Y %H:%M') }}</span>
+                            <span id="alert-time-{{ loop.index0 }}" data-timestamp="{{ alert.alert_at.isoformat() if alert.alert_at else '' }}">{{ alert.alert_at.strftime('%d/%m %H:%M') }}</span>
                         </div>
                         {% endif %}
                     </div>
                 </div>
+
+                <!-- FOOTER: Action Buttons -->
+                {% if alert.asset_serial_number %}
+                <div class="alert-actions">
+                    {% if alert.alert_type == 'GPS Displacement' %}
+                    <a href="{{ url_for('portal_tracking.render_tracking') }}?oem_serial_number={{ alert.asset_serial_number }}&view=map" target="_blank" class="alert-action-btn" title="Visualizar no Google Maps">
+                        <i class="fas fa-map"></i>
+                        <span>Maps</span>
+                    </a>
+                    {% endif %}
+                    <a href="{{ url_for('portal_tracking.render_tracking') }}?oem_serial_number={{ alert.asset_serial_number }}" target="_blank" class="alert-action-btn" title="Rastrear este ativo">
+                        <i class="fas fa-location-dot"></i>
+                        <span>Rastrear</span>
+                    </a>
+                </div>
+                {% endif %}
             </div>
             {% endfor %}
         {% else %}

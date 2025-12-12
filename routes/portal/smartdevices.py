@@ -140,7 +140,7 @@ def create_smartdevice():
         if not user or not user.get("client"):
             flash("Sessão inválida. Por favor, faça login novamente.", "error")
             return redirect(url_for("auth.login"))
-        
+
         db_session = get_session()
 
         def form_bool(name, default=False):
@@ -242,7 +242,7 @@ def search_smartdevices():
                 (SmartDevice.mac_address.ilike(search_pattern))
                 | (SmartDevice.serial_number.ilike(search_pattern))
                 | (SmartDevice.outlet.ilike(search_pattern))
-                | (SmartDevice.outlet_code.ilike(search_pattern))
+                | (SmartDevice.linked_with_asset.ilike(search_pattern))
                 | (SmartDevice.city.ilike(search_pattern))
             )
             .limit(20)

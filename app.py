@@ -4,6 +4,8 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from db.database import get_session, init_db
 from models.models import User
 from datetime import datetime
+import time
+from sqlalchemy.exc import TimeoutError, OperationalError
 from routes.app.users import users_bp
 from routes.app.outlet import outlets_bp
 from routes.app.assets import assets_bp
@@ -27,7 +29,6 @@ INVENTORY_AUTHORIZED_CLIENTS = {
     c.lower()
     for c in (
         "Redbull",
-        # "Nome do Cliente 2",
     )
 }
 
@@ -160,8 +161,39 @@ def enforce_inventory_role_restrictions():
     # Technician_inventory: apenas operação de inventário (/inventory/operation...)
     if role == "Technician_inventory":
         # Permite apenas operação e seus endpoints auxiliares
-        if not path.startswith("/inventory/operation"):
+        allowed_prefixes = (
+            "/inventory/operation",
+            "/inventory/check-asset",
+            # Adicione outros endpoints auxiliares necessários aqui
+        )
+        if not any(path.startswith(prefix) for prefix in allowed_prefixes):
             return redirect(url_for("inventory.render_inventory_operation"))
+
+
+# Helper function for database retry logic with exponential backoff
+def retry_db_operation(operation, max_retries=3):
+    """
+    Executa uma operação de banco com retry automático
+    Args:
+        operation: função que executa a operação no banco
+        max_retries: número máximo de tentativas
+    Returns:
+        Resultado da operação ou None se todas as tentativas falharem
+    """
+    for attempt in range(max_retries):
+        try:
+            return operation()
+        except (TimeoutError, OperationalError) as e:
+            if attempt < max_retries - 1:
+                # Backoff exponencial: 0.5s, 1s, 2s
+                wait_time = 0.5 * (2 ** attempt)
+                print(f"[WARN] DB attempt {attempt + 1}/{max_retries} failed: {str(e)}")
+                print(f"[WARN] Retrying in {wait_time}s...")
+                time.sleep(wait_time)
+            else:
+                # Última tentativa falhou, re-raise a exceção
+                print(f"[ERROR] DB operation failed after {max_retries} attempts: {str(e)}")
+                raise
 
 
 # Registrar blueprints - eles já têm seus próprios url_prefix
@@ -195,6 +227,9 @@ print(f"[INFO] Database initialized. Created {created} accounts out of {total} t
 def index():
     if request.method == "GET":
         return render_template("login.html")
+
+    db_session = None
+    upn = ""
     try:
         upn = request.form.get("upn", "").strip()
         user_country = request.form.get("country", "").strip().lower()
@@ -211,11 +246,13 @@ def index():
 
         db_session = get_session()
 
-        # Force refresh from database
-        db_session.commit()  # Ensure any pending transactions are committed
+        # Função auxiliar para buscar usuário com retry
+        def fetch_user():
+            db_session.commit()  # Ensure any pending transactions are committed
+            return db_session.query(User).filter(User.upn.ilike(upn)).first()
 
-        # Find user by UPN (case-insensitive)
-        user = db_session.query(User).filter(User.upn.ilike(upn)).first()
+        # Executar busca de usuário com retry automático
+        user = retry_db_operation(fetch_user, max_retries=3)
 
         # Force refresh the user object from database
         if user:
@@ -231,12 +268,16 @@ def index():
             # Double-check with raw SQL to verify database content
             from sqlalchemy import text
 
-            raw_result = db_session.execute(
-                text(
-                    "SELECT upn, client, role FROM users WHERE LOWER(upn) = LOWER(:upn)"
-                ),
-                {"upn": upn},
-            ).fetchone()
+            def fetch_raw_result():
+                return db_session.execute(
+                    text(
+                        "SELECT upn, client, role FROM users WHERE LOWER(upn) = LOWER(:upn)"
+                    ),
+                    {"upn": upn},
+                ).fetchone()
+
+            raw_result = retry_db_operation(fetch_raw_result, max_retries=3)
+
             if raw_result:
                 print(
                     f"[DEBUG] Raw SQL result - UPN: '{raw_result[0]}', Client: '{raw_result[1]}', Role: '{raw_result[2]}'"
@@ -309,8 +350,11 @@ def index():
         session["user"] = session_data
 
         # Update last login
-        user.last_login_on = datetime.now()
-        db_session.commit()
+        def update_last_login():
+            user.last_login_on = datetime.now()
+            db_session.commit()
+
+        retry_db_operation(update_last_login, max_retries=3)
 
         # Redirect based on destination
         # Check `inventory` explicitly before `portal` to permit custom inventory redirect
@@ -329,12 +373,28 @@ def index():
             else:
                 return redirect(url_for("assets.list_assets"))
 
+    except (TimeoutError, OperationalError) as e:
+        # Erros de banco de dados - retornar 503 Service Unavailable
+        print(f"[ERROR] Database timeout/unavailable: {str(e)}")
+        return render_template(
+            "login.html",
+            error="Serviço temporariamente indisponível. Por favor tente novamente em alguns segundos.",
+            upn=upn
+        ), 503
+
     except Exception as e:
         print(f"[ERROR] Login error: {str(e)}")
         import traceback
-
         traceback.print_exc()
         return render_template("login.html", error="Erro interno do servidor", upn=upn)
+
+    finally:
+        # Sempre fechar a sessão para liberar a conexão do pool
+        if db_session:
+            try:
+                db_session.close()
+            except Exception as e:
+                print(f"[WARN] Error closing DB session: {str(e)}")
 
 
 @app.route("/logout", methods=["POST"])

@@ -91,6 +91,7 @@
         </div>
         <div class="modal-footer">
             <button type="button" class="btn btn-secondary" onclick="manager.closeFormModal()">Cancelar</button>
+            <button type="button" class="btn btn-primary" id="submitBtn" onclick="manager.submitForm()">Criar</button>
         </div>
     </div>
 </div>
@@ -103,9 +104,10 @@
     if (typeof manager !== 'undefined' && typeof FormValidator !== 'undefined') {
         const originalShowCreateForm = manager.showCreateForm.bind(manager);
         const originalShowEditForm = manager.showEditForm.bind(manager);
-        
+
         manager.showCreateForm = function() {
             originalShowCreateForm();
+            document.getElementById('submitBtn').textContent = 'Criar';
             setTimeout(() => {
                 const form = document.getElementById('entityForm');
                 if (form) {
@@ -113,9 +115,10 @@
                 }
             }, 100);
         };
-        
+
         manager.showEditForm = function(entityId) {
             originalShowEditForm(entityId);
+            document.getElementById('submitBtn').textContent = 'Salvar';
             setTimeout(() => {
                 const form = document.getElementById('entityForm');
                 if (form) {

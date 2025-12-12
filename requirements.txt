@@ -17,6 +17,9 @@ psycopg2-binary==2.9.11
 python-dotenv==1.2.1
 pytz==2025.2
 requests==2.32.5
+requests-cache==1.2.3
+retry-requests==2.0.0
+openmeteo-requests==0.0.2
 SQLAlchemy==2.0.44
 typing_extensions==4.15.0
 urllib3==2.5.0
