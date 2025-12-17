@@ -1,4 +1,6 @@
 .claude
+__pycache__/
 docs
 logs
 venv
+.env
