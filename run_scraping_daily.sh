@@ -4,7 +4,7 @@
 # Agendado para rodar às 7 AM BRT (UTC-3) todos os dias
 
 # Diretório da aplicação
-APP_DIR="/home/vivaservicesai/htdocs/app"
+APP_DIR="/home/vivaservicesai/htdocs/co-pilot/prod"
 
 # Diretório do venv
 VENV_DIR="$APP_DIR/venv"
