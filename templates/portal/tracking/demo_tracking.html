@@ -1,0 +1,2203 @@
+{% extends "portal/base.html" %}
+
+{% block title %}Rastreio de Assets - DEMO Maxerience{% endblock %}
+{% block page_title %}
+    <div style="display: flex; align-items: center; gap: 12px;">
+        <span>Rastreio de Assets em Tempo Real</span>
+        <span style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%); 
+                     padding: 4px 12px; 
+                     border-radius: 6px; 
+                     font-size: 11px; 
+                     font-weight: 700; 
+                     letter-spacing: 1px;
+                     box-shadow: 0 2px 8px rgba(238, 90, 111, 0.3);
+                     animation: pulse-demo 2s ease-in-out infinite;">
+            🎯 MODO DEMONSTRAÇÃO
+        </span>
+    </div>
+    <style>
+        @keyframes pulse-demo {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.9; transform: scale(1.05); }
+        }
+    </style>
+{% endblock %}
+
+{% block breadcrumb %}
+<i class="fas fa-map-location-dot"></i><span class="breadcrumb-separator">/</span>
+<span class="breadcrumb-item">Rastreio</span>
+<span class="breadcrumb-separator">/</span>
+<span class="breadcrumb-item" style="color: #ff6b6b;">Demo</span>
+{% endblock %}
+
+{% block extra_css %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<!-- MarkerClusterer para agrupar markers -->
+<script src="https://unpkg.com/@googlemaps/markerclusterer/dist/index.min.js"></script>
+
+<style>
+    :root {
+        /* Paleta de Cores da Empresa */
+        --primary: #4C3AFF;
+        --primary-light: #6C5AFF;
+        --secondary: #00C3FF;
+        --accent: #00F5B5;
+        --danger: #e74c3c;
+        --warning: #f39c12;
+        --success: #56ab2f;
+        --info: #5dade2;
+        
+        --bg-dark: #0a0a14;
+        --bg-darker: #050508;
+        --bg-card: #1a1a2e;
+        --text-white: #ffffff;
+        --text-muted: #cbd5e1;
+        --border: rgba(76, 58, 255, 0.15);
+        --border-light: rgba(0, 195, 255, 0.1);
+    }
+
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    body {
+        background: linear-gradient(135deg, var(--bg-dark) 0%, var(--bg-darker) 100%);
+    }
+
+    /* Contenedor Principal - Layout com 4 colunas quando detalhes aberto */
+    .tracking-wrapper {
+        display: grid;
+        grid-template-columns: 280px 280px 1fr;
+        gap: 16px;
+        height: calc(100vh - 180px);
+        padding: 16px;
+        background: linear-gradient(135deg, var(--bg-dark) 0%, var(--bg-darker) 100%);
+        transition: grid-template-columns 0.3s ease;
+    }
+    
+    /* Quando o painel de detalhes está visível, reduz o mapa */
+    .tracking-wrapper.details-open {
+        grid-template-columns: 280px 280px 1fr 420px;
+    }
+
+    /* ============ SIDEBAR FILTERS ============ */
+    .filters-panel {
+        background: linear-gradient(180deg, rgba(26, 26, 46, 0.9) 0%, rgba(10, 10, 20, 0.95) 100%);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        backdrop-filter: blur(10px);
+    }
+
+    .filters-header {
+        padding: 16px;
+        border-bottom: 1px solid var(--border);
+        background: linear-gradient(90deg, rgba(76, 58, 255, 0.1) 0%, transparent 100%);
+    }
+
+    .filters-header h3 {
+        color: var(--primary);
+        font-size: 14px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .filter-input-group {
+        margin-bottom: 12px;
+    }
+
+    .filter-input-group label {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-muted);
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .filter-input-group input,
+    .filter-input-group select {
+        width: 100%;
+        padding: 10px 12px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--text-white);
+        font-size: 13px;
+        transition: all 0.3s ease;
+    }
+
+    /* Estilização das opções do select para manter fundo escuro */
+    .filter-input-group select option {
+        background: var(--bg-card);
+        color: var(--text-white);
+        padding: 10px;
+    }
+
+    .filter-input-group input:focus,
+    .filter-input-group select:focus {
+        background: rgba(76, 58, 255, 0.1);
+        border-color: var(--primary);
+        outline: none;
+        box-shadow: 0 0 12px rgba(76, 58, 255, 0.2);
+    }
+
+    .filter-input-group input::placeholder {
+        color: rgba(255, 255, 255, 0.3);
+    }
+
+    .filters-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px;
+    }
+
+    .filters-footer {
+        padding: 12px 16px;
+        border-top: 1px solid var(--border);
+        display: flex;
+        gap: 8px;
+    }
+
+    .btn-filter {
+        flex: 1;
+        padding: 10px 12px;
+        border: none;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .btn-filter-primary {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+        color: white;
+    }
+
+    .btn-filter-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(76, 58, 255, 0.3);
+    }
+
+    .btn-filter-secondary {
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--text-muted);
+        border: 1px solid var(--border);
+    }
+
+    .btn-filter-secondary:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: var(--text-white);
+    }
+
+    /* ============ DEVICE LIST ============ */
+    .devices-panel {
+        background: linear-gradient(180deg, rgba(26, 26, 46, 0.9) 0%, rgba(10, 10, 20, 0.95) 100%);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        backdrop-filter: blur(10px);
+    }
+
+    .devices-header {
+        padding: 16px;
+        border-bottom: 1px solid var(--border);
+        background: linear-gradient(90deg, rgba(76, 58, 255, 0.1) 0%, transparent 100%);
+    }
+
+    .devices-header h3 {
+        color: var(--primary);
+        font-size: 14px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .device-count-badge {
+        display: inline-block;
+        background: linear-gradient(135deg, var(--secondary) 0%, var(--accent) 100%);
+        color: var(--bg-dark);
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 700;
+        margin-left: auto;
+    }
+
+    .devices-list {
+        flex: 1;
+        overflow-y: auto;
+        padding: 12px;
+    }
+    
+    /* Paginação */
+    .pagination-container {
+        padding: 12px;
+        border-top: 1px solid var(--border);
+    }
+    
+    .pagination {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+    }
+    
+    .pagination-btn {
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--text-white);
+        padding: 8px 12px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .pagination-btn:hover:not(:disabled) {
+        background: var(--primary);
+        border-color: var(--primary);
+    }
+    
+    .pagination-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+    }
+    
+    .pagination-info {
+        color: var(--text-muted);
+        font-size: 12px;
+    }
+
+    .device-item {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 10px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .device-item:hover {
+        background: rgba(76, 58, 255, 0.1);
+        border-color: var(--primary);
+        transform: translateX(4px);
+    }
+
+    .device-item.active {
+        background: linear-gradient(135deg, rgba(76, 58, 255, 0.2) 0%, rgba(0, 195, 255, 0.1) 100%);
+        border-color: var(--secondary);
+        box-shadow: 0 0 16px rgba(76, 58, 255, 0.3);
+    }
+
+    .device-item-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 8px;
+    }
+
+    .device-item-title {
+        font-weight: 700;
+        color: var(--text-white);
+        font-size: 13px;
+    }
+
+    .device-item-status {
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+    }
+
+    .status-badge {
+        font-size: 10px;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .status-badge.online {
+        background: rgba(86, 171, 47, 0.2);
+        color: var(--success);
+    }
+
+    .status-badge.offline {
+        background: rgba(231, 76, 60, 0.2);
+        color: var(--danger);
+    }
+
+    .device-item-meta {
+        font-size: 12px;
+        color: var(--text-muted);
+        line-height: 1.6;
+    }
+
+    .device-item-meta strong {
+        color: var(--secondary);
+    }
+
+    /* ============ MAP ============ */
+    .map-container {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        position: relative;
+    }
+
+    #map {
+        width: 100%;
+        height: 100%;
+        border-radius: 12px;
+    }
+
+    .map-controls {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        z-index: 5;
+    }
+
+    .map-control-btn {
+        width: 44px;
+        height: 44px;
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+        border: none;
+        border-radius: 8px;
+        color: white;
+        cursor: pointer;
+        font-size: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(76, 58, 255, 0.3);
+    }
+
+    .map-control-btn:hover {
+        transform: scale(1.1);
+        box-shadow: 0 6px 16px rgba(76, 58, 255, 0.4);
+    }
+
+    /* ============ DETAILS PANEL ============ */
+    .details-panel {
+        display: none;
+        background: linear-gradient(180deg, rgba(10, 10, 20, 0.98) 0%, rgba(26, 26, 46, 0.95) 100%);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        flex-direction: column;
+        backdrop-filter: blur(10px);
+        overflow: hidden;
+        height: 100%;
+    }
+
+    .details-panel.show {
+        display: flex;
+    }
+
+    .details-header {
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border);
+        background: linear-gradient(90deg, rgba(76, 58, 255, 0.15) 0%, transparent 100%);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .details-header h2 {
+        color: var(--text-white);
+        font-size: 18px;
+        font-weight: 700;
+    }
+
+    .details-close-btn {
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        font-size: 24px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        padding: 4px;
+    }
+
+    .details-close-btn:hover {
+        color: var(--primary);
+        transform: rotate(90deg);
+    }
+
+    .details-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+    }
+
+    .details-section {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+
+    .details-section-title {
+        color: var(--primary);
+        font-size: 13px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .details-field {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        font-size: 13px;
+    }
+
+    .details-field:last-child {
+        border-bottom: none;
+    }
+
+    .details-label {
+        color: var(--text-muted);
+        font-weight: 600;
+    }
+
+    .details-value {
+        color: var(--text-white);
+        font-weight: 600;
+        text-align: right;
+    }
+
+    .metric-card {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+
+    .metric-item {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 12px;
+        text-align: center;
+    }
+
+    .metric-icon {
+        font-size: 24px;
+        display: block;
+        margin-bottom: 8px;
+    }
+
+    .metric-label {
+        font-size: 11px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        font-weight: 600;
+        margin-top: 6px;
+    }
+
+    .metric-value {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--primary);
+    }
+
+    .metric-unit {
+        font-size: 11px;
+        color: var(--text-muted);
+        margin-left: 2px;
+    }
+
+    /* ============ DETAILS HERO ============ */
+    .details-hero {
+        text-align: center;
+        padding: 20px;
+        background: linear-gradient(135deg, rgba(76, 58, 255, 0.15) 0%, rgba(0, 195, 255, 0.1) 100%);
+        border-radius: 12px;
+        margin-bottom: 16px;
+        border: 1px solid var(--border);
+    }
+
+    .asset-serial {
+        font-size: 1.6rem;
+        font-weight: 800;
+        color: var(--text-white);
+        margin-bottom: 8px;
+        letter-spacing: -0.5px;
+    }
+
+    .asset-location {
+        font-size: 14px;
+        color: var(--text-muted);
+        margin-bottom: 12px;
+    }
+
+    .badges-container {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .badge.success {
+        background: rgba(52, 199, 89, 0.2);
+        color: #34C759;
+        border: 1px solid rgba(52, 199, 89, 0.3);
+    }
+
+    .badge.danger {
+        background: rgba(255, 90, 95, 0.2);
+        color: #FF5A5F;
+        border: 1px solid rgba(255, 90, 95, 0.3);
+    }
+
+    .badge.warning {
+        background: rgba(255, 184, 0, 0.2);
+        color: #FFB800;
+        border: 1px solid rgba(255, 184, 0, 0.3);
+    }
+
+    .badge.info {
+        background: rgba(0, 195, 255, 0.2);
+        color: #00C3FF;
+        border: 1px solid rgba(0, 195, 255, 0.3);
+    }
+
+    /* ============ METRICS GRID ============ */
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+
+    /* ============ INFO LIST ============ */
+    .info-list {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .info-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .info-item:last-child {
+        border-bottom: none;
+    }
+
+    .info-label {
+        font-size: 13px;
+        color: var(--text-muted);
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .info-value {
+        font-size: 13px;
+        color: var(--text-white);
+        font-weight: 600;
+        text-align: right;
+    }
+
+    /* ============ ACTIONS ============ */
+    .actions-container {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .action-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 12px 20px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        flex: 1;
+        min-width: 150px;
+    }
+
+    .action-btn.primary {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+        color: white;
+        border: none;
+    }
+
+    .action-btn.primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(76, 58, 255, 0.4);
+    }
+
+    .action-btn.secondary {
+        background: transparent;
+        color: var(--secondary);
+        border: 2px solid var(--secondary);
+    }
+
+    .action-btn.secondary:hover {
+        background: rgba(0, 195, 255, 0.1);
+    }
+
+    /* ============ CHART ============ */
+    .chart-container {
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 0;
+        position: relative;
+        height: 250px;
+    }
+
+    /* ============ SCROLLBAR CUSTOMIZATION ============ */
+    .filters-content::-webkit-scrollbar,
+    .devices-list::-webkit-scrollbar,
+    .details-content::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .filters-content::-webkit-scrollbar-track,
+    .devices-list::-webkit-scrollbar-track,
+    .details-content::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.05);
+    }
+
+    .filters-content::-webkit-scrollbar-thumb,
+    .devices-list::-webkit-scrollbar-thumb,
+    .details-content::-webkit-scrollbar-thumb {
+        background: var(--primary);
+        border-radius: 3px;
+    }
+
+    .filters-content::-webkit-scrollbar-thumb:hover,
+    .devices-list::-webkit-scrollbar-thumb:hover,
+    .details-content::-webkit-scrollbar-thumb:hover {
+        background: var(--secondary);
+    }
+
+    /* ============ RESPONSIVE ============ */
+    @media (max-width: 1400px) {
+        .tracking-wrapper {
+            grid-template-columns: 1fr;
+        }
+
+        .details-panel {
+            width: 100%;
+            height: 60vh;
+            top: auto;
+            bottom: 0;
+            border-radius: 12px 12px 0 0;
+            transform: translateY(100%);
+        }
+
+        .details-panel.show {
+            transform: translateY(0);
+        }
+    }
+
+    /* ============ LOADING ============ */
+    .loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        color: var(--text-muted);
+        font-size: 13px;
+    }
+
+    .spinner {
+        width: 16px;
+        height: 16px;
+        border: 2px solid rgba(76, 58, 255, 0.2);
+        border-top-color: var(--primary);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    /* ============ EMPTY STATE ============ */
+    .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        padding: 40px 20px;
+        text-align: center;
+        color: var(--text-muted);
+    }
+
+    .empty-state-icon {
+        font-size: 48px;
+        opacity: 0.5;
+    }
+
+    .empty-state-text {
+        font-size: 13px;
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="tracking-wrapper">
+    <!-- FILTERS PANEL -->
+    <div class="filters-panel">
+        <div class="filters-header">
+            <h3>🔍 Filtros</h3>
+        </div>
+        <div class="filters-content">
+            <div class="filter-input-group">
+                <label>Número de Equipamento</label>
+                <input type="text" id="filterEquipmentNumber" placeholder="Ex: EQ-12345">
+            </div>
+            <div class="filter-input-group">
+                <label>Serial OEM</label>
+                <input type="text" id="filterSerialNumber" placeholder="Ex: SN-987654">
+            </div>
+            <div class="filter-input-group">
+                <label>Outlet</label>
+                <input type="text" id="filterOutlet" placeholder="Ex: Loja ABC">
+            </div>
+            <div class="filter-input-group">
+                <label>Cidade</label>
+                <input type="text" id="filterCity" placeholder="Ex: São Paulo">
+            </div>
+            <div class="filter-input-group">
+                <label>Estado</label>
+                <input type="text" id="filterState" placeholder="Ex: SP">
+            </div>
+            <div class="filter-input-group">
+                <label>Status Online</label>
+                <select id="filterOnlineStatus">
+                    <option value="">Todos</option>
+                    <option value="true">🟢 Online</option>
+                    <option value="false">🔴 Offline</option>
+                </select>
+            </div>
+            <div class="filter-input-group">
+                <label>Status Temperatura</label>
+                <select id="filterTemperatureStatus">
+                    <option value="">Todos</option>
+                    <option value="true">✅ Normal</option>
+                    <option value="false">⚠️ Fora do Range</option>
+                </select>
+            </div>
+            <div class="filter-input-group">
+                <label>Desligados (>100°C)</label>
+                <select id="filterOverheated">
+                    <option value="">Todos</option>
+                    <option value="true">🔥 Desligados</option>
+                </select>
+            </div>
+            <div class="filter-input-group">
+                <label>Bateria</label>
+                <select id="filterBattery">
+                    <option value="">Todos</option>
+                    <option value="good">✅ Boa (> 50%)</option>
+                    <option value="medium">⚠️ Média (20-50%)</option>
+                    <option value="low">🔴 Baixa (< 20%)</option>
+                </select>
+            </div>
+            <div class="filter-input-group">
+                <label>Está Faltando</label>
+                <select id="filterMissing">
+                    <option value="">Todos</option>
+                    <option value="true">❌ Sim (Faltando)</option>
+                    <option value="false">✅ Não (No local)</option>
+                </select>
+            </div>
+            <div class="filter-input-group" style="display: none;">
+                <label>Ativo nas Últimas 24h</label>
+                <select id="filterActive">
+                    <option value="">Todos</option>
+                    <option value="true">🟢 Ativos</option>
+                    <option value="false">⏸️ Inativos</option>
+                </select>
+            </div>
+            <div class="filter-input-group">
+                <label>Sub-cliente</label>
+                <select id="filterSubclient">
+                    <option value="">Carregando...</option>
+                </select>
+            </div>
+        </div>
+        <div class="filters-footer">
+            <button class="btn-filter btn-filter-primary" onclick="applyFilters()">
+                Aplicar Filtros
+            </button>
+            <button class="btn-filter btn-filter-secondary" onclick="clearFilters()">
+                Limpar
+            </button>
+        </div>
+    </div>
+
+    <!-- DEVICES LIST -->
+    <div class="devices-panel">
+        <div class="devices-header">
+            <h3>📍 Assets <span class="device-count-badge" id="deviceCount">0</span></h3>
+        </div>
+        <div class="devices-list" id="devicesList">
+            <div class="empty-state">
+                <div class="empty-state-icon">📭</div>
+                <div class="empty-state-text">Carregando assets...</div>
+            </div>
+        </div>
+        <div class="pagination-container" id="paginationContainer"></div>
+    </div>
+
+    <!-- MAP -->
+    <div class="map-container">
+        <div id="map"></div>
+        <div class="map-controls">
+            <button class="map-control-btn" title="Recarregar" onclick="reloadDevices()">
+                🔄
+            </button>
+        </div>
+    </div>
+
+    <!-- DETAILS PANEL - Agora dentro do wrapper -->
+    <div class="details-panel" id="detailsPanel">
+        <div class="details-header">
+            <h2 id="detailsTitle">Detalhes do Asset</h2>
+            <button class="details-close-btn" onclick="closeDetailsPanel()">✕</button>
+        </div>
+        <div class="details-content" id="detailsContent">
+            <div class="empty-state">
+                <div class="empty-state-icon">📋</div>
+                <div class="empty-state-text">Selecione um asset para visualizar detalhes</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // ============ GLOBAL STATE ============
+    const state = {
+        map: null,
+        markers: [],
+        markerCluster: null,
+        devices: [],
+        mapMarkers: [], // Markers separados para o mapa
+        selectedDevice: null,
+        charts: {},
+        currentPage: 1,
+        pagination: {},
+        mapLoading: false,
+        filters: {
+            bottler_equipment_number: '',
+            oem_serial_number: '',
+            outlet: '',
+            city: '',
+            state: '',
+            is_online: '',
+            temp_is_ok: '',
+            overheated: '',
+            battery_is_ok: '',
+            is_missing: '',
+            is_active: '',
+            subclient: ''
+        }
+    };
+
+    // Configurações do mapa
+    const MAP_CONFIG = {
+        MAX_MARKERS: 500,      // Máximo de markers a carregar
+        CLUSTER_ZOOM: 12,      // Zoom a partir do qual não clusteriza
+        LOAD_DELAY: 300        // Delay para evitar muitas requisições
+    };
+
+    // ============ MAP FUNCTIONS ============
+    let googleMapsReadyPromise = null;
+    
+    function waitForGoogleMaps() {
+        if (!googleMapsReadyPromise) {
+            googleMapsReadyPromise = new Promise((resolve, reject) => {
+                let attempts = 0;
+                const maxAttempts = 100; // 10 segundos
+                
+                const checkMaps = setInterval(() => {
+                    attempts++;
+                    if (window.google && window.google.maps && window.google.maps.Map) {
+                        clearInterval(checkMaps);
+                        resolve();
+                    } else if (attempts >= maxAttempts) {
+                        clearInterval(checkMaps);
+                        reject(new Error('Timeout aguardando Google Maps'));
+                    }
+                }, 100);
+            });
+        }
+        
+        return googleMapsReadyPromise;
+    }
+    
+    async function initializeMap() {
+        try {
+            const mapElement = document.getElementById('map');
+            if (!mapElement) {
+                throw new Error('Elemento do mapa não encontrado');
+            }
+            
+            // Esperar o Google Maps estar completamente carregado
+            await waitForGoogleMaps();
+            
+            state.map = new google.maps.Map(mapElement, {
+                center: { lat: -14.2350, lng: -51.9253 },
+                zoom: 4,
+                mapId: 'tracking-map',
+                mapTypeControl: true,
+                fullscreenControl: true,
+                zoomControl: true,
+                streetViewControl: false
+            });
+            
+        } catch (error) {
+            console.error('❌ Erro ao inicializar mapa:', error);
+            // Mostrar mensagem no elemento do mapa
+            const mapElement = document.getElementById('map');
+            if (mapElement) {
+                mapElement.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#ff6b6b;"><i class="fas fa-exclamation-triangle" style="margin-right:10px;"></i>Erro ao carregar mapa</div>';
+            }
+            throw error;
+        }
+    }
+
+    // ============ INITIALIZATION ============
+    
+    // Função para carregar filtros da URL
+    function loadFiltersFromURL() {
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        // Mapear parâmetros da URL para os campos do formulário e state
+        const filterMapping = {
+            'bottler_equipment_number': 'filterEquipmentNumber',
+            'oem_serial_number': 'filterSerialNumber',
+            'outlet': 'filterOutlet',
+            'city': 'filterCity',
+            'state': 'filterState',
+            'is_online': 'filterOnlineStatus',
+            'temp_is_ok': 'filterTemperatureStatus',
+            'overheated': 'filterOverheated',
+            'battery_is_ok': 'filterBattery',
+            'is_missing': 'filterMissing',
+            'is_active': 'filterActive',
+            'subclient': 'filterSubclient'
+        };
+        
+        let hasFilters = false;
+        
+        for (const [param, elementId] of Object.entries(filterMapping)) {
+            const value = urlParams.get(param);
+            if (value) {
+                // Atualizar state
+                state.filters[param] = value;
+                
+                // Atualizar campo do formulário
+                const element = document.getElementById(elementId);
+                if (element) {
+                    element.value = value;
+                }
+                
+                hasFilters = true;
+            }
+        }
+        
+        return hasFilters;
+    }
+    
+    async function initializeApp() {
+        
+        try {
+            // Carregar filtros da URL primeiro
+            const hasUrlFilters = loadFiltersFromURL();
+            if (hasUrlFilters) {
+            }
+            
+            // Inicializar mapa
+            await initializeMap();
+            
+            // Carregar devices (subclients vêm junto na resposta)
+            await loadDevices();
+            
+            // Carregar markers do mapa separadamente
+            await loadMapMarkers();
+            
+            // Configurar event listeners
+            setupEventListeners();
+            
+        } catch (error) {
+            console.error('❌ Erro ao inicializar:', error);
+            showError('Erro ao inicializar aplicação');
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', initializeApp);
+
+    // ============ DATA LOADING ============
+    
+    // Carregar markers do mapa (separado da lista)
+    async function loadMapMarkers() {
+        if (state.mapLoading) return;
+        state.mapLoading = true;
+        
+        try {
+            const params = new URLSearchParams();
+            params.append('limit', MAP_CONFIG.MAX_MARKERS);
+            
+            // Adicionar filtros ativos
+            Object.entries(state.filters).forEach(([key, value]) => {
+                if (value) params.append(key, value);
+            });
+            
+            // Nota: Mantém rota normal para exibir todos os assets no mapa
+            const response = await fetch(`/portal_associacao/tracking/map-markers?${params}`);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            
+            state.mapMarkers = data.markers || [];
+            
+            // Renderizar markers no mapa
+            renderMapMarkersOptimized(state.mapMarkers);
+            
+            // Mostrar aviso se há mais markers disponíveis
+            if (data.limited) {
+                console.log(`📍 Exibindo ${data.count} de ${data.total} assets no mapa`);
+            }
+            
+        } catch (error) {
+            console.error('❌ Erro ao carregar markers do mapa:', error);
+        } finally {
+            state.mapLoading = false;
+        }
+    }
+    
+    async function loadDevices(page = 1) {
+        const devicesList = document.getElementById('devicesList');
+        
+        try {
+            devicesList.innerHTML = '<div class="loading"><div class="spinner"></div>Carregando assets...</div>';
+            
+            const params = new URLSearchParams();
+            params.append('page', page);
+            // NÃO usar load_all para evitar carregar todos os assets de uma vez
+            
+            // Adicionar filtros ativos
+            Object.entries(state.filters).forEach(([key, value]) => {
+                if (value) params.append(key, value);
+            });
+            
+            // Nota: Mantém rota normal pois usuário Maxerience pode ter outros assets reais
+            const response = await fetch(`/portal_associacao/tracking/devices?${params}`);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            
+            // A API retorna { data: [...], available_subclients: [...], pagination: {...} }
+            // Usar apenas data (paginado) - NÃO usar map_data para evitar sobrecarga
+            const devices = data.data || [];
+            state.devices = devices;
+            state.pagination = data.pagination || {};
+            
+            // Atualizar subclients dropdown
+            if (data.available_subclients) {
+                updateSubclientsDropdown(data.available_subclients);
+            }
+            
+            // Renderizar lista
+            renderDevicesList(devices);
+            updateDeviceCount(data.pagination?.total || devices.length);
+            renderPagination(data.pagination);
+            
+            
+        } catch (error) {
+            console.error('❌ Erro ao carregar devices:', error);
+            devicesList.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">⚠️</div>
+                    <div class="empty-state-text">Erro ao carregar devices</div>
+                    <button onclick="loadDevices()" style="margin-top:10px; padding:8px 16px; background:var(--primary); color:white; border:none; border-radius:6px; cursor:pointer;">
+                        Tentar Novamente
+                    </button>
+                </div>
+            `;
+        }
+    }
+    
+    // Função para renderizar paginação
+    function renderPagination(pagination) {
+        if (!pagination) return;
+        
+        const container = document.getElementById('paginationContainer');
+        if (!container) return;
+        
+        const { page, pages, total, has_prev, has_next } = pagination;
+        
+        if (pages <= 1) {
+            container.innerHTML = '';
+            return;
+        }
+        
+        container.innerHTML = `
+            <div class="pagination">
+                <button class="pagination-btn" ${!has_prev ? 'disabled' : ''} onclick="changePage(${page - 1})">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <span class="pagination-info">Página ${page} de ${pages}</span>
+                <button class="pagination-btn" ${!has_next ? 'disabled' : ''} onclick="changePage(${page + 1})">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        `;
+    }
+    
+    function changePage(newPage) {
+        state.currentPage = newPage;
+        loadDevices(newPage);
+    }
+    
+    function updateSubclientsDropdown(subclients) {
+        const select = document.getElementById('filterSubclient');
+        if (!select) return;
+        
+        select.innerHTML = '<option value="">Todos os sub-clientes</option>';
+        
+        subclients.forEach(subclient => {
+            const option = document.createElement('option');
+            option.value = subclient.subclient_code || '';
+            option.textContent = subclient.subclient_name || subclient.subclient_code || '';
+            select.appendChild(option);
+        });
+    }
+
+    // ============ RENDERING ============
+    function renderDevicesList(devices) {
+        const devicesList = document.getElementById('devicesList');
+        
+        if (!devices || devices.length === 0) {
+            devicesList.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">📭</div>
+                    <div class="empty-state-text">Nenhum asset encontrado</div>
+                </div>
+            `;
+            return;
+        }
+        
+        devicesList.innerHTML = devices.map(device => `
+            <div class="device-item ${state.selectedDevice?.oem_serial_number === device.oem_serial_number ? 'active' : ''}"
+                 onclick="selectDevice('${device.oem_serial_number}')">
+                <div class="device-item-header">
+                    <div class="device-item-title">${device.bottler_equipment_number || 'N/A'}</div>
+                    <div class="device-item-status">
+                        ${device.is_online ? '<span class="status-badge online">Online</span>' : '<span class="status-badge offline">Offline</span>'}
+                    </div>
+                </div>
+                <div class="device-item-meta">
+                    <div><strong>Serial:</strong> ${device.oem_serial_number}</div>
+                    <div><strong>Outlet:</strong> ${device.outlet || 'N/A'}</div>
+                    <div><strong>Local:</strong> ${device.city || 'N/A'}${device.state ? ', ' + device.state : ''}</div>
+                    ${device.temperature_c ? `<div><strong>🌡️ Temp:</strong> ${parseFloat(device.temperature_c).toFixed(1)}°C</div>` : ''}
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // Renderização otimizada de markers com clustering
+    function renderMapMarkersOptimized(markers) {
+        // Limpar markers existentes
+        if (state.markerCluster) {
+            state.markerCluster.clearMarkers();
+        }
+        // Remover AdvancedMarkerElements do mapa
+        state.markers.forEach(marker => marker.map = null);
+        state.markers = [];
+        
+        if (!markers || markers.length === 0) return;
+        
+        const bounds = new google.maps.LatLngBounds();
+        const googleMarkers = [];
+        
+        markers.forEach(m => {
+            const lat = parseFloat(m.lat);
+            const lng = parseFloat(m.lng);
+            
+            if (isNaN(lat) || isNaN(lng)) return;
+            
+            // Definir cor do marker baseado no status
+            let markerColor = '#56ab2f'; // Verde - normal/online
+            
+            if (m.missing) {
+                markerColor = '#e74c3c'; // Vermelho - perdido
+            } else if (!m.online) {
+                markerColor = '#95a5a6'; // Cinza - offline
+            } else if (m.temp && m.temp > 8) {
+                markerColor = '#f39c12'; // Laranja - temperatura alta
+            }
+            
+            // Criar elemento visual do marker com SVG
+            const markerElement = document.createElement('div');
+            markerElement.innerHTML = `
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="12" cy="12" r="10" fill="${markerColor}" stroke="white" stroke-width="2"/>
+                </svg>
+            `;
+            markerElement.style.cursor = 'pointer';
+            
+            // Criar marker com AdvancedMarkerElement
+            const marker = new google.maps.marker.AdvancedMarkerElement({
+                position: { lat, lng },
+                map: state.map,
+                title: m.equip || m.serial,
+                content: markerElement
+            });
+            
+            // Armazenar dados do marker para uso posterior
+            marker.assetData = m;
+            
+            // Adicionar click listener
+            marker.addListener('click', () => {
+                selectDeviceFromMap(m.serial);
+                state.map.panTo({ lat, lng });
+                state.map.setZoom(16);
+            });
+            
+            // Adicionar InfoWindow ao hover
+            const infoWindow = new google.maps.InfoWindow({
+                content: `
+                    <div style="padding:8px; font-family: system-ui, sans-serif; min-width: 150px;">
+                        <strong>${m.equip || 'N/A'}</strong><br>
+                        <span style="color:#666; font-size:12px;">${m.outlet || 'Sem outlet'}</span><br>
+                        ${m.temp ? `<span style="color:#333;">🌡️ ${m.temp.toFixed(1)}°C</span>` : ''}
+                        <br><span style="color:${m.online ? '#56ab2f' : '#e74c3c'}; font-size:11px;">
+                            ${m.online ? '🟢 Online' : '🔴 Offline'}
+                        </span>
+                    </div>
+                `
+            });
+            
+            marker.addListener('mouseover', () => infoWindow.open(state.map, marker));
+            marker.addListener('mouseout', () => infoWindow.close());
+            
+            googleMarkers.push(marker);
+            state.markers.push(marker);
+            bounds.extend({ lat, lng });
+        });
+        
+        // Criar cluster de markers
+        if (googleMarkers.length > 0 && window.markerClusterer) {
+            state.markerCluster = new markerClusterer.MarkerClusterer({
+                map: state.map,
+                markers: googleMarkers,
+                renderer: {
+                    render: ({ count, position }) => {
+                        // Customizar aparência do cluster
+                        const color = count > 100 ? '#e74c3c' : count > 50 ? '#f39c12' : '#4C3AFF';
+                        const size = Math.min(20 + Math.log(count) * 5, 40);
+                        
+                        // Criar elemento visual do cluster com SVG
+                        const clusterElement = document.createElement('div');
+                        clusterElement.innerHTML = `
+                            <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="${size/2}" cy="${size/2}" r="${size/2 - 2}" fill="${color}" stroke="white" stroke-width="2"/>
+                                <text x="${size/2}" y="${size/2 + size/8}" text-anchor="middle" font-size="${Math.max(10, size/2)}" font-weight="bold" fill="white">${count}</text>
+                            </svg>
+                        `;
+                        clusterElement.style.cursor = 'pointer';
+                        
+                        return new google.maps.marker.AdvancedMarkerElement({
+                            position,
+                            content: clusterElement,
+                            title: `${count} assets`
+                        });
+                    }
+                }
+            });
+        }
+        
+        // Ajustar visualização do mapa
+        if (googleMarkers.length > 0) {
+            if (googleMarkers.length === 1) {
+                state.map.setCenter(bounds.getCenter());
+                state.map.setZoom(14);
+            } else {
+                state.map.fitBounds(bounds, { padding: 50 });
+            }
+        }
+        
+        console.log(`📍 ${googleMarkers.length} markers renderizados no mapa`);
+    }
+    
+    // Selecionar device a partir do mapa (pode não estar na lista paginada)
+    async function selectDeviceFromMap(serialNumber) {
+        // Primeiro verificar se está na lista atual
+        let device = state.devices.find(d => d.oem_serial_number === serialNumber);
+        
+        if (device) {
+            // Se encontrou na lista, usar fluxo normal
+            await selectDevice(serialNumber);
+        } else {
+            // Se não está na lista, carregar detalhes diretamente
+            state.selectedDevice = { oem_serial_number: serialNumber };
+            await loadDeviceDetails(serialNumber);
+            openDetailsPanel();
+        }
+    }
+
+    // Função legada mantida para compatibilidade
+    function renderMarkersOnMap(devices) {
+        // Agora apenas chama a versão otimizada
+        const markers = devices.map(d => ({
+            serial: d.oem_serial_number,
+            equip: d.bottler_equipment_number,
+            outlet: d.outlet,
+            online: d.is_online,
+            temp: d.temperature_c ? parseFloat(d.temperature_c) : null,
+            missing: d.is_missing,
+            lat: d.latitude,
+            lng: d.longitude
+        })).filter(m => m.lat && m.lng);
+        
+        renderMapMarkersOptimized(markers);
+    }
+
+    function updateDeviceCount(count) {
+        document.getElementById('deviceCount').textContent = count;
+    }
+    
+    async function reloadDevices() {
+        await loadDevices(state.currentPage);
+        await loadMapMarkers();
+    }
+
+    // ============ DEVICE DETAILS ============
+    async function selectDevice(serialNumber) {
+        const device = state.devices.find(d => d.oem_serial_number === serialNumber);
+        if (!device) return;
+        
+        state.selectedDevice = device;
+        
+        document.querySelectorAll('.device-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        
+        const deviceItem = Array.from(document.querySelectorAll('.device-item')).find(item => 
+            item.textContent.includes(serialNumber)
+        );
+        if (deviceItem) deviceItem.classList.add('active');
+        
+        await loadDeviceDetails(serialNumber);
+        openDetailsPanel();
+    }
+
+    async function loadDeviceDetails(serialNumber) {
+        const detailsContent = document.getElementById('detailsContent');
+        
+        try {
+            detailsContent.innerHTML = '<div class="loading"><div class="spinner"></div>Carregando detalhes...</div>';
+            
+            // Usar rota demo se for o asset demo (3214505)
+            const isDemoAsset = serialNumber === '3214505';
+            const endpoint = isDemoAsset 
+                ? `/portal_associacao/tracking/demo/asset_details/${serialNumber}`
+                : `/portal_associacao/tracking/asset_details/${serialNumber}`;
+            
+            const response = await fetch(endpoint);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            // A API retorna o objeto diretamente, não { status: 'success', device: {...} }
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            
+            displayDeviceDetails(data);
+            await loadDeviceChart(serialNumber);
+            
+        } catch (error) {
+            console.error('❌ Erro ao carregar detalhes:', error);
+            detailsContent.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">⚠️</div>
+                    <div class="empty-state-text">Erro ao carregar detalhes</div>
+                    <div style="color: var(--text-muted); font-size: 12px; margin-top: 8px;">${error.message}</div>
+                </div>
+            `;
+        }
+    }
+
+    function displayDeviceDetails(device) {
+        const detailsTitle = document.getElementById('detailsTitle');
+        const detailsContent = document.getElementById('detailsContent');
+
+        detailsTitle.textContent = device.oem_serial_number || 'Detalhes';
+        
+        // Verificar se é asset demo
+        const isDemoAsset = device.oem_serial_number === '3214505';
+
+        // Valores calculados
+        const temperature = parseFloat(device.temperature_c || 0);
+        const battery = parseInt(device.battery_level || device.battery_from_stats || 0);
+        // Usar médias de 30 dias (ou valores demo)
+        const avgPower = parseFloat(device.avg_power_consumption_watt_30d || device.avg_power_consumption_watt || 0);
+        const compressorTime = parseFloat(device.avg_compressor_percent_30d || device.total_compressor_on_time_percent || 0);
+        const ambientTemperature = parseFloat(device.ambient_temperature_from_api || device.ambient_temperature_c || 0);
+
+        // Cores para métricas
+        const tempColor = temperature > 8 ? '#FF5A5F' : temperature < 0 ? '#00C3FF' : '#34C759';
+        const batteryColor = battery > 50 ? '#34C759' : battery > 20 ? '#FFB800' : '#FF5A5F';
+        const ambientTempColor = ambientTemperature > 30 ? '#FF5A5F' : ambientTemperature < 10 ? '#00C3FF' : '#34C759';
+        
+        // Determinar badges de status
+        let badges = '';
+        
+        // Badge especial para modo demo
+        if (isDemoAsset) {
+            badges += '<span class="badge" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);">🎯 DEMONSTRAÇÃO</span>';
+        }
+        
+        if (device.is_online !== undefined) {
+            badges += device.is_online 
+                ? '<span class="badge success">✅ Online</span>' 
+                : '<span class="badge danger">❌ Offline</span>';
+        }
+        if (temperature !== 0) {
+            badges += temperature >= 40 
+                ? '<span class="badge danger">🔥 Temp. Alta</span>' 
+                : '<span class="badge success">🌡️ Temp. OK</span>';
+        }
+        if (battery > 0) {
+            badges += battery < 30 
+                ? '<span class="badge warning">⚡ Bateria Baixa</span>' 
+                : '<span class="badge success">🔋 Bateria OK</span>';
+        }
+        if (device.is_missing !== undefined) {
+            badges += device.is_missing 
+                ? '<span class="badge danger">⚠️ Faltando</span>' 
+                : '<span class="badge success">✓ No local</span>';
+        }
+        
+        // Helper para exibir valor ou traço
+        const displayValue = (val, suffix = '') => {
+            if (val === null || val === undefined || val === 'N/A' || val === '' || val === 0) return '—';
+            return `${val}${suffix}`;
+        };
+        
+        // Helper para valores numéricos com casas decimais
+        const displayNumber = (val, decimals = 0, suffix = '') => {
+            if (val === null || val === undefined || val === 'N/A' || isNaN(val)) return '—';
+            const num = parseFloat(val);
+            return num !== 0 ? `${num.toFixed(decimals)}${suffix}` : '—';
+        };
+        
+        detailsContent.innerHTML = `
+            <!-- Hero Section -->
+            <div class="details-hero">
+                <div class="asset-serial">${device.oem_serial_number}</div>
+                <div class="asset-location">📍 ${device.city || '—'}, ${device.state || '—'}</div>
+                <div class="badges-container">${badges}</div>
+            </div>
+
+            <!-- Métricas -->
+            <div class="details-section">
+                <div class="details-section-title">📊 Métricas</div>
+                <div class="metrics-grid">
+                    <div class="metric-item">
+                        <span class="metric-icon">🌡️</span>
+                        <div class="metric-value" style="color: ${tempColor};">${displayNumber(temperature, 1, '°C')}</div>
+                        <div class="metric-label">Asset</div>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-icon">🔋</span>
+                        <div class="metric-value" style="color: ${batteryColor};">${displayNumber(battery, 0, '%')}</div>
+                        <div class="metric-label">Bateria</div>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-icon">🔌</span>
+                        <div class="metric-value">${displayNumber(avgPower, 2, ' kW')}</div>
+                        <div class="metric-label">Consumo (30d)</div>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-icon">⏱️</span>
+                        <div class="metric-value">${displayNumber(compressorTime, 1, '%')}</div>
+                        <div class="metric-label">Compressor (30d)</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Estatísticas Demo (apenas para asset demo) -->
+            ${isDemoAsset && device.is_demo ? `
+            <div class="details-section" style="border: 2px solid rgba(255, 107, 107, 0.3); background: rgba(255, 107, 107, 0.05);">
+                <div class="details-section-title" style="color: #ff6b6b;">📊 Estatísticas da Demonstração (Semana)</div>
+                <div class="info-list">
+                    <div class="info-item">
+                        <span class="info-label">📅 Período dos Dados</span>
+                        <span class="info-value">${device.demo_period || '06/12/2025 - 12/12/2025'}</span>
+                    </div>
+                    ${device.avg_temperature_week ? `
+                    <div class="info-item">
+                        <span class="info-label">🌡️ Temperatura Média</span>
+                        <span class="info-value">${displayNumber(device.avg_temperature_week, 1, '°C')}</span>
+                    </div>
+                    ` : ''}
+                    ${device.max_temperature_week ? `
+                    <div class="info-item">
+                        <span class="info-label">🔥 Temperatura Máxima</span>
+                        <span class="info-value">${displayNumber(device.max_temperature_week, 1, '°C')}</span>
+                    </div>
+                    ` : ''}
+                    ${device.min_temperature_week ? `
+                    <div class="info-item">
+                        <span class="info-label">❄️ Temperatura Mínima</span>
+                        <span class="info-value">${displayNumber(device.min_temperature_week, 1, '°C')}</span>
+                    </div>
+                    ` : ''}
+                    ${device.avg_door_openings ? `
+                    <div class="info-item">
+                        <span class="info-label">🚪 Média Aberturas/Hora</span>
+                        <span class="info-value">${displayNumber(device.avg_door_openings, 1)}</span>
+                    </div>
+                    ` : ''}
+                    ${device.total_door_openings_week ? `
+                    <div class="info-item">
+                        <span class="info-label">📊 Total Aberturas (Semana)</span>
+                        <span class="info-value">${device.total_door_openings_week}</span>
+                    </div>
+                    ` : ''}
+                    ${device.uptime_percentage ? `
+                    <div class="info-item">
+                        <span class="info-label">⚡ Tempo Ligado</span>
+                        <span class="info-value">${displayNumber(device.uptime_percentage, 1, '%')}</span>
+                    </div>
+                    ` : ''}
+                </div>
+            </div>
+            ` : ''}
+
+            <!-- Registro de Temperatura -->
+            <div class="details-section">
+                <div class="details-section-title">🌡️ Registro de Temperatura</div>
+                <div class="info-list">
+                    <div class="info-item">
+                        <span class="info-label">📅 Último Registro de Temperatura</span>
+                        <span class="info-value">${device.last_health_event ? formatDateTime(device.last_health_event) : '—'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">📦 Temperatura do Asset</span>
+                        <span class="info-value" style="color: ${tempColor};">${displayNumber(temperature, 1, '°C')}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">🌍 Temperatura Ambiente (Local)</span>
+                        <span class="info-value" style="color: ${ambientTempColor};">${displayNumber(ambientTemperature, 1, '°C')} <small style="color: var(--text-muted);"></small></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Estatísticas de Abertura -->
+            ${(device.door_event_average_morning > 0 || device.door_event_average_afternoon > 0 || device.door_event_average_night > 0) ? `
+            <div class="details-section">
+                <div class="details-section-title">🚪 Estatísticas de Abertura (30 dias)</div>
+                <div class="info-list">
+                    <div class="info-item">
+                        <span class="info-label">🌅 Média Manhã</span>
+                        <span class="info-value">${displayNumber(device.door_event_average_morning, 1)} aberturas/dia</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">☀️ Média Tarde</span>
+                        <span class="info-value">${displayNumber(device.door_event_average_afternoon, 1)} aberturas/dia</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">🌙 Média Noite</span>
+                        <span class="info-value">${displayNumber(device.door_event_average_night, 1)} aberturas/dia</span>
+                    </div>
+                </div>
+            </div>
+            ` : ''}
+
+            <!-- Último Evento de Saúde - só exibe se houver pelo menos uma temperatura válida -->
+            ${(device.last_health_event && (
+                (device.evaporator_temperature_c && device.evaporator_temperature_c >= -50 && device.evaporator_temperature_c <= 50) ||
+                (device.condensor_temperature_c && device.condensor_temperature_c >= -50 && device.condensor_temperature_c <= 50) ||
+                (device.ambient_temperature_c && device.ambient_temperature_c >= -50 && device.ambient_temperature_c <= 50)
+            )) ? `
+            <div class="details-section">
+                <div class="details-section-title">🏥 Último Evento de Saúde</div>
+                <div class="info-list">
+                    <div class="info-item">
+                        <span class="info-label">📅 Data/Hora</span>
+                        <span class="info-value">${formatDateTime(device.last_health_event)}</span>
+                    </div>
+                    ${(device.evaporator_temperature_c && device.evaporator_temperature_c >= -50 && device.evaporator_temperature_c <= 50) ? `
+                    <div class="info-item">
+                        <span class="info-label">❄️ Evaporador</span>
+                        <span class="info-value">${displayNumber(device.evaporator_temperature_c, 1, '°C')}</span>
+                    </div>
+                    ` : ''}
+                    ${(device.condensor_temperature_c && device.condensor_temperature_c >= -50 && device.condensor_temperature_c <= 50) ? `
+                    <div class="info-item">
+                        <span class="info-label">🔥 Condensador</span>
+                        <span class="info-value">${displayNumber(device.condensor_temperature_c, 1, '°C')}</span>
+                    </div>
+                    ` : ''}
+                    ${(device.ambient_temperature_c && device.ambient_temperature_c >= -50 && device.ambient_temperature_c <= 50) ? `
+                    <div class="info-item">
+                        <span class="info-label">🌡️ Ambiente</span>
+                        <span class="info-value">${displayNumber(device.ambient_temperature_c, 1, '°C')}</span>
+                    </div>
+                    ` : ''}
+                </div>
+            </div>
+            ` : ''}
+
+            <!-- Gráfico -->
+            <div class="details-section">
+                <div class="details-section-title">📈 Histórico (Últimos 30 dias)</div>
+                <div class="chart-container">
+                    <canvas id="deviceChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Informações Completas -->
+            <div class="details-section">
+                <div class="details-section-title">ℹ️ Informações Completas</div>
+                <div class="info-list">
+                    <div class="info-item">
+                        <span class="info-label">🏷️ Serial (OEM)</span>
+                        <span class="info-value">${displayValue(device.oem_serial_number)}</span>
+                    </div>
+                    ${device.bottler_equipment_number && device.bottler_equipment_number !== 'N/A' ? `
+                    <div class="info-item">
+                        <span class="info-label">⚙️ Equipamento (Bottler)</span>
+                        <span class="info-value">${device.bottler_equipment_number}</span>
+                    </div>
+                    ` : ''}
+                    ${device.asset_type && device.asset_type !== 'N/A' ? `
+                    <div class="info-item">
+                        <span class="info-label">📦 Tipo de Asset</span>
+                        <span class="info-value">${device.asset_type}</span>
+                    </div>
+                    ` : ''}
+                    <div class="info-item">
+                        <span class="info-label">📊 Online?</span>
+                        <span class="info-value" style="color: ${device.is_online ? '#34C759' : '#FF5A5F'};">
+                            ${device.is_online ? '✅ Sim' : '❌ Não'}
+                        </span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">⚠️ Está ausente?</span>
+                        <span class="info-value" style="color: ${device.is_missing ? '#FF5A5F' : '#34C759'};">
+                            ${device.is_missing ? '❌ Sim' : '✅ Não'}
+                        </span>
+                    </div>
+                    ${device.outlet && device.outlet !== 'N/A' ? `
+                    <div class="info-item">
+                        <span class="info-label">🏪 Outlet</span>
+                        <span class="info-value">${device.outlet}</span>
+                    </div>
+                    ` : ''}
+                    ${device.city && device.city !== 'N/A' ? `
+                    <div class="info-item">
+                        <span class="info-label">🏙️ Cidade</span>
+                        <span class="info-value">${device.city}</span>
+                    </div>
+                    ` : ''}
+                    ${device.state && device.state !== 'N/A' ? `
+                    <div class="info-item">
+                        <span class="info-label">🗺️ Estado</span>
+                        <span class="info-value">${device.state}</span>
+                    </div>
+                    ` : ''}
+                    ${device.country && device.country !== 'N/A' ? `
+                    <div class="info-item">
+                        <span class="info-label">🌍 País</span>
+                        <span class="info-value">${device.country}</span>
+                    </div>
+                    ` : ''}
+                    ${device.latitude && device.longitude ? `
+                    <div class="info-item">
+                        <span class="info-label">🎯 Coordenadas</span>
+                        <span class="info-value">${parseFloat(device.latitude).toFixed(5)}, ${parseFloat(device.longitude).toFixed(5)}</span>
+                    </div>
+                    ` : ''}
+                    ${device.client && device.client !== 'N/A' ? `
+                    <div class="info-item">
+                        <span class="info-label">🏢 Cliente</span>
+                        <span class="info-value">${device.client}</span>
+                    </div>
+                    ` : ''}
+                    ${device.sub_client && device.sub_client !== 'N/A' ? `
+                    <div class="info-item">
+                        <span class="info-label">🏬 Sub-Cliente</span>
+                        <span class="info-value">${device.sub_client}</span>
+                    </div>
+                    ` : ''}
+                    ${device.sub_trade_channel && device.sub_trade_channel !== 'N/A' ? `
+                    <div class="info-item">
+                        <span class="info-label">📊 Sub Trade Channel</span>
+                        <span class="info-value">${device.sub_trade_channel}</span>
+                    </div>
+                    ` : ''}
+                    ${device.cooler_voltage_v ? `
+                    <div class="info-item">
+                        <span class="info-label">⚡ Voltagem do Cooler</span>
+                        <span class="info-value">${displayNumber(device.cooler_voltage_v, 2, 'V')}</span>
+                    </div>
+                    ` : ''}
+            </div>
+            </div>
+
+            <!-- Ações -->
+            ${device.latitude && device.longitude && device.outlet_lat && device.outlet_lng ? `
+            <div class="details-section">
+                <div class="details-section-title">⚡ Ações</div>
+                <div class="actions-container">
+                    <a href="https://www.google.com/maps/dir/${device.outlet_lat},${device.outlet_lng}/${device.latitude},${device.longitude}" 
+                       target="_blank" class="action-btn primary" title="Origem: Outlet → Destino: Asset">
+                        🗺️ Ver Rota (Outlet → Asset)
+                    </a>
+                </div>
+            </div>
+            ` : ''}
+        `;
+    }
+    
+    // Helper para formatar data/hora
+    function formatDateTime(dateStr) {
+        if (!dateStr) return '—';
+        try {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('pt-BR') + ' ' + date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        } catch (e) {
+            return dateStr;
+        }
+    }
+
+    async function loadDeviceChart(serialNumber) {
+        try {
+            // Se for o asset demo, usar dados de telemetria demo
+            const isDemoAsset = serialNumber === '3214505';
+            
+            if (isDemoAsset) {
+                const response = await fetch(`/portal_associacao/tracking/demo/telemetry/${serialNumber}`);
+                const demoData = await response.json();
+                
+                if (demoData.data && demoData.data.length > 0) {
+                    // Agrupar dados por PERÍODO HORÁRIO (00:00-01:00, 01:00-02:00, etc.)
+                    const hourlyData = aggregateByHourPeriod(demoData.data);
+                    
+                    const labels = hourlyData.map(d => d.label);
+                    const temperature = hourlyData.map(d => d.avgTemp);
+                    const door_count = hourlyData.map(d => d.totalDoors);
+                    
+                    renderChart({ labels, temperature, door_count }, true);
+                    return;
+                }
+            }
+            
+            // Caso contrário, usar rota normal
+            const response = await fetch(`/portal_associacao/tracking/asset-hourly-chart/${serialNumber}`);
+            const data = await response.json();
+            
+            if (data.labels && data.temperature && data.door_count) {
+                renderChart(data, false);
+            }
+        } catch (error) {
+            console.error('❌ Erro ao carregar gráfico:', error);
+        }
+    }
+    
+    // Agrupar dados por período horário (média de todos os dias na mesma hora)
+    function aggregateByHourPeriod(data) {
+        const hourMap = {};
+        
+        // Inicializar 24 períodos horários
+        for (let h = 0; h < 24; h++) {
+            const hourStart = h.toString().padStart(2, '0');
+            const hourEnd = ((h + 1) % 24).toString().padStart(2, '0');
+            
+            hourMap[h] = {
+                label: `${hourStart}:00-${hourEnd}:00`,
+                temps: [],
+                doors: 0
+            };
+        }
+        
+        // Agrupar dados por hora
+        data.forEach(record => {
+            const date = new Date(record.timestamp);
+            const hour = date.getHours();
+            
+            hourMap[hour].temps.push(record.temperatura_c);
+            hourMap[hour].doors += record.aberturas_porta;
+        });
+        
+        // Calcular médias e retornar em ordem
+        return Object.keys(hourMap)
+            .sort((a, b) => parseInt(a) - parseInt(b))
+            .map(hour => ({
+                label: hourMap[hour].label,
+                avgTemp: hourMap[hour].temps.length > 0 
+                    ? parseFloat((hourMap[hour].temps.reduce((a, b) => a + b, 0) / hourMap[hour].temps.length).toFixed(1))
+                    : 0,
+                totalDoors: hourMap[hour].doors
+            }));
+    }
+
+    function renderChart(data, isDemoData = false) {
+        const canvas = document.getElementById('deviceChart');
+        if (!canvas) return;
+        
+        if (state.charts.device) {
+            state.charts.device.destroy();
+        }
+        
+        const ctx = canvas.getContext('2d');
+        
+        state.charts.device = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.labels,
+                datasets: [
+                    {
+                        type: 'bar',
+                        label: 'Aberturas de Porta',
+                        data: data.door_count,
+                        backgroundColor: 'rgba(251, 146, 60, 0.7)',
+                        borderColor: 'rgba(251, 146, 60, 1)',
+                        borderWidth: 2,
+                        borderRadius: 6,
+                        barPercentage: 0.6,
+                        yAxisID: 'y1'
+                    },
+                    {
+                        type: 'line',
+                        label: 'Temperatura Média (°C)',
+                        data: data.temperature,
+                        borderColor: 'rgba(59, 130, 246, 1)',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 0,
+                        pointHoverRadius: 5,
+                        pointHoverBackgroundColor: 'rgba(59, 130, 246, 1)',
+                        pointHoverBorderColor: '#fff',
+                        pointHoverBorderWidth: 2,
+                        yAxisID: 'y'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { 
+                    mode: 'index', 
+                    intersect: false 
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: { 
+                            color: '#e2e8f0', 
+                            font: { size: 13, weight: '600' },
+                            padding: 18,
+                            usePointStyle: true
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                        titleColor: '#fff',
+                        bodyColor: '#fff',
+                        borderColor: 'rgba(59, 130, 246, 0.5)',
+                        borderWidth: 2,
+                        padding: 14,
+                        titleFont: { size: 14, weight: 'bold' },
+                        bodyFont: { size: 13 },
+                        displayColors: true,
+                        callbacks: {
+                            label: function(context) {
+                                if (context.datasetIndex === 0) {
+                                    return `Aberturas: ${context.parsed.y}`;
+                                } else {
+                                    return `Temperatura: ${context.parsed.y}°C`;
+                                }
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        position: 'right',
+                        beginAtZero: true,
+                        title: { 
+                            display: true, 
+                            text: 'Temperatura (°C)', 
+                            color: 'rgba(59, 130, 246, 1)',
+                            font: { size: 12, weight: 'bold' },
+                            padding: { top: 0, bottom: 10 }
+                        },
+                        ticks: { 
+                            color: 'rgba(59, 130, 246, 0.8)',
+                            font: { size: 11 },
+                            padding: 8
+                        },
+                        grid: { 
+                            color: 'rgba(59, 130, 246, 0.1)',
+                            drawBorder: false,
+                            lineWidth: 1
+                        }
+                    },
+                    y1: {
+                        position: 'left',
+                        beginAtZero: true,
+                        title: { 
+                            display: true, 
+                            text: 'Aberturas de Porta', 
+                            color: 'rgba(251, 146, 60, 1)',
+                            font: { size: 12, weight: 'bold' },
+                            padding: { top: 0, bottom: 10 }
+                        },
+                        ticks: { 
+                            color: 'rgba(251, 146, 60, 0.8)',
+                            font: { size: 11 },
+                            padding: 8,
+                            precision: 0
+                        },
+                        grid: { 
+                            drawOnChartArea: false,
+                            drawBorder: false
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            color: '#cbd5e1',
+                            font: { size: 10 },
+                            padding: 6,
+                            maxRotation: 90,
+                            minRotation: 90
+                        },
+                        grid: { 
+                            display: false,
+                            drawBorder: false
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // ============ FILTERS ============
+    function setupEventListeners() {
+        ['filterEquipmentNumber', 'filterSerialNumber', 'filterOutlet', 'filterCity', 'filterState'].forEach(id => {
+            document.getElementById(id).addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') applyFilters();
+            });
+        });
+
+        // Adicionar event listeners para atualizar URL em tempo real quando um filtro muda
+        const filterElements = [
+            'filterEquipmentNumber', 'filterSerialNumber', 'filterOutlet', 'filterCity', 'filterState',
+            'filterOnlineStatus', 'filterTemperatureStatus', 'filterOverheated', 'filterBattery',
+            'filterMissing', 'filterActive', 'filterSubclient'
+        ];
+
+        filterElements.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.addEventListener('change', updateURLFromFilters);
+                if (element.tagName === 'INPUT') {
+                    // Debounce para inputs de texto
+                    element.addEventListener('input', debounceUpdateURL);
+                }
+            }
+        });
+    }
+
+    // Debounce para evitar muitas atualizações de URL
+    let urlUpdateTimeout;
+    function debounceUpdateURL() {
+        clearTimeout(urlUpdateTimeout);
+        urlUpdateTimeout = setTimeout(updateURLFromFilters, 500);
+    }
+
+    // Função para atualizar URL com os filtros atuais
+    function updateURLFromFilters() {
+        const params = new URLSearchParams();
+
+        const filterMapping = {
+            'bottler_equipment_number': 'filterEquipmentNumber',
+            'oem_serial_number': 'filterSerialNumber',
+            'outlet': 'filterOutlet',
+            'city': 'filterCity',
+            'state': 'filterState',
+            'is_online': 'filterOnlineStatus',
+            'temp_is_ok': 'filterTemperatureStatus',
+            'overheated': 'filterOverheated',
+            'battery_is_ok': 'filterBattery',
+            'is_missing': 'filterMissing',
+            'is_active': 'filterActive',
+            'subclient': 'filterSubclient'
+        };
+
+        // Adicionar parâmetros não vazios à URL
+        for (const [param, elementId] of Object.entries(filterMapping)) {
+            const element = document.getElementById(elementId);
+            const value = element ? element.value.trim() : '';
+
+            if (value) {
+                params.append(param, value);
+            }
+        }
+
+        // Atualizar URL sem recarregar a página
+        const newUrl = params.toString()
+            ? `${window.location.pathname}?${params.toString()}`
+            : window.location.pathname;
+
+        window.history.replaceState({ filters: Object.fromEntries(params) }, '', newUrl);
+    }
+
+    async function applyFilters() {
+        // Nomes dos parâmetros devem corresponder aos da API backend
+        state.filters = {
+            bottler_equipment_number: document.getElementById('filterEquipmentNumber').value.trim(),
+            oem_serial_number: document.getElementById('filterSerialNumber').value.trim(),
+            outlet: document.getElementById('filterOutlet').value.trim(),
+            city: document.getElementById('filterCity').value.trim(),
+            state: document.getElementById('filterState').value.trim(),
+            is_online: document.getElementById('filterOnlineStatus').value,
+            temp_is_ok: document.getElementById('filterTemperatureStatus').value,
+            overheated: document.getElementById('filterOverheated').value,
+            battery_is_ok: document.getElementById('filterBattery').value,
+            is_missing: document.getElementById('filterMissing').value,
+            is_active: document.getElementById('filterActive').value,
+            subclient: document.getElementById('filterSubclient').value
+        };
+
+        // Atualizar URL
+        updateURLFromFilters();
+
+        state.currentPage = 1; // Resetar para página 1 ao aplicar filtros
+        await loadDevices(1);
+        await loadMapMarkers(); // Recarregar markers do mapa com filtros
+    }
+
+    function clearFilters() {
+        document.getElementById('filterEquipmentNumber').value = '';
+        document.getElementById('filterSerialNumber').value = '';
+        document.getElementById('filterOutlet').value = '';
+        document.getElementById('filterCity').value = '';
+        document.getElementById('filterState').value = '';
+        document.getElementById('filterOnlineStatus').value = '';
+        document.getElementById('filterTemperatureStatus').value = '';
+        document.getElementById('filterOverheated').value = '';
+        document.getElementById('filterBattery').value = '';
+        document.getElementById('filterMissing').value = '';
+        document.getElementById('filterActive').value = '';
+        document.getElementById('filterSubclient').value = '';
+
+        applyFilters();
+    }
+
+    // ============ DETAILS PANEL ============
+    function openDetailsPanel() {
+        document.getElementById('detailsPanel').classList.add('show');
+        document.querySelector('.tracking-wrapper').classList.add('details-open');
+    }
+
+    function closeDetailsPanel() {
+        document.getElementById('detailsPanel').classList.remove('show');
+        document.querySelector('.tracking-wrapper').classList.remove('details-open');
+        state.selectedDevice = null;
+    }
+
+    function showError(message) {
+        console.error(message);
+        alert(message);
+    }
+</script>
+
+<!-- Carregador do Google Maps com loading async -->
+<script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&loading=async&libraries=marker"></script>
+
+{% endblock %}
