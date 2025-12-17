@@ -1,7 +1,7 @@
 #!/bin/bash
 
-SERVICE_NAME="app_consultor_vendas.service"
-APP_DIR="/home/vivaservicesai/htdocs/app"
+SERVICE_NAME="copilot_dev.service"
+APP_DIR="/home/vivaservicesai/htdocs/co-pilot/dev"
 VENV_PYTHON="$APP_DIR/venv/bin/python"
 
 case "$1" in
