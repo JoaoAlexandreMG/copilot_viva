@@ -23,6 +23,9 @@ from routes.portal.tracking import (
 from routes.portal.alerts import alerts_bp as portal_alerts_bp
 from utils.vision_accounts import create_accounts_for_all_clients
 from swagger import register_swagger
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Clients autorizados para usar a seção de Inventário (case-insensitive)
 INVENTORY_AUTHORIZED_CLIENTS = {c.lower() for c in ("Redbull",)}
@@ -413,4 +416,4 @@ if __name__ == "__main__":
     init_db()
     db_session = get_session()
     created, total = create_accounts_for_all_clients(db_session)
-    app.run(debug=False, host="0.0.0.0", port=5001)
+    app.run(debug=False, host="0.0.0.0", port=os.getenv("FLASK_PORT"))
