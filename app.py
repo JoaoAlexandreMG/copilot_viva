@@ -22,7 +22,6 @@ from routes.portal.tracking import (
 )
 from routes.portal.alerts import alerts_bp as portal_alerts_bp
 from utils.vision_accounts import create_accounts_for_all_clients
-from swagger import register_swagger
 
 # Clients autorizados para usar a seção de Inventário (case-insensitive)
 INVENTORY_AUTHORIZED_CLIENTS = {c.lower() for c in ("Redbull",)}
@@ -209,9 +208,6 @@ app.register_blueprint(portal_smartdevices_bp)
 app.register_blueprint(portal_tracking_bp)
 app.register_blueprint(portal_alerts_bp)
 app.register_blueprint(inventory_bp)
-
-# Register Swagger documentation
-register_swagger(app)
 
 # Initialize database and create accounts when app starts
 init_db()
