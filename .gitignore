@@ -1,9 +1,0 @@
-.claude
-docs/
-logs
-venv
-__pycache__/
-.cache.sqlite
-docs/*.CSV
-docs/*.csv
-.gitignore
