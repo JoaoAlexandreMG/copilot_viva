@@ -593,13 +593,6 @@
             <div class="modal-body">
                 <div class="qr-warning-banner">LIGUE A LANTERNA</div>
                 <div id="qr-reader"></div>
-                <div class="qr-zoom-controls" style="margin-top: 12px; display: none;">
-                    <label for="qr-zoom-slider" style="display: block; font-size: 0.85rem; margin-bottom: 4px;">
-                        Zoom da câmera (se suportado)
-                    </label>
-                    <input id="qr-zoom-slider" type="range" min="1" max="3" step="0.1" value="1"
-                           style="width: 100%; margin-bottom: 8px;">
-                </div>
                 <p class="status-text qr-hint">
                     Aponte a câmera para o QR Code. Mantenha o código centralizado e, se estiver escuro, ligue a lanterna do celular.
                     Após ler, os dados serão preenchidos automaticamente.
@@ -1166,67 +1159,20 @@
         else statusText.textContent = message || '';
     }
 
-    const qrZoomControls = document.querySelector('#qr-modal .qr-zoom-controls');
-    const qrZoomSlider = document.getElementById('qr-zoom-slider');
-    let qrZoomInitialized = false;
-
-    async function initQrZoomControls() {
-        if (!qrScanner || qrZoomInitialized) return;
-        if (typeof qrScanner.applyVideoConstraints !== 'function') {
-            if (qrZoomControls) qrZoomControls.style.display = 'none';
-            return;
-        }
-
+    async function applyMaxZoomIfSupported() {
+        if (!qrScanner || typeof qrScanner.applyVideoConstraints !== 'function') return;
         try {
             let caps = null;
             if (typeof qrScanner.getRunningTrackCapabilities === 'function') {
                 caps = qrScanner.getRunningTrackCapabilities();
             }
-
             const zoomCaps = caps && typeof caps.zoom === 'object' ? caps.zoom : null;
-
-            // Se não houver suporte a zoom, esconde o bloco
-            if (!zoomCaps) {
-                if (qrZoomControls) qrZoomControls.style.display = 'none';
-                return;
-            }
-
-            qrZoomInitialized = true;
-            if (qrZoomControls) qrZoomControls.style.display = 'block';
-
-            if (zoomCaps && typeof zoomCaps.min === 'number' && typeof zoomCaps.max === 'number' && qrZoomSlider) {
-                const min = zoomCaps.min;
-                const max = zoomCaps.max;
-                const step = zoomCaps.step || 0.1;
-                // Inicia já no zoom máximo disponível quando suportado
-                const initial = max;
-
-                qrZoomSlider.min = String(min);
-                qrZoomSlider.max = String(max);
-                qrZoomSlider.step = String(step);
-                qrZoomSlider.value = String(initial);
-
-                qrZoomSlider.addEventListener('input', async (event) => {
-                    const value = Number(event.target.value);
-                    if (!Number.isFinite(value)) return;
-                    try {
-                        await qrScanner.applyVideoConstraints({
-                            advanced: [{ zoom: value }]
-                        });
-                    } catch (e) {
-                        // Se der erro, mantém slider mas não quebra leitura
-                    }
-                });
-
-                // aplica valor inicial
-                try {
-                    await qrScanner.applyVideoConstraints({
-                        advanced: [{ zoom: initial }]
-                    });
-                } catch (_e) { }
-            }
+            if (!zoomCaps || typeof zoomCaps.max !== 'number') return;
+            await qrScanner.applyVideoConstraints({
+                advanced: [{ zoom: zoomCaps.max }]
+            });
         } catch (_err) {
-            if (qrZoomControls) qrZoomControls.style.display = 'none';
+            // Se não conseguir aplicar zoom, ignora silenciosamente
         }
     }
 
@@ -1242,8 +1188,6 @@
             qrHintTimeoutId = null;
         }
         if (qrWarningBanner) qrWarningBanner.style.display = 'none';
-        qrZoomInitialized = false;
-        if (qrZoomControls) qrZoomControls.style.display = 'none';
         setQrStatus('Abrindo câmera...');
         if (qrScanner) {
             safeStopQrScanner();
@@ -1330,8 +1274,8 @@
                     }
                 }
             );
-            // inicializa zoom se o dispositivo suportar
-            initQrZoomControls();
+            // aplica zoom máximo automaticamente, se o dispositivo suportar
+            applyMaxZoomIfSupported();
             // Após alguns segundos sem leitura, reforça a dica automaticamente
             qrHintTimeoutId = window.setTimeout(() => {
                 if (qrDecodeCount === 0) {
