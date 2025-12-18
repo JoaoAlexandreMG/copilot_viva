@@ -1,6 +1,14 @@
 .claude
-__pycache__/
-docs
+docs/
 logs
 venv
+__pycache__/
+.cache.sqlite
+docs/*.CSV
+docs/*.csv
+import_all_data.py 
+import_data.sh
+manage_service.sh
+run_scraping_daily.sh
 .env
+.gitignore
