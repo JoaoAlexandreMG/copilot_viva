@@ -1710,12 +1710,6 @@
                         <span class="info-value">${parseFloat(device.latitude).toFixed(5)}, ${parseFloat(device.longitude).toFixed(5)}</span>
                     </div>
                     ` : ''}
-                    ${device.client && device.client !== 'N/A' ? `
-                    <div class="info-item">
-                        <span class="info-label">🏢 Cliente</span>
-                        <span class="info-value">${device.client}</span>
-                    </div>
-                    ` : ''}
                     ${device.sub_client && device.sub_client !== 'N/A' ? `
                     <div class="info-item">
                         <span class="info-label">🏬 Sub-Cliente</span>
