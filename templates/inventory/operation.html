@@ -1198,7 +1198,8 @@
                 const min = zoomCaps.min;
                 const max = zoomCaps.max;
                 const step = zoomCaps.step || 0.1;
-                const initial = zoomCaps.default ?? Math.min(Math.max(1, min), max);
+                // Inicia já no zoom máximo disponível quando suportado
+                const initial = max;
 
                 qrZoomSlider.min = String(min);
                 qrZoomSlider.max = String(max);
