@@ -1,6 +1,8 @@
 .claude
-__pycache__/
-docs
+docs/
 logs
 venv
-.env
+__pycache__/
+.cache.sqlite
+docs/*.CSV
+docs/*.csv
