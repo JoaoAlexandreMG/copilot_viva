@@ -3,3 +3,4 @@ docs
 logs
 venv
 __pycache__/
+.cache.sqlite

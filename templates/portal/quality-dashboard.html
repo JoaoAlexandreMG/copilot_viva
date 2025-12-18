@@ -259,6 +259,113 @@
             margin-right: 1rem;
         }
 
+        /* Filtros */
+        .filter-container {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .filter-label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--color-gray-400);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .filter-input {
+            padding: 0.75rem 1rem;
+            background: rgba(0, 195, 255, 0.05);
+            border: 1px solid rgba(0, 195, 255, 0.2);
+            border-radius: var(--radius-md);
+            color: var(--atlas-white);
+            font-size: 0.95rem;
+            transition: all var(--transition-base);
+        }
+
+        .filter-input::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .filter-input:focus {
+            outline: none;
+            background: rgba(0, 195, 255, 0.1);
+            border-color: rgba(0, 195, 255, 0.4);
+            box-shadow: 0 0 0 3px rgba(0, 195, 255, 0.1);
+        }
+
+        .filter-button {
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(135deg, rgba(0, 245, 181, 0.15) 0%, rgba(34, 211, 238, 0.15) 100%);
+            border: 1px solid rgba(0, 245, 181, 0.3);
+            border-radius: var(--radius-md);
+            color: #00f5b5;
+            cursor: pointer;
+            transition: all var(--transition-base);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .filter-button:hover {
+            background: linear-gradient(135deg, rgba(0, 245, 181, 0.25) 0%, rgba(34, 211, 238, 0.25) 100%);
+            border-color: rgba(0, 245, 181, 0.5);
+            box-shadow: 0 0 15px rgba(0, 245, 181, 0.2);
+        }
+
+        .filter-button.reset {
+            background: rgba(107, 114, 128, 0.2);
+            border-color: rgba(107, 114, 128, 0.3);
+            color: var(--color-gray-400);
+        }
+
+        .filter-button.reset:hover {
+            background: rgba(107, 114, 128, 0.3);
+            border-color: rgba(107, 114, 128, 0.5);
+        }
+
+        .active-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            font-size: 0.875rem;
+        }
+
+        .filter-badge {
+            background: rgba(0, 245, 181, 0.2);
+            border: 1px solid rgba(0, 245, 181, 0.3);
+            border-radius: 1rem;
+            padding: 0.25rem 0.75rem;
+            color: #00f5b5;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .filter-badge-close {
+            background: none;
+            border: none;
+            color: #00f5b5;
+            cursor: pointer;
+            font-size: 0.8rem;
+            padding: 0;
+            display: flex;
+            align-items: center;
+        }
+
         /* Animação de pulso para links */
         @keyframes pulse-glow {
             0%, 100% {
@@ -474,6 +581,29 @@
         </div>
 
         <div id="compressor-content">
+            <div class="filter-container">
+                <div class="filter-group">
+                    <label class="filter-label">OEM Serial Number</label>
+                    <input type="text" class="filter-input" id="comp-filter-oem" placeholder="Ex: SR123456" />
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Bottler Serial Number</label>
+                    <input type="text" class="filter-input" id="comp-filter-bottler" placeholder="Ex: BOT123" />
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Outlet Code</label>
+                    <input type="text" class="filter-input" id="comp-filter-outlet" placeholder="Ex: OUT001" />
+                </div>
+                <button class="filter-button" onclick="applyCompressorFilters()">
+                    <i class="fas fa-search"></i> Filtrar
+                </button>
+                <button class="filter-button reset" onclick="resetCompressorFilters()">
+                    <i class="fas fa-redo"></i> Limpar
+                </button>
+            </div>
+
+            <div id="comp-active-filters" class="active-filters"></div>
+
             <div style="overflow-x: auto;">
                 <table class="ranking-table">
                     <thead>
@@ -515,6 +645,29 @@
         </div>
 
         <div id="consumption-content">
+            <div class="filter-container">
+                <div class="filter-group">
+                    <label class="filter-label">OEM Serial Number</label>
+                    <input type="text" class="filter-input" id="cons-filter-oem" placeholder="Ex: SR123456" />
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Bottler Serial Number</label>
+                    <input type="text" class="filter-input" id="cons-filter-bottler" placeholder="Ex: BOT123" />
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Outlet Code</label>
+                    <input type="text" class="filter-input" id="cons-filter-outlet" placeholder="Ex: OUT001" />
+                </div>
+                <button class="filter-button" onclick="applyConsumptionFilters()">
+                    <i class="fas fa-search"></i> Filtrar
+                </button>
+                <button class="filter-button reset" onclick="resetConsumptionFilters()">
+                    <i class="fas fa-redo"></i> Limpar
+                </button>
+            </div>
+
+            <div id="cons-active-filters" class="active-filters"></div>
+
             <div style="overflow-x: auto;">
                 <table class="ranking-table">
                     <thead>
@@ -550,6 +703,10 @@ let techState = { page: 1, perPage: 10, total: 0, totalPages: 0 };
 let compressorState = { page: 1, perPage: 10, total: 0, totalPages: 0 };
 let consumptionState = { page: 1, perPage: 10, total: 0, totalPages: 0 };
 
+// Estado de filtros
+let compressorFilters = { oem_serial_number: '', bottler_equipment_number: '', outlet_code: '' };
+let consumptionFilters = { oem_serial_number: '', bottler_equipment_number: '', outlet_code: '' };
+
 // Carrega dados via AJAX
 async function loadTechnicians(page = 1) {
     try {
@@ -578,7 +735,20 @@ async function loadTechnicians(page = 1) {
 
 async function loadCompressor(page = 1) {
     try {
-        const response = await fetch(`/portal_associacao/api/quality-dashboard/compressor?page=${page}`);
+        const params = new URLSearchParams();
+        params.append('page', page);
+        
+        if (compressorFilters.oem_serial_number) {
+            params.append('oem_serial_number', compressorFilters.oem_serial_number);
+        }
+        if (compressorFilters.bottler_equipment_number) {
+            params.append('bottler_equipment_number', compressorFilters.bottler_equipment_number);
+        }
+        if (compressorFilters.outlet_code) {
+            params.append('outlet_code', compressorFilters.outlet_code);
+        }
+        
+        const response = await fetch(`/portal_associacao/api/quality-dashboard/compressor?${params.toString()}`);
         const result = await response.json();
         
         if (!response.ok) {
@@ -603,7 +773,20 @@ async function loadCompressor(page = 1) {
 
 async function loadConsumption(page = 1) {
     try {
-        const response = await fetch(`/portal_associacao/api/quality-dashboard/consumption?page=${page}`);
+        const params = new URLSearchParams();
+        params.append('page', page);
+        
+        if (consumptionFilters.oem_serial_number) {
+            params.append('oem_serial_number', consumptionFilters.oem_serial_number);
+        }
+        if (consumptionFilters.bottler_equipment_number) {
+            params.append('bottler_equipment_number', consumptionFilters.bottler_equipment_number);
+        }
+        if (consumptionFilters.outlet_code) {
+            params.append('outlet_code', consumptionFilters.outlet_code);
+        }
+        
+        const response = await fetch(`/portal_associacao/api/quality-dashboard/consumption?${params.toString()}`);
         const result = await response.json();
         
         if (!response.ok) {
@@ -624,6 +807,136 @@ async function loadConsumption(page = 1) {
     } catch (error) {
         console.error('Erro ao buscar consumo:', error);
     }
+}
+
+// Funções de filtro para Compressor
+function applyCompressorFilters() {
+    compressorFilters = {
+        oem_serial_number: document.getElementById('comp-filter-oem').value.trim(),
+        bottler_equipment_number: document.getElementById('comp-filter-bottler').value.trim(),
+        outlet_code: document.getElementById('comp-filter-outlet').value.trim()
+    };
+    
+    compressorState.page = 1; // Reset para primeira página
+    updateCompressorActiveFilters();
+    loadCompressor(1);
+}
+
+function resetCompressorFilters() {
+    document.getElementById('comp-filter-oem').value = '';
+    document.getElementById('comp-filter-bottler').value = '';
+    document.getElementById('comp-filter-outlet').value = '';
+    
+    compressorFilters = { oem_serial_number: '', bottler_equipment_number: '', outlet_code: '' };
+    compressorState.page = 1;
+    updateCompressorActiveFilters();
+    loadCompressor(1);
+}
+
+function updateCompressorActiveFilters() {
+    const container = document.getElementById('comp-active-filters');
+    const activeFilters = [];
+    
+    if (compressorFilters.oem_serial_number) {
+        activeFilters.push({ label: 'OEM: ' + compressorFilters.oem_serial_number, type: 'oem' });
+    }
+    if (compressorFilters.bottler_equipment_number) {
+        activeFilters.push({ label: 'Bottler: ' + compressorFilters.bottler_equipment_number, type: 'bottler' });
+    }
+    if (compressorFilters.outlet_code) {
+        activeFilters.push({ label: 'Outlet: ' + compressorFilters.outlet_code, type: 'outlet' });
+    }
+    
+    if (activeFilters.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+    
+    container.innerHTML = activeFilters.map(filter => `
+        <div class="filter-badge">
+            ${escapeHtml(filter.label)}
+            <button class="filter-badge-close" onclick="removeCompressorFilter('${filter.type}')">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `).join('');
+}
+
+function removeCompressorFilter(type) {
+    compressorFilters[type === 'oem' ? 'oem_serial_number' : type === 'bottler' ? 'bottler_equipment_number' : 'outlet_code'] = '';
+    
+    if (type === 'oem') document.getElementById('comp-filter-oem').value = '';
+    if (type === 'bottler') document.getElementById('comp-filter-bottler').value = '';
+    if (type === 'outlet') document.getElementById('comp-filter-outlet').value = '';
+    
+    compressorState.page = 1;
+    updateCompressorActiveFilters();
+    loadCompressor(1);
+}
+
+// Funções de filtro para Consumo
+function applyConsumptionFilters() {
+    consumptionFilters = {
+        oem_serial_number: document.getElementById('cons-filter-oem').value.trim(),
+        bottler_equipment_number: document.getElementById('cons-filter-bottler').value.trim(),
+        outlet_code: document.getElementById('cons-filter-outlet').value.trim()
+    };
+    
+    consumptionState.page = 1; // Reset para primeira página
+    updateConsumptionActiveFilters();
+    loadConsumption(1);
+}
+
+function resetConsumptionFilters() {
+    document.getElementById('cons-filter-oem').value = '';
+    document.getElementById('cons-filter-bottler').value = '';
+    document.getElementById('cons-filter-outlet').value = '';
+    
+    consumptionFilters = { oem_serial_number: '', bottler_equipment_number: '', outlet_code: '' };
+    consumptionState.page = 1;
+    updateConsumptionActiveFilters();
+    loadConsumption(1);
+}
+
+function updateConsumptionActiveFilters() {
+    const container = document.getElementById('cons-active-filters');
+    const activeFilters = [];
+    
+    if (consumptionFilters.oem_serial_number) {
+        activeFilters.push({ label: 'OEM: ' + consumptionFilters.oem_serial_number, type: 'oem' });
+    }
+    if (consumptionFilters.bottler_equipment_number) {
+        activeFilters.push({ label: 'Bottler: ' + consumptionFilters.bottler_equipment_number, type: 'bottler' });
+    }
+    if (consumptionFilters.outlet_code) {
+        activeFilters.push({ label: 'Outlet: ' + consumptionFilters.outlet_code, type: 'outlet' });
+    }
+    
+    if (activeFilters.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+    
+    container.innerHTML = activeFilters.map(filter => `
+        <div class="filter-badge">
+            ${escapeHtml(filter.label)}
+            <button class="filter-badge-close" onclick="removeConsumptionFilter('${filter.type}')">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `).join('');
+}
+
+function removeConsumptionFilter(type) {
+    consumptionFilters[type === 'oem' ? 'oem_serial_number' : type === 'bottler' ? 'bottler_equipment_number' : 'outlet_code'] = '';
+    
+    if (type === 'oem') document.getElementById('cons-filter-oem').value = '';
+    if (type === 'bottler') document.getElementById('cons-filter-bottler').value = '';
+    if (type === 'outlet') document.getElementById('cons-filter-outlet').value = '';
+    
+    consumptionState.page = 1;
+    updateConsumptionActiveFilters();
+    loadConsumption(1);
 }
 
 // Renderizar tabela de técnicos

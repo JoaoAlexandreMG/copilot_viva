@@ -124,7 +124,7 @@ def list_assets():
 
     Features:
     - Authentication required
-    - Uses MATERIALIZED VIEW (mv_asset_current_status) for optimal performance
+    - Uses MATERIALIZED VIEW (mv_smart_device_current_status) for optimal performance
     - Distance-based sorting (closest assets first) in real-time with user location
     - Subclient filtering
     - Text search filtering
@@ -176,7 +176,7 @@ def list_assets():
 
         sql_query = sql_text(
             f"""
-            SELECT * FROM mv_asset_current_status
+            SELECT * FROM mv_smart_device_current_status
             WHERE {where_sql}
         """
         )
@@ -624,7 +624,7 @@ def asset_detail(asset_serial_number):
     Features:
     - Authentication required
     - Client security (users only see their client's assets)
-    - Consumes mv_asset_current_status MATERIALIZED VIEW for all asset data
+    - Consumes mv_smart_device_current_status MATERIALIZED VIEW for all asset data
     - Health events data with historical charts
     - Movement data with door activity
     - Distance calculation from user location
@@ -644,7 +644,7 @@ def asset_detail(asset_serial_number):
 
         sql_query = sql_text(
             """
-            SELECT * FROM mv_asset_current_status 
+            SELECT * FROM mv_smart_device_current_status 
             WHERE oem_serial_number = :serial AND client = :client
         """
         )
@@ -691,7 +691,7 @@ def asset_detail(asset_serial_number):
             .first()
         )
 
-        # Get comprehensive health data - already in mv_asset_current_status
+        # Get comprehensive health data - already in mv_smart_device_current_status
         # The view contains: battery, last_health_time, temperature_c,
         # avg_power_consumption_watt, total_compressor_on_time_percent
         asset_dict["battery_level"] = asset_dict.get("battery")

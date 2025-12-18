@@ -216,7 +216,7 @@ def stats_for_dashboard(days=30):
     active_assets_24h_sql = text(
         """
         SELECT COUNT(*) 
-        FROM mv_asset_current_status
+        FROM mv_smart_device_current_status
         WHERE client = :client 
         AND last_movement_time >= NOW() - INTERVAL '24 hours'
     """
@@ -229,7 +229,7 @@ def stats_for_dashboard(days=30):
     overheated_assets_sql = text(
         """
         SELECT COUNT(*) 
-        FROM mv_asset_current_status
+        FROM mv_smart_device_current_status
         WHERE client = :client 
         AND temperature_c > 100
     """
@@ -662,7 +662,8 @@ def api_quality_technicians():
 def api_quality_compressor():
     """
     API para carregar assets por compressor paginados via AJAX.
-    Usa mv_asset_current_status para performance, com cálculos consistentes com health_events.
+    Usa mv_smart_device_current_status para performance, com cálculos consistentes com health_events.
+    Suporta filtros: oem_serial_number, bottler_equipment_number, outlet_code
     """
     try:
         db_session = get_session()
@@ -670,41 +671,68 @@ def api_quality_compressor():
         page = request.args.get("page", 1, type=int) or 1
         per_page = 10
 
+        # Get filter parameters
+        oem_filter = request.args.get("oem_serial_number", "").strip()
+        bottler_filter = request.args.get("bottler_equipment_number", "").strip()
+        outlet_filter = request.args.get("outlet_code", "").strip()
+
         if not client:
             return jsonify({"error": "Unauthorized"}), 401
 
+        # Build where conditions dynamically
+        where_conditions = [
+            "client = :client",
+            "total_compressor_on_time_percent IS NOT NULL",
+        ]
+        params = {"client": client}
+
+        if oem_filter:
+            where_conditions.append("oem_serial_number LIKE :oem_filter")
+            params["oem_filter"] = f"%{oem_filter}%"
+
+        if bottler_filter:
+            where_conditions.append("bottler_equipment_number LIKE :bottler_filter")
+            params["bottler_filter"] = f"%{bottler_filter}%"
+
+        if outlet_filter:
+            where_conditions.append("outlet_code LIKE :outlet_filter")
+            params["outlet_filter"] = f"%{outlet_filter}%"
+
+        where_clause = " AND ".join(where_conditions)
+
         # Get total count
         total_sql = text(
-            """
+            f"""
             SELECT COUNT(DISTINCT oem_serial_number)
-            FROM mv_asset_current_status
-            WHERE client = :client 
-            AND total_compressor_on_time_percent IS NOT NULL
+            FROM mv_smart_device_current_status
+            WHERE {where_clause}
             """
         )
-        total = db_session.execute(total_sql, {"client": client}).scalar() or 0
+        total = db_session.execute(total_sql, params).scalar() or 0
         total_pages = (total + per_page - 1) // per_page if total else 0
 
-        # Get paginated data - usando mv_asset_current_status para performance
+        # Get paginated data - usando mv_smart_device_current_status para performance
         compressor_sql = text(
-            """
+            f"""
             SELECT
                 oem_serial_number as asset_id,
                 outlet_code,
                 outlet as outlet_name,
                 total_compressor_on_time_percent as compressor_on_time
-            FROM mv_asset_current_status
-            WHERE client = :client
-                AND total_compressor_on_time_percent IS NOT NULL
+            FROM mv_smart_device_current_status
+            WHERE {where_clause}
             ORDER BY
                 compressor_on_time DESC
             LIMIT :limit OFFSET :offset
             """
         )
 
+        params["limit"] = per_page
+        params["offset"] = (page - 1) * per_page
+
         assets = db_session.execute(
             compressor_sql,
-            {"client": client, "limit": per_page, "offset": (page - 1) * per_page},
+            params,
         ).fetchall()
 
         data = [dict(row._mapping) for row in assets]
@@ -724,7 +752,8 @@ def api_quality_compressor():
 def api_quality_consumption():
     """
     API para carregar assets por consumo paginados via AJAX.
-    Usa mv_asset_current_status para melhor performance e carregamento mais rápido.
+    Usa mv_smart_device_current_status para melhor performance e carregamento mais rápido.
+    Suporta filtros: oem_serial_number, bottler_equipment_number, outlet_code
     """
     try:
         db_session = get_session()
@@ -732,42 +761,68 @@ def api_quality_consumption():
         page = request.args.get("page", 1, type=int) or 1
         per_page = 10
 
+        # Get filter parameters
+        oem_filter = request.args.get("oem_serial_number", "").strip()
+        bottler_filter = request.args.get("bottler_equipment_number", "").strip()
+        outlet_filter = request.args.get("outlet_code", "").strip()
+
         if not client:
             return jsonify({"error": "Unauthorized"}), 401
 
+        # Build where conditions dynamically
+        where_conditions = [
+            "client = :client",
+            "avg_power_consumption_watt IS NOT NULL",
+        ]
+        params = {"client": client}
+
+        if oem_filter:
+            where_conditions.append("oem_serial_number LIKE :oem_filter")
+            params["oem_filter"] = f"%{oem_filter}%"
+
+        if bottler_filter:
+            where_conditions.append("bottler_equipment_number LIKE :bottler_filter")
+            params["bottler_filter"] = f"%{bottler_filter}%"
+
+        if outlet_filter:
+            where_conditions.append("outlet_code LIKE :outlet_filter")
+            params["outlet_filter"] = f"%{outlet_filter}%"
+
+        where_clause = " AND ".join(where_conditions)
+
         # Get total count
         total_sql = text(
-            """
+            f"""
             SELECT COUNT(DISTINCT oem_serial_number)
-            FROM mv_asset_current_status
-            WHERE client = :client
-            AND avg_power_consumption_watt IS NOT NULL
+            FROM mv_smart_device_current_status
+            WHERE {where_clause}
             """
         )
-        total = db_session.execute(total_sql, {"client": client}).scalar() or 0
+        total = db_session.execute(total_sql, params).scalar() or 0
         total_pages = (total + per_page - 1) // per_page if total else 0
 
-        # Get paginated data - usando mv_asset_current_status para performance
+        # Get paginated data - usando mv_smart_device_current_status para performance
         consumption_sql = text(
-            """
+            f"""
             SELECT
                 oem_serial_number as asset_id,
                 outlet_code,
                 outlet as outlet_name,
                 avg_power_consumption_watt as power_consumption
-            FROM mv_asset_current_status
-            WHERE
-                client = :client
-                AND avg_power_consumption_watt IS NOT NULL
+            FROM mv_smart_device_current_status
+            WHERE {where_clause}
             ORDER BY
                 power_consumption DESC
             LIMIT :limit OFFSET :offset
             """
         )
 
+        params["limit"] = per_page
+        params["offset"] = (page - 1) * per_page
+
         assets = db_session.execute(
             consumption_sql,
-            {"client": client, "limit": per_page, "offset": (page - 1) * per_page},
+            params,
         ).fetchall()
 
         data = [dict(row._mapping) for row in assets]

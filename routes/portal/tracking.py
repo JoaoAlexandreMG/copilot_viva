@@ -133,7 +133,7 @@ def get_ambient_temperature(latitude, longitude):
             return None
 
         # Setup the Open-Meteo API client with cache and retry
-        cache_session = requests_cache.CachedSession('.cache', expire_after=-1)
+        cache_session = requests_cache.CachedSession(".cache", expire_after=-1)
         retry_session = retry(cache_session, retries=5, backoff_factor=0.2)
         openmeteo = openmeteo_requests.Client(session=retry_session)
 
@@ -145,7 +145,9 @@ def get_ambient_temperature(latitude, longitude):
             "timezone": "auto",
         }
 
-        responses = openmeteo.weather_api("https://api.open-meteo.com/v1/forecast", params=params)
+        responses = openmeteo.weather_api(
+            "https://api.open-meteo.com/v1/forecast", params=params
+        )
 
         if responses and len(responses) > 0:
             response = responses[0]
@@ -358,10 +360,11 @@ def get_assets_optimized():
         elif is_missing in ("false", "0", "no"):
             where_clauses.append("displacement_meter <= :gps_displacement_threshold")
             params["gps_displacement_threshold"] = gps_displacement_threshold
+
         if is_active in ("true", "1", "yes"):
-            where_clauses.append("last_movement_time >= NOW() - INTERVAL '24 hours'")
+            where_clauses.append("is_active = true")
         elif is_active in ("false", "0", "no"):
-            where_clauses.append("last_movement_time < NOW() - INTERVAL '24 hours'")
+            where_clauses.append("is_active = false")
         temp_alert_definition_sql = text(
             """
         SELECT mco.applied_min, mco.applied_max
@@ -415,7 +418,7 @@ def get_assets_optimized():
 
         # 2. Buscar COUNT total de assets para paginação
         sql_count = text(
-            f"SELECT COUNT(*) as total FROM mv_asset_current_status WHERE {where_sql}"
+            f"SELECT COUNT(*) as total FROM mv_smart_device_current_status WHERE {where_sql}"
         )
         total_count = db_session.execute(sql_count, params).scalar() or 0
 
@@ -439,7 +442,7 @@ def get_assets_optimized():
                     NULLIF(CAST(last_known_longitude AS FLOAT), 0),
                     NULLIF(CAST(outlet_longitude AS FLOAT), 0)
                 ) as final_longitude
-            FROM mv_asset_current_status 
+            FROM mv_smart_device_current_status 
             WHERE {where_sql} 
             LIMIT :limit OFFSET :offset
         """
@@ -511,7 +514,7 @@ def get_assets_optimized():
                         NULLIF(CAST(last_known_longitude AS FLOAT), 0),
                         NULLIF(CAST(outlet_longitude AS FLOAT), 0)
                     ) as final_longitude
-                FROM mv_asset_current_status 
+                FROM mv_smart_device_current_status 
                 WHERE {where_sql}
             """
             )
@@ -781,9 +784,9 @@ def get_map_markers():
 
         # Filtro de atividade (últimas 24 horas)
         if is_active in ("true", "1", "yes"):
-            where_clauses.append("last_movement_time >= NOW() - INTERVAL '24 hours'")
+            where_clauses.append("is_active = true")
         elif is_active in ("false", "0", "no"):
-            where_clauses.append("last_movement_time < NOW() - INTERVAL '24 hours'")
+            where_clauses.append("is_active = false")
 
         # Filtro por bounding box (viewport do mapa)
         if all(v is not None for v in [min_lat, max_lat, min_lng, max_lng]):
@@ -828,7 +831,7 @@ def get_map_markers():
                     NULLIF(CAST(last_known_longitude AS FLOAT), 0),
                     NULLIF(CAST(outlet_longitude AS FLOAT), 0)
                 ) as lng
-            FROM mv_asset_current_status
+            FROM mv_smart_device_current_status
             WHERE {where_sql}
             AND (
                 (latitude IS NOT NULL AND CAST(latitude AS FLOAT) != 0)
@@ -876,7 +879,7 @@ def get_map_markers():
         # Contar total disponível
         count_sql = text(
             f"""
-            SELECT COUNT(*) FROM mv_asset_current_status
+            SELECT COUNT(*) FROM mv_smart_device_current_status
             WHERE {where_sql}
             AND (
                 (latitude IS NOT NULL AND CAST(latitude AS FLOAT) != 0)
@@ -916,7 +919,7 @@ def get_asset_details(serial_number):
     client_code = session.get("user", {}).get("client")
 
     try:
-        # 1. Dados básicos do asset (mv_asset_current_status)
+        # 1. Dados básicos do asset (mv_smart_device_current_status)
         basic_sql = text(
             """
             SELECT
@@ -943,7 +946,7 @@ def get_asset_details(serial_number):
                 ) as longitude,
                 NULLIF(CAST(outlet_latitude AS FLOAT), 0) as outlet_lat,
                 NULLIF(CAST(outlet_longitude AS FLOAT), 0) as outlet_lng
-            FROM mv_asset_current_status
+            FROM mv_smart_device_current_status
             WHERE client = :client AND oem_serial_number = :serial
         """
         )
@@ -989,7 +992,7 @@ def get_asset_details(serial_number):
             health_sql, {"client": client_code, "serial": serial_number}
         ).fetchone()
 
-        # 3. Estatísticas do dashboard (mv_asset_current_status) - inclui power/compressor como fallback
+        # 3. Estatísticas do dashboard (mv_smart_device_current_status) - inclui power/compressor como fallback
         stats_sql = text(
             """
             SELECT
@@ -997,7 +1000,7 @@ def get_asset_details(serial_number):
                 temperature_c,
                 avg_power_consumption_watt,
                 total_compressor_on_time_percent
-            FROM mv_asset_current_status
+            FROM mv_smart_device_current_status
             WHERE client = :client AND oem_serial_number = :serial
         """
         )
@@ -1061,7 +1064,7 @@ def get_asset_details(serial_number):
             SELECT
                 avg_power_consumption_watt as avg_power_30d,
                 total_compressor_on_time_percent as avg_compressor_30d
-            FROM mv_asset_current_status
+            FROM mv_smart_device_current_status
             WHERE client = :client
             AND oem_serial_number = :serial
         """
@@ -1093,8 +1096,7 @@ def get_asset_details(serial_number):
         # 7. Buscar temperatura do ambiente local via Open-Meteo API
         if asset_details.get("latitude") and asset_details.get("longitude"):
             ambient_temp = get_ambient_temperature(
-                asset_details.get("latitude"),
-                asset_details.get("longitude")
+                asset_details.get("latitude"), asset_details.get("longitude")
             )
             asset_details["ambient_temperature_from_api"] = ambient_temp
         else:
