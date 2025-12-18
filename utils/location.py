@@ -47,14 +47,16 @@ def get_location_info(latitude: float, longitude: float) -> Optional[Dict]:
             "lon": longitude,
             "format": "json",
             "accept-language": "pt-BR,pt,en",
-            "zoom": 10  # City level detail
+            # Usa um nível de zoom mais detalhado para tentar obter rua/via mais próxima
+            "zoom": 18
         }
         
         headers = {
             "User-Agent": "VivaAI-App/1.0"  # Required by Nominatim
         }
 
-        response = requests.get(url, params=params, headers=headers, timeout=10)
+        # Mantém um timeout baixo para não travar o fluxo caso o serviço esteja lento
+        response = requests.get(url, params=params, headers=headers, timeout=5)
         response.raise_for_status()
 
         data = response.json()
@@ -67,6 +69,33 @@ def get_location_info(latitude: float, longitude: float) -> Optional[Dict]:
         # Extract relevant location information
         country = address.get("country")
         country_code = address.get("country_code", "").upper()
+
+        # Try to build a street-like representation (rua ou via mais próxima)
+        street_parts = []
+        # Campos mais comuns para rua/avenida/praça/calcadão etc.
+        street_candidates = (
+            "road",
+            "pedestrian",
+            "footway",
+            "street",
+            "residential",
+            "path",
+            "square",
+            "neighbourhood",
+            "suburb",
+            "hamlet",
+            "city_district",
+        )
+        for key in street_candidates:
+            if address.get(key):
+                street_parts.append(address.get(key))
+                break
+
+        if address.get("house_number"):
+            # Append house/building number if available
+            street_parts.append(address.get("house_number"))
+
+        street = " ".join(street_parts) if street_parts else None
         
         # Try different city field names
         city = (address.get("city") or 
@@ -81,6 +110,7 @@ def get_location_info(latitude: float, longitude: float) -> Optional[Dict]:
         return {
             "country": country,
             "country_code": country_code,
+            "street": street,
             "city": city,
             "state": state,
             "region": region,

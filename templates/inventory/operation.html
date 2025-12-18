@@ -636,6 +636,9 @@
                             <label for="city">Cidade *</label>
                             <input id="city" name="city" required />
                         </div>
+                        <div style="grid-column: 1 / -1;">
+                            <div class="status-text" id="address-status"></div>
+                        </div>
                         <div>
                             <label for="last_latitude">Latitude</label>
                             <input id="last_latitude" name="last_latitude" />
@@ -684,6 +687,7 @@
     const openScanBtn = document.getElementById('open-scan-btn');
     const formElement = document.getElementById('inventory-form');
     const statusText = document.getElementById('form-status');
+    const addressStatus = document.getElementById('address-status');
     const locationStatus = document.getElementById('location-status');
     const serialInput = document.getElementById('method-serial');
     const methodStatus = document.getElementById('method-status');
@@ -713,6 +717,48 @@
     const filterOutlet = document.getElementById('filter-outlet');
     const filterRadius = document.getElementById('filter-radius');
     const filterOrder = document.getElementById('filter-order');
+
+    async function tryFillAddressFromCoordinates(lat, lng) {
+        if (!fieldStreet || !fieldCity) return;
+        if (lat === null || lat === undefined || lng === null || lng === undefined) return;
+
+        const hasStreet = fieldStreet.value && fieldStreet.value.trim().length > 0;
+        const hasCity = fieldCity.value && fieldCity.value.trim().length > 0;
+        if (hasStreet && hasCity) return;
+
+        if (addressStatus) {
+            addressStatus.textContent = 'Buscando endereço pela localização...';
+        }
+
+        try {
+            const url = new URL('{{ url_for("inventory.reverse_geocode_inventory_location") }}', window.location.origin);
+            url.searchParams.set('lat', lat);
+            url.searchParams.set('lng', lng);
+            const resp = await fetch(url.toString(), { credentials: 'same-origin' });
+            if (!resp.ok) return;
+            const data = await resp.json();
+            let filled = false;
+            if (!hasStreet && data.street) {
+                fieldStreet.value = data.street;
+                filled = true;
+            }
+            if (!hasCity && data.city) {
+                fieldCity.value = data.city;
+                filled = true;
+            }
+            if (addressStatus) {
+                if (filled) {
+                    addressStatus.textContent = 'Endereço preenchido automaticamente.';
+                } else {
+                    addressStatus.textContent = 'Não foi possível determinar a rua; preencha manualmente.';
+                }
+            }
+        } catch (_err) {
+            if (addressStatus) {
+                addressStatus.textContent = 'Não foi possível buscar endereço automático; preencha manualmente.';
+            }
+        }
+    }
 
     function setModal(modal, isOpen) {
         if (!modal) return;
@@ -1084,6 +1130,7 @@
         currentLocationMarker = L.marker([lat, lng], { icon: currentIcon }).addTo(map).bindPopup('Sua localização atual');
 
         map.panTo([lat, lng]);
+        tryFillAddressFromCoordinates(lat, lng);
         const radiusVal = parseFloat(filterRadius?.value);
         if (Number.isFinite(radiusVal) && radiusVal > 0) applyFilters();
     }
@@ -1146,6 +1193,11 @@
         if (prefill.asset_type) fieldType.value = prefill.asset_type;
         if (prefill.material) fieldMaterial.value = prefill.material;
         fillLocationFields(prefill);
+        const latToUse = prefill.last_latitude ?? userLat;
+        const lngToUse = prefill.last_longitude ?? userLng;
+        if (latToUse !== null && latToUse !== undefined && lngToUse !== null && lngToUse !== undefined) {
+            tryFillAddressFromCoordinates(latToUse, lngToUse);
+        }
         setModal(formModal, true);
     }
 

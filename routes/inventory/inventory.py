@@ -6,6 +6,7 @@ from routes.portal.decorators import require_authentication
 from db.database import get_session
 from models.models import AssetsInventory, AssetInventoryVisit, User
 from sqlalchemy import func
+from utils.location import get_location_info
 
 inventory_bp = Blueprint("inventory", __name__, url_prefix="/inventory")
 
@@ -471,3 +472,48 @@ def create_inventory_asset():
     except Exception as e:
         print(f"[ERROR] Error creating inventory asset: {e}")
         return jsonify({"error": "Erro ao criar asset"}), 500
+
+
+@inventory_bp.route('/operation/reverse-geocode', methods=['GET'])
+@require_authentication
+def reverse_geocode_inventory_location():
+    """
+    Resolve endereço (rua/cidade) a partir de latitude/longitude usando Nominatim.
+    Usado pela tela de Operação para preencher automaticamente o formulário.
+    """
+    try:
+        lat_raw = request.args.get("lat") or request.args.get("latitude")
+        lng_raw = (
+            request.args.get("lng")
+            or request.args.get("lon")
+            or request.args.get("longitude")
+        )
+
+        if not lat_raw or not lng_raw:
+            return jsonify({"error": "Parâmetros lat e lng são obrigatórios."}), 400
+
+        try:
+            latitude = float(lat_raw)
+            longitude = float(lng_raw)
+        except (TypeError, ValueError):
+            return jsonify({"error": "Parâmetros de latitude/longitude inválidos."}), 400
+
+        info = get_location_info(latitude, longitude)
+        if not info:
+            return jsonify({"error": "Não foi possível obter endereço para estas coordenadas."}), 404
+
+        response_payload = {
+            "street": info.get("street"),
+            "city": info.get("city"),
+            "state": info.get("state"),
+            "country": info.get("country"),
+        }
+
+        # Se não tiver pelo menos cidade, considere sem dados úteis
+        if not response_payload["city"] and not response_payload["street"]:
+            return jsonify({"error": "Endereço não encontrado para estas coordenadas."}), 404
+
+        return jsonify(response_payload)
+    except Exception as e:
+        print(f"[ERROR] Error reverse geocoding inventory location: {e}")
+        return jsonify({"error": "Erro ao buscar endereço a partir da localização."}), 500
