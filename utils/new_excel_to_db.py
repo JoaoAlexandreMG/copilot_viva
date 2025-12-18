@@ -1,3 +1,4 @@
+
 import pandas as pd  # Novo e principal import
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 import openpyxl
