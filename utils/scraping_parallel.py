@@ -47,6 +47,9 @@ def main_parallel(tipo="daily", max_workers=2):
     """
     Executa o scraping em paralelo
     """
+    # Limitar workers a máximo de 2 para não sobrecarregar VPS
+    max_workers = min(max_workers, 2)
+
     print(f"INICIANDO SCRAPING PARALELO ({tipo.upper()}) - Max Workers: {max_workers}")
     print("=" * 80)
 
@@ -70,6 +73,7 @@ def main_parallel(tipo="daily", max_workers=2):
     # Cada item é uma tupla (conta_data, tipo)
     work_items = [(conta, tipo) for conta in contas]
 
+    # Use ThreadPoolExecutor com timeout
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         # Mapear a função wrapper para os itens de trabalho
         future_to_client = {
@@ -77,13 +81,18 @@ def main_parallel(tipo="daily", max_workers=2):
             for item in work_items
         }
 
-        for future in concurrent.futures.as_completed(future_to_client):
+        for future in concurrent.futures.as_completed(
+            future_to_client, timeout=1800
+        ):  # 30 min timeout
             client_name = future_to_client[future]
             try:
-                c_name, sucesso = future.result()
+                c_name, sucesso = future.result(timeout=1800)
                 resultados[c_name] = sucesso
                 status = "SUCESSO" if sucesso else "ERRO"
                 print(f"\n>>> CONCLUSÃO: {client_name} finalizado com {status}")
+            except concurrent.futures.TimeoutError:
+                print(f"\n>>> TIMEOUT: {client_name} excedeu o tempo limite (30 min)")
+                resultados[client_name] = False
             except Exception as exc:
                 print(f"\n>>> ERRO: {client_name} gerou uma exceção: {exc}")
                 resultados[client_name] = False
@@ -111,16 +120,12 @@ def main_parallel(tipo="daily", max_workers=2):
         print(f"{'='*60}")
 
         try:
-            # Reiniciar PostgreSQL antes da importação
-            print("Reiniciando serviço PostgreSQL...")
-            try:
-                subprocess.run(
-                    ["sudo", "systemctl", "restart", "postgresql"], check=True
-                )
-                print("✓ PostgreSQL reiniciado com sucesso.")
-            except subprocess.CalledProcessError as e:
-                print(f"⚠ Aviso: Não foi possível reiniciar o PostgreSQL: {e}")
-                print("Continuando com a importação...")
+            # NÃO reiniciar PostgreSQL - causa indisponibilidade da VPS
+            # O PostgreSQL já está rodando e não precisa reiniciar para importação
+            print("Aguardando estabilidade do banco de dados (5s)...")
+            import time
+
+            time.sleep(5)
 
             # Executar o script import_all_data.py
             # Assumindo que está na raiz do projeto (parent_dir)
