@@ -470,8 +470,9 @@ def create_inventory_asset():
 
         return jsonify({"asset": asset_payload, "created": True}), 201
     except Exception as e:
-        print(f"[ERROR] Error creating inventory asset: {e}")
-        return jsonify({"error": "Erro ao criar asset"}), 500
+        db_session.rollback() # GARANTIR QUE ISTO EXISTE
+        print(f"Erro ao criar asset: {e}")
+        return jsonify({"error": str(e)}), 500
 
 
 @inventory_bp.route('/operation/reverse-geocode', methods=['GET'])
@@ -517,3 +518,5 @@ def reverse_geocode_inventory_location():
     except Exception as e:
         print(f"[ERROR] Error reverse geocoding inventory location: {e}")
         return jsonify({"error": "Erro ao buscar endereço a partir da localização."}), 500
+    finally:
+        db_session.close()

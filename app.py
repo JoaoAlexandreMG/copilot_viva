@@ -1,7 +1,7 @@
 import os
 from flask import Flask, render_template, redirect, url_for, request, session
 from werkzeug.middleware.proxy_fix import ProxyFix
-from db.database import get_session, init_db
+from db.database import get_session, init_db, Session
 from models.models import User
 from datetime import datetime
 import time
@@ -21,16 +21,13 @@ from routes.portal.tracking import (
     SIMPLE_TRACKING_AUTHORIZED_CLIENTS,
 )
 from routes.portal.alerts import alerts_bp as portal_alerts_bp
+from routes.admin import admin_bp
+from routes.admin_dashboard import admin_dashboard_bp
 from utils.vision_accounts import create_accounts_for_all_clients
 from swagger import register_swagger
 
 # Clients autorizados para usar a seção de Inventário (case-insensitive)
-INVENTORY_AUTHORIZED_CLIENTS = {
-    c.lower()
-    for c in (
-        "Redbull",
-    )
-}
+INVENTORY_AUTHORIZED_CLIENTS = {c.lower() for c in ("Redbull",)}
 
 app = Flask(
     __name__,
@@ -39,6 +36,15 @@ app = Flask(
     static_url_path="/static",
 )
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-secret-key")
+
+# ADICIONAR ESTE BLOCO LOGO APÓS A CRIAÇÃO DO APP
+@app.teardown_appcontext
+def shutdown_session(exception=None):
+    """
+    Garante que a sessão do banco seja removida ao final de cada request.
+    Isso previne 'Idle' e 'Idle in Transaction'.
+    """
+    Session.remove()
 
 # Fix for running behind a proxy (HTTPS -> HTTP)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
@@ -186,13 +192,15 @@ def retry_db_operation(operation, max_retries=3):
         except (TimeoutError, OperationalError) as e:
             if attempt < max_retries - 1:
                 # Backoff exponencial: 0.5s, 1s, 2s
-                wait_time = 0.5 * (2 ** attempt)
+                wait_time = 0.5 * (2**attempt)
                 print(f"[WARN] DB attempt {attempt + 1}/{max_retries} failed: {str(e)}")
                 print(f"[WARN] Retrying in {wait_time}s...")
                 time.sleep(wait_time)
             else:
                 # Última tentativa falhou, re-raise a exceção
-                print(f"[ERROR] DB operation failed after {max_retries} attempts: {str(e)}")
+                print(
+                    f"[ERROR] DB operation failed after {max_retries} attempts: {str(e)}"
+                )
                 raise
 
 
@@ -213,8 +221,26 @@ app.register_blueprint(portal_tracking_bp)
 app.register_blueprint(portal_alerts_bp)
 app.register_blueprint(inventory_bp)
 
+# Admin blueprints (API endpoints)
+app.register_blueprint(admin_bp)
+app.register_blueprint(admin_dashboard_bp)
+
 # Register Swagger documentation
 register_swagger(app)
+
+
+# Health check endpoint (CRÍTICO para uptime - usado por load balancer)
+@app.route("/health", methods=["GET"])
+def health():
+    """Endpoint de health check para monitoramento de uptime"""
+    from health_check import HealthCheck
+
+    checks = HealthCheck.full_check()
+
+    # Return 200 se status geral for ok
+    status_code = 200 if checks["overall"] == "healthy" else 503
+    return checks, status_code
+
 
 # Initialize database and create accounts when app starts
 init_db()
@@ -366,7 +392,9 @@ def index():
         if destination == "inventory":
             # Só permite ir para Inventário se o client estiver autorizado.
             if user.client and user.client.lower() in INVENTORY_AUTHORIZED_CLIENTS:
-                return redirect(url_for("inventory.render_inventory_operation", open="add"))
+                return redirect(
+                    url_for("inventory.render_inventory_operation", open="add")
+                )
             # Se não estiver autorizado, cai no fluxo normal abaixo (portal/tracking/assets)
 
         if destination == "portal":
@@ -381,15 +409,19 @@ def index():
     except (TimeoutError, OperationalError) as e:
         # Erros de banco de dados - retornar 503 Service Unavailable
         print(f"[ERROR] Database timeout/unavailable: {str(e)}")
-        return render_template(
-            "login.html",
-            error="Serviço temporariamente indisponível. Por favor tente novamente em alguns segundos.",
-            upn=upn
-        ), 503
+        return (
+            render_template(
+                "login.html",
+                error="Serviço temporariamente indisponível. Por favor tente novamente em alguns segundos.",
+                upn=upn,
+            ),
+            503,
+        )
 
     except Exception as e:
         print(f"[ERROR] Login error: {str(e)}")
         import traceback
+
         traceback.print_exc()
         return render_template("login.html", error="Erro interno do servidor", upn=upn)
 
