@@ -66,9 +66,8 @@ def list_and_create_assets():
     """
     List all assets with pagination (filtered by user client)
     """
+    db_session = get_session()
     try:
-        db_session = get_session()
-
         # Get user client from session
         user_client = session.get("user", {}).get("client")
         if not user_client:
@@ -109,6 +108,9 @@ def list_and_create_assets():
         print(f"[ERROR] Error listing assets: {str(e)}")
         flash("Erro ao listar assets", "error")
         return redirect(url_for("dashboard.render_dashboard"))
+    finally:
+        # ADICIONAR: Fechamento explícito (embora o teardown agora cuide disso)
+        db_session.close()
 
 
 @assets_bp.route("/", methods=["POST"])
@@ -122,7 +124,7 @@ def create_asset():
         if not user or not user.get("client"):
             flash("Sessão inválida. Por favor, faça login novamente.", "error")
             return redirect(url_for("auth.login"))
-        
+
         db_session = get_session()
 
         # Validate required field
