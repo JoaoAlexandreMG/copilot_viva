@@ -111,52 +111,58 @@ def main_parallel(tipo="daily", max_workers=2):
 
     print(f"\nTotal processado: {sucessos}/{total} clientes com sucesso")
 
-    if sucessos == total:
-        print("✓ Todos os clientes processados com sucesso!")
+    print("✓ Clientes processados com sucesso!")
 
-        # Executar automaticamente o script de importação
-        print(f"\n{'='*60}")
-        print("INICIANDO IMPORTAÇÃO AUTOMÁTICA DOS DADOS")
-        print(f"{'='*60}")
+    # Importação automática DESABILITADA - use o dashboard para importar
+    print(f"\n{'='*60}")
+    print("SCRAPING CONCLUÍDO")
+    print(f"{'='*60}")
+    print("Arquivos salvos em: docs/")
+    print("Para importar os dados, use o botão 'Iniciar' no Dashboard Admin")
 
-        try:
-            # NÃO reiniciar PostgreSQL - causa indisponibilidade da VPS
-            # O PostgreSQL já está rodando e não precisa reiniciar para importação
-            print("Aguardando estabilidade do banco de dados (5s)...")
-            import time
+    # # Executar automaticamente o script de importação
+    # print(f"\n{'='*60}")
+    # print("INICIANDO IMPORTAÇÃO AUTOMÁTICA DOS DADOS")
+    # print(f"{'='*60}")
 
-            time.sleep(5)
+    # try:
+    #     # Reiniciar PostgreSQL antes da importação
+    #     print("Reiniciando serviço PostgreSQL...")
+    #     try:
+    #         subprocess.run(
+    #             ["sudo", "systemctl", "restart", "postgresql"], check=True
+    #         )
+    #         print("✓ PostgreSQL reiniciado com sucesso.")
+    #     except subprocess.CalledProcessError as e:
+    #         print(f"⚠ Aviso: Não foi possível reiniciar o PostgreSQL: {e}")
+    #         print("Continuando com a importação...")
 
-            # Executar o script import_all_data.py
-            # Assumindo que está na raiz do projeto (parent_dir)
-            script_path = os.path.join(parent_dir, "import_all_data.py")
+    #     # Executar o script import_all_data.py
+    #     # Assumindo que está na raiz do projeto (parent_dir)
+    #     script_path = os.path.join(parent_dir, "import_all_data.py")
 
-            result = subprocess.run(
-                [sys.executable, script_path],
-                capture_output=True,
-                text=True,
-                cwd=parent_dir,  # Executar no diretório raiz
-            )
+    #     result = subprocess.run(
+    #         [sys.executable, script_path],
+    #         capture_output=True,
+    #         text=True,
+    #         cwd=parent_dir,  # Executar no diretório raiz
+    #     )
 
-            if result.returncode == 0:
-                print("✓ Importação automática concluída com sucesso!")
-                if result.stdout:
-                    print("\nSaída da importação:")
-                    print(result.stdout)
-            else:
-                print("✗ Erro durante a importação automática:")
-                if result.stderr:
-                    print("Erro:", result.stderr)
-                if result.stdout:
-                    print("Saída:", result.stdout)
+    #     if result.returncode == 0:
+    #         print("✓ Importação automática concluída com sucesso!")
+    #         if result.stdout:
+    #             print("\nSaída da importação:")
+    #             print(result.stdout)
+    #     else:
+    #         print("✗ Erro durante a importação automática:")
+    #         if result.stderr:
+    #             print("Erro:", result.stderr)
+    #         if result.stdout:
+    #             print("Saída:", result.stdout)
 
-        except Exception as e:
-            print(f"✗ Erro ao executar importação automática: {str(e)}")
-            print("Execute manualmente: python3 import_all_data.py")
-    else:
-        print("✗ Alguns clientes falharam durante o processamento")
-        print("Importação automática cancelada devido a erros no download")
-        print("Verifique os erros e execute manualmente: python3 import_all_data.py")
+    # except Exception as e:
+    #     print(f"✗ Erro ao executar importação automática: {str(e)}")
+    #     print("Execute manualmente: python3 import_all_data.py")
 
 
 if __name__ == "__main__":

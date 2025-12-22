@@ -612,6 +612,12 @@ class VisionAccount(Base):
     password = Column(String(255))
     created_on = Column(DateTime(timezone=True))
     created_by = Column(String(100))
+    should_import = Column(
+        Boolean,
+        default=True,
+        nullable=False,
+        comment="Se deve importar dados deste cliente",
+    )
 
 
 class SubClient(Base):

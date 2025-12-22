@@ -1,7 +1,7 @@
 import os
 from flask import Flask, render_template, redirect, url_for, request, session
 from werkzeug.middleware.proxy_fix import ProxyFix
-from db.database import get_session, init_db
+from db.database import get_session, init_db, Session
 from models.models import User
 from datetime import datetime
 import time
@@ -21,6 +21,8 @@ from routes.portal.tracking import (
     SIMPLE_TRACKING_AUTHORIZED_CLIENTS,
 )
 from routes.portal.alerts import alerts_bp as portal_alerts_bp
+from routes.admin import admin_bp
+from routes.admin_dashboard import admin_dashboard_bp
 from utils.vision_accounts import create_accounts_for_all_clients
 
 # Clients autorizados para usar a seção de Inventário (case-insensitive)
@@ -33,6 +35,15 @@ app = Flask(
     static_url_path="/static",
 )
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-secret-key")
+
+# ADICIONAR ESTE BLOCO LOGO APÓS A CRIAÇÃO DO APP
+@app.teardown_appcontext
+def shutdown_session(exception=None):
+    """
+    Garante que a sessão do banco seja removida ao final de cada request.
+    Isso previne 'Idle' e 'Idle in Transaction'.
+    """
+    Session.remove()
 
 # Fix for running behind a proxy (HTTPS -> HTTP)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
@@ -208,6 +219,27 @@ app.register_blueprint(portal_smartdevices_bp)
 app.register_blueprint(portal_tracking_bp)
 app.register_blueprint(portal_alerts_bp)
 app.register_blueprint(inventory_bp)
+
+# Admin blueprints (API endpoints)
+app.register_blueprint(admin_bp)
+app.register_blueprint(admin_dashboard_bp)
+
+# Register Swagger documentation
+register_swagger(app)
+
+
+# Health check endpoint (CRÍTICO para uptime - usado por load balancer)
+@app.route("/health", methods=["GET"])
+def health():
+    """Endpoint de health check para monitoramento de uptime"""
+    from health_check import HealthCheck
+
+    checks = HealthCheck.full_check()
+
+    # Return 200 se status geral for ok
+    status_code = 200 if checks["overall"] == "healthy" else 503
+    return checks, status_code
+
 
 # Initialize database and create accounts when app starts
 init_db()
