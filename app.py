@@ -381,6 +381,11 @@ def index():
 
         retry_db_operation(update_last_login, max_retries=3)
 
+        # Técnicos de inventário: ao logar, abrir diretamente a tela de operação
+        # já com o modal de adicionar asset aberto. Isso não afeta outros roles.
+        if user.role == "Technician_inventory":
+            return redirect(url_for("inventory.render_inventory_operation", open="add"))
+
         # Redirect based on destination
         # Check `inventory` explicitly before `portal` to permit custom inventory redirect
         if destination == "inventory":

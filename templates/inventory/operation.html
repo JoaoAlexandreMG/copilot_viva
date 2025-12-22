@@ -384,6 +384,12 @@
         color: #fff;
     }
 
+    #notes-mic-btn.active {
+        background: var(--primary, #00c3ff);
+        color: #ffffff;
+        border-color: rgba(0, 0, 0, 0.4);
+    }
+
     .operation-actions {
         margin-top: 12px;
         flex-direction: column;
@@ -593,13 +599,6 @@
             <div class="modal-body">
                 <div class="qr-warning-banner">LIGUE A LANTERNA</div>
                 <div id="qr-reader"></div>
-                <div class="qr-zoom-controls" style="margin-top: 12px; display: none;">
-                    <label for="qr-zoom-slider" style="display: block; font-size: 0.85rem; margin-bottom: 4px;">
-                        Zoom da câmera (se suportado)
-                    </label>
-                    <input id="qr-zoom-slider" type="range" min="1" max="3" step="0.1" value="1"
-                           style="width: 100%; margin-bottom: 8px;">
-                </div>
                 <p class="status-text qr-hint">
                     Aponte a câmera para o QR Code. Mantenha o código centralizado e, se estiver escuro, ligue a lanterna do celular.
                     Após ler, os dados serão preenchidos automaticamente.
@@ -643,6 +642,9 @@
                             <label for="city">Cidade *</label>
                             <input id="city" name="city" required />
                         </div>
+                        <div style="grid-column: 1 / -1;">
+                            <div class="status-text" id="address-status"></div>
+                        </div>
                         <div>
                             <label for="last_latitude">Latitude</label>
                             <input id="last_latitude" name="last_latitude" />
@@ -652,8 +654,18 @@
                             <input id="last_longitude" name="last_longitude" />
                         </div>
                         <div style="grid-column: 1 / -1;">
-                            <label for="notes">Notas</label>
+                            <label for="notes">
+                                Notas
+                                <button type="button"
+                                        id="notes-mic-btn"
+                                        class="btn btn-light btn-sm"
+                                        style="margin-left: 6px; padding: 4px 8px;"
+                                        title="Falar observações">
+                                    <i class="fas fa-microphone"></i>
+                                </button>
+                            </label>
                             <textarea id="notes" name="notes"></textarea>
+                            <div class="status-text" id="notes-mic-status"></div>
                         </div>
                     </div>
                     <div class="status-text" id="form-status"></div>
@@ -691,6 +703,7 @@
     const openScanBtn = document.getElementById('open-scan-btn');
     const formElement = document.getElementById('inventory-form');
     const statusText = document.getElementById('form-status');
+    const addressStatus = document.getElementById('address-status');
     const locationStatus = document.getElementById('location-status');
     const serialInput = document.getElementById('method-serial');
     const methodStatus = document.getElementById('method-status');
@@ -704,6 +717,8 @@
     const fieldLat = document.getElementById('last_latitude');
     const fieldLng = document.getElementById('last_longitude');
     const fieldNotes = document.getElementById('notes');
+    const notesMicBtn = document.getElementById('notes-mic-btn');
+    const notesMicStatus = document.getElementById('notes-mic-status');
     let currentLocationMarker = null;
     let userLat = null;
     let userLng = null;
@@ -720,6 +735,192 @@
     const filterOutlet = document.getElementById('filter-outlet');
     const filterRadius = document.getElementById('filter-radius');
     const filterOrder = document.getElementById('filter-order');
+
+    let notesRecognizer = null;
+    let notesRecognizing = false;
+    let notesMicTimeoutId = null;
+    let notesHadResult = false;
+
+    function getSpeechRecognition() {
+        return window.SpeechRecognition || window.webkitSpeechRecognition || null;
+    }
+
+    function updateNotesMicUI(isListening) {
+        if (!notesMicBtn) return;
+        if (isListening) {
+            notesMicBtn.classList.add('active');
+        } else {
+            notesMicBtn.classList.remove('active');
+        }
+        if (notesMicStatus) {
+            notesMicStatus.textContent = isListening
+                ? 'Ouvindo... fale suas observações.'
+                : '';
+        }
+    }
+
+    function startNotesRecognition() {
+        const SpeechRec = getSpeechRecognition();
+        if (!SpeechRec || !fieldNotes) {
+            if (notesMicStatus) {
+                notesMicStatus.textContent = 'Seu navegador não suporta ditado por voz.';
+            }
+            return;
+        }
+
+        // Cria um recognizer novo a cada clique para evitar estados quebrados
+        if (notesRecognizer && notesRecognizing) {
+            try {
+                notesRecognizer.stop();
+            } catch (_e) { }
+        }
+
+        notesRecognizer = new SpeechRec();
+        notesRecognizer.lang = 'pt-BR';
+        notesRecognizer.interimResults = false;
+        notesRecognizer.continuous = false;
+        notesRecognizer.maxAlternatives = 1;
+
+        notesRecognizer.onstart = () => {
+            console.log('[notes-mic] recognition started');
+            notesHadResult = false;
+        };
+
+        notesRecognizer.onresult = (event) => {
+            console.log('[notes-mic] onresult', event);
+            if (!event.results || !event.results[0] || !event.results[0][0]) return;
+            const transcript = event.results[0][0].transcript;
+            const current = fieldNotes.value || '';
+            fieldNotes.value = current ? `${current}\n${transcript}` : transcript;
+            notesHadResult = true;
+            if (notesMicStatus) {
+                notesMicStatus.textContent = 'Texto capturado do microfone.';
+            }
+        };
+
+        notesRecognizer.onerror = (event) => {
+            console.log('[notes-mic] onerror', event);
+            if (notesMicStatus) {
+                const err = event && event.error;
+                if (err === 'not-allowed' || err === 'service-not-allowed') {
+                    notesMicStatus.textContent = 'Permissão do microfone negada. Libere nas configurações do navegador.';
+                } else if (err === 'no-speech') {
+                    notesMicStatus.textContent = 'Não foi detectada fala. Tente novamente mais perto do microfone.';
+                } else if (err === 'audio-capture') {
+                    notesMicStatus.textContent = 'Nenhum microfone encontrado. Verifique o dispositivo.';
+                } else if (err === 'network') {
+                    notesMicStatus.textContent = 'Erro de rede no reconhecimento de voz.';
+                } else {
+                    notesMicStatus.textContent = 'Erro ao capturar áudio; tente novamente.';
+                }
+            }
+        };
+
+        notesRecognizer.onend = () => {
+            console.log('[notes-mic] onend');
+            notesRecognizing = false;
+            updateNotesMicUI(false);
+        };
+
+        try {
+            notesRecognizer.start();
+            notesRecognizing = true;
+            updateNotesMicUI(true);
+            if (notesMicTimeoutId !== null) {
+                clearTimeout(notesMicTimeoutId);
+                notesMicTimeoutId = null;
+            }
+            // Failsafe: encerra após alguns segundos mesmo se o evento onend não disparar
+            notesMicTimeoutId = window.setTimeout(() => {
+                if (notesRecognizing) {
+                    stopNotesRecognition();
+                    if (!notesHadResult && notesMicStatus) {
+                        notesMicStatus.textContent = 'Tempo de captura esgotado; tente novamente.';
+                    }
+                }
+            }, 20000);
+        } catch (_err) {
+            notesRecognizing = false;
+            updateNotesMicUI(false);
+            if (notesMicStatus) {
+                notesMicStatus.textContent = 'Não foi possível iniciar o microfone. Verifique permissões/HTTPS.';
+            }
+        }
+    }
+
+    function stopNotesRecognition() {
+        if (notesMicTimeoutId !== null) {
+            clearTimeout(notesMicTimeoutId);
+            notesMicTimeoutId = null;
+        }
+        if (notesRecognizer && notesRecognizing) {
+            try {
+                notesRecognizer.stop();
+            } catch (_err) {
+                // Ignora erros de stop em estados inválidos.
+            }
+        }
+    }
+
+    async function tryFillAddressFromCoordinates(lat, lng) {
+        if (!fieldStreet || !fieldCity) return;
+        if (lat === null || lat === undefined || lng === null || lng === undefined) return;
+
+        const hasStreet = fieldStreet.value && fieldStreet.value.trim().length > 0;
+        const hasCity = fieldCity.value && fieldCity.value.trim().length > 0;
+        if (hasStreet && hasCity) return;
+
+        if (addressStatus) {
+            addressStatus.textContent = 'Buscando endereço pela localização...';
+        }
+
+        try {
+            const url = new URL('{{ url_for("inventory.reverse_geocode_inventory_location") }}', window.location.origin);
+            url.searchParams.set('lat', lat);
+            url.searchParams.set('lng', lng);
+            const resp = await fetch(url.toString(), { credentials: 'same-origin' });
+            if (!resp.ok) return;
+            const data = await resp.json();
+            let filled = false;
+            if (!hasStreet && data.street) {
+                fieldStreet.value = data.street;
+                filled = true;
+            }
+            if (!hasCity && data.city) {
+                fieldCity.value = data.city;
+                filled = true;
+            }
+            if (addressStatus) {
+                if (filled) {
+                    addressStatus.textContent = 'Endereço preenchido automaticamente.';
+                } else {
+                    addressStatus.textContent = 'Não foi possível determinar a rua; preencha manualmente.';
+                }
+            }
+        } catch (_err) {
+            if (addressStatus) {
+                addressStatus.textContent = 'Não foi possível buscar endereço automático; preencha manualmente.';
+            }
+        }
+    }
+
+    if (notesMicBtn) {
+        const SpeechRec = getSpeechRecognition();
+        if (!SpeechRec) {
+            notesMicBtn.disabled = true;
+            if (notesMicStatus) {
+                notesMicStatus.textContent = 'Navegador sem suporte a ditado por voz.';
+            }
+        } else {
+            notesMicBtn.addEventListener('click', () => {
+                if (notesRecognizing) {
+                    stopNotesRecognition();
+                } else {
+                    startNotesRecognition();
+                }
+            });
+        }
+    }
 
     function setModal(modal, isOpen) {
         if (!modal) return;
@@ -1091,6 +1292,7 @@
         currentLocationMarker = L.marker([lat, lng], { icon: currentIcon }).addTo(map).bindPopup('Sua localização atual');
 
         map.panTo([lat, lng]);
+        tryFillAddressFromCoordinates(lat, lng);
         const radiusVal = parseFloat(filterRadius?.value);
         if (Number.isFinite(radiusVal) && radiusVal > 0) applyFilters();
     }
@@ -1153,6 +1355,11 @@
         if (prefill.asset_type) fieldType.value = prefill.asset_type;
         if (prefill.material) fieldMaterial.value = prefill.material;
         fillLocationFields(prefill);
+        const latToUse = prefill.last_latitude ?? userLat;
+        const lngToUse = prefill.last_longitude ?? userLng;
+        if (latToUse !== null && latToUse !== undefined && lngToUse !== null && lngToUse !== undefined) {
+            tryFillAddressFromCoordinates(latToUse, lngToUse);
+        }
         setModal(formModal, true);
     }
 
@@ -1166,66 +1373,20 @@
         else statusText.textContent = message || '';
     }
 
-    const qrZoomControls = document.querySelector('#qr-modal .qr-zoom-controls');
-    const qrZoomSlider = document.getElementById('qr-zoom-slider');
-    let qrZoomInitialized = false;
-
-    async function initQrZoomControls() {
-        if (!qrScanner || qrZoomInitialized) return;
-        if (typeof qrScanner.applyVideoConstraints !== 'function') {
-            if (qrZoomControls) qrZoomControls.style.display = 'none';
-            return;
-        }
-
+    async function applyMaxZoomIfSupported() {
+        if (!qrScanner || typeof qrScanner.applyVideoConstraints !== 'function') return;
         try {
             let caps = null;
             if (typeof qrScanner.getRunningTrackCapabilities === 'function') {
                 caps = qrScanner.getRunningTrackCapabilities();
             }
-
             const zoomCaps = caps && typeof caps.zoom === 'object' ? caps.zoom : null;
-
-            // Se não houver suporte a zoom, esconde o bloco
-            if (!zoomCaps) {
-                if (qrZoomControls) qrZoomControls.style.display = 'none';
-                return;
-            }
-
-            qrZoomInitialized = true;
-            if (qrZoomControls) qrZoomControls.style.display = 'block';
-
-            if (zoomCaps && typeof zoomCaps.min === 'number' && typeof zoomCaps.max === 'number' && qrZoomSlider) {
-                const min = zoomCaps.min;
-                const max = zoomCaps.max;
-                const step = zoomCaps.step || 0.1;
-                const initial = zoomCaps.default ?? Math.min(Math.max(1, min), max);
-
-                qrZoomSlider.min = String(min);
-                qrZoomSlider.max = String(max);
-                qrZoomSlider.step = String(step);
-                qrZoomSlider.value = String(initial);
-
-                qrZoomSlider.addEventListener('input', async (event) => {
-                    const value = Number(event.target.value);
-                    if (!Number.isFinite(value)) return;
-                    try {
-                        await qrScanner.applyVideoConstraints({
-                            advanced: [{ zoom: value }]
-                        });
-                    } catch (e) {
-                        // Se der erro, mantém slider mas não quebra leitura
-                    }
-                });
-
-                // aplica valor inicial
-                try {
-                    await qrScanner.applyVideoConstraints({
-                        advanced: [{ zoom: initial }]
-                    });
-                } catch (_e) { }
-            }
+            if (!zoomCaps || typeof zoomCaps.max !== 'number') return;
+            await qrScanner.applyVideoConstraints({
+                advanced: [{ zoom: zoomCaps.max }]
+            });
         } catch (_err) {
-            if (qrZoomControls) qrZoomControls.style.display = 'none';
+            // Se não conseguir aplicar zoom, ignora silenciosamente
         }
     }
 
@@ -1241,8 +1402,6 @@
             qrHintTimeoutId = null;
         }
         if (qrWarningBanner) qrWarningBanner.style.display = 'none';
-        qrZoomInitialized = false;
-        if (qrZoomControls) qrZoomControls.style.display = 'none';
         setQrStatus('Abrindo câmera...');
         if (qrScanner) {
             safeStopQrScanner();
@@ -1329,8 +1488,8 @@
                     }
                 }
             );
-            // inicializa zoom se o dispositivo suportar
-            initQrZoomControls();
+            // aplica zoom máximo automaticamente, se o dispositivo suportar
+            applyMaxZoomIfSupported();
             // Após alguns segundos sem leitura, reforça a dica automaticamente
             qrHintTimeoutId = window.setTimeout(() => {
                 if (qrDecodeCount === 0) {
