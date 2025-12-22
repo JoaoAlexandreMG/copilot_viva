@@ -1,4 +1,3 @@
-
 import pandas as pd  # Novo e principal import
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 import openpyxl
@@ -10,7 +9,9 @@ import warnings
 import os
 
 import csv  # Novo import para CSV
+import csv  # Novo import para CSV
 
+from pytz import timezone as pytz_timezone  # Necessário para a lógica de TZ
 from pytz import timezone as pytz_timezone  # Necessário para a lógica de TZ
 
 from dateutil import parser
@@ -909,7 +910,7 @@ def importar_dados_generico(db_session, model_name: str, file_path: str):
         df = None
         if file_ext in [".xlsx", ".xls"]:
             # Pandas lê Excel muito mais rápido
-            df = pd.read_excel(file_path)
+            df = pd.read_excel(file_path, engine="openpyxl")
         elif file_ext == ".csv":
             # Tenta ler CSV com diferentes encodings e separadores
             # Nota: Para UTF-16, não usar sep=None (auto-detect) pois não funciona bem
@@ -1101,45 +1102,24 @@ def importar_dados_generico(db_session, model_name: str, file_path: str):
                 f"✅ {model_name} importado. Total processado (Insert/Update): {total_upserted}"
             )
 
-            # Refresh MVs
-            tables_requiring_mv_refresh = [
-                "Movement",
-                "HealthEvent",
-                "DoorEvent",
-                "Asset",
-                "Alert",
-                "SmartDevice",
-            ]
-            if model_name in tables_requiring_mv_refresh:
-                print(f"🔄 Atualizando Materialized Views...")
-                try:
-                    from sqlalchemy import text
-
-                    try:
-                        db_session.execute(
-                            text(
-                                "REFRESH MATERIALIZED VIEW CONCURRENTLY mv_client_overview;"
-                            )
-                        )
-                        db_session.execute(
-                            text(
-                                "REFRESH MATERIALIZED VIEW CONCURRENTLY mv_smart_device_current_status;"
-                            )
-                        )
-                    except:
-                        db_session.rollback()
-                        db_session.execute(
-                            text("REFRESH MATERIALIZED VIEW mv_client_overview;")
-                        )
-                        db_session.execute(
-                            text(
-                                "REFRESH MATERIALIZED VIEW mv_smart_device_current_status;"
-                            )
-                        )
-
-                    db_session.commit()
-                except Exception as mv_error:
-                    print(f"⚠️ Erro ao atualizar MVs: {mv_error}")
+            # Refresh MVs DESABILITADO - será feito apenas ao final em import_all_data.py
+            # Isto evita travamentos durante o processamento de múltiplos arquivos
+            # tables_requiring_mv_refresh = ["Movement", "HealthEvent", "DoorEvent", "Asset", "Alert", "SmartDevice"]
+            # if model_name in tables_requiring_mv_refresh:
+            #     print(f"🔄 Atualizando Materialized Views...")
+            #     try:
+            #         from sqlalchemy import text
+            #         try:
+            #             db_session.execute(text("REFRESH MATERIALIZED VIEW CONCURRENTLY mv_client_overview;"))
+            #             db_session.execute(text("REFRESH MATERIALIZED VIEW CONCURRENTLY mv_asset_current_status;"))
+            #         except:
+            #              db_session.rollback()
+            #              db_session.execute(text("REFRESH MATERIALIZED VIEW mv_client_overview;"))
+            #              db_session.execute(text("REFRESH MATERIALIZED VIEW mv_asset_current_status;"))
+            #
+            #         db_session.commit()
+            #     except Exception as mv_error:
+            #         print(f"⚠️ Erro ao atualizar MVs: {mv_error}")
 
             return {"inserted": total_upserted, "updated": 0, "model": model_name}
         else:

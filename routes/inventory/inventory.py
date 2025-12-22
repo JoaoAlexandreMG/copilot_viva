@@ -469,5 +469,8 @@ def create_inventory_asset():
 
         return jsonify({"asset": asset_payload, "created": True}), 201
     except Exception as e:
-        print(f"[ERROR] Error creating inventory asset: {e}")
-        return jsonify({"error": "Erro ao criar asset"}), 500
+        db_session.rollback() # GARANTIR QUE ISTO EXISTE
+        print(f"Erro ao criar asset: {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        db_session.close()
