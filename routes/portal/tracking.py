@@ -423,7 +423,7 @@ def get_assets_optimized():
         total_count = db_session.execute(sql_count, params).scalar() or 0
 
         # 3. Paginação para a LISTA
-        items_per_page = 3
+        items_per_page = request.args.get("per_page", 3, type=int)
         page = request.args.get("page", 1, type=int)
         list_offset = (page - 1) * items_per_page
         total_pages = (total_count + items_per_page - 1) // items_per_page
