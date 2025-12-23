@@ -562,52 +562,6 @@ def get_dashboard_stats():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
-
-@dashboard_bp.route("/api/technicians-activity", methods=["GET"])
-@require_authentication
-def get_technicians_activity_api():
-    """
-    API endpoint para retornar métricas de atividade dos técnicos nos últimos 30 dias.
-
-    Retorna:
-    - Lista de técnicos com user_coolers_read e ghost_read
-    - Sinalização para técnicos sem atividade
-    """
-    try:
-        user = session.get("user")
-        if not user:
-            return jsonify({"status": "error", "message": "Unauthorized"}), 401
-
-        client = user.get("client")
-        if not client:
-            return (
-                jsonify({"status": "error", "message": "Client not found in session"}),
-                400,
-            )
-
-        technicians_data = get_technicians_activity(client)
-
-        return (
-            jsonify(
-                {
-                    "status": "ok",
-                    "data": technicians_data,
-                    "total_technicians": len(technicians_data),
-                    "inactive_technicians": len(
-                        [t for t in technicians_data if t["no_activity"]]
-                    ),
-                }
-            ),
-            200,
-        )
-
-    except Exception as e:
-        import traceback
-
-        traceback.print_exc()
-        return jsonify({"status": "error", "message": str(e)}), 500
-
-
 @dashboard_bp.route("/quality-dashboard")
 @require_authentication
 def render_quality_dashboard():
